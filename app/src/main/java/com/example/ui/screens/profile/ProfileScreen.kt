@@ -111,7 +111,8 @@ fun ProfileScreen(
     val isMyProfile = (targetUserId == loggedInUser?.id)
 
     val targetUserFlow = remember(targetUserId) { repository.getUserById(targetUserId) }
-    val profileUser by targetUserFlow.collectAsState(initial = null)
+    val profileUserFromDb by targetUserFlow.collectAsState(initial = null)
+    val profileUser = profileUserFromDb ?: (if (isMyProfile) loggedInUser else null)
 
     val userVideos by repository.getVideosByCreator(targetUserId).collectAsState(initial = emptyList())
     val likedVideoIds by repository.getUserLikedVideoIds(targetUserId).collectAsState(initial = emptyList())

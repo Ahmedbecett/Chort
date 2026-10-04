@@ -37,22 +37,42 @@ class TokPulseRepository(private val context: Context) {
 
     init {
         CoroutineScope(Dispatchers.IO).launch {
-            // Restore existing session or sync with Firebase Auth
             val authUser = firebaseService.auth?.currentUser
             if (authUser != null) {
-                val profile = firebaseService.syncAuthenticatedProfile(authUser.uid)
+                val profile = firebaseService.syncAuthenticatedProfile(authUser.uid, authUser.email, authUser.displayName)
                 if (profile != null) {
                     dao.insertUser(profile)
                     _currentUserId.value = profile.id
                     _currentUser.value = profile
                 }
             } else {
-                val defaultAdmin = dao.getUserByEmail("ahmedbecetti41@gmail.com")
+                val existingMe = dao.getUserByIdSync("user_me")
+                    ?: dao.getUserByEmail("ahmedbecetti41@gmail.com")
                     ?: dao.getUserByEmail("ahmedbecetti35@gmail.com")
                     ?: dao.getUserByIdSync("user_admin")
-                if (defaultAdmin != null) {
-                    _currentUserId.value = defaultAdmin.id
-                    _currentUser.value = defaultAdmin
+                if (existingMe != null) {
+                    _currentUserId.value = existingMe.id
+                    _currentUser.value = existingMe
+                } else {
+                    val initialUser = UserEntity(
+                        id = "user_me",
+                        username = "ahmed_creator",
+                        displayName = "Ahmed Becetti",
+                        email = "ahmedbecetti41@gmail.com",
+                        passwordHash = "INITIAL_ACTIVE",
+                        avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+                        bio = "Official TokPulse Platform Creator & Developer 🎬",
+                        followersCount = 1250,
+                        followingCount = 180,
+                        totalLikes = 8400,
+                        role = "admin",
+                        status = "active",
+                        createdAt = System.currentTimeMillis()
+                    )
+                    dao.insertUser(initialUser)
+                    _currentUserId.value = initialUser.id
+                    _currentUser.value = initialUser
+                    firebaseService.createOrUpdateUserSnapshot(initialUser)
                 }
             }
             syncWithCloud()
@@ -137,7 +157,36 @@ class TokPulseRepository(private val context: Context) {
         }
     }
 
-    // --- AUTHENTICATION VIA GOOGLE CREDENTIAL MANAGER ---
+    // --- AUTHENTICATION & USER SNAPSHOT SYNC ---
+
+    suspend fun registerWithEmail(
+        email: String,
+        password: String,
+        username: String,
+        displayName: String
+    ): Result<UserEntity> = withContext(Dispatchers.IO) {
+        val result = firebaseService.registerWithEmail(email, password, username, displayName)
+        if (result.isSuccess) {
+            val user = result.getOrThrow()
+            dao.insertUser(user)
+            _currentUserId.value = user.id
+            _currentUser.value = user
+            syncWithCloud()
+        }
+        result
+    }
+
+    suspend fun signInWithEmail(email: String, password: String): Result<UserEntity> = withContext(Dispatchers.IO) {
+        val result = firebaseService.signInWithEmail(email, password)
+        if (result.isSuccess) {
+            val user = result.getOrThrow()
+            dao.insertUser(user)
+            _currentUserId.value = user.id
+            _currentUser.value = user
+            syncWithCloud()
+        }
+        result
+    }
 
     suspend fun signInWithGoogle(): Result<UserEntity> = withContext(Dispatchers.IO) {
         val result = firebaseService.signInWithGoogle()
@@ -410,14 +459,7 @@ class TokPulseRepository(private val context: Context) {
         _currentUser.value = updated
 
         if (firebaseService.isFirebaseAvailable) {
-            firebaseService.firestore?.collection("users")?.document(user.id)?.update(
-                mapOf(
-                    "displayName" to displayName,
-                    "username" to username,
-                    "bio" to bio,
-                    "avatarUrl" to avatarUrl
-                )
-            )
+            firebaseService.createOrUpdateUserSnapshot(updated)
         }
     }
 

@@ -67,7 +67,105 @@ class FirebaseService(private val context: Context) {
             try { FirebaseStorage.getInstance() } catch (e: Exception) { null }
         } else null
 
-    // --- AUTHENTICATION WITH GOOGLE & CREDENTIAL MANAGER ---
+    // --- AUTHENTICATION & USER SNAPSHOT CREATION ---
+
+    fun isAdminEmail(email: String): Boolean {
+        return email.equals("ahmedbecetti35@gmail.com", ignoreCase = true) ||
+            email.equals("ahmedbecetti41@gmail.com", ignoreCase = true) ||
+            email.contains("admin", ignoreCase = true)
+    }
+
+    suspend fun createOrUpdateUserSnapshot(user: UserEntity): Result<UserEntity> {
+        val db = firestore ?: return Result.success(user)
+        return try {
+            val userDocRef = db.collection("users").document(user.id)
+            val snapshotMap = hashMapOf<String, Any>(
+                "id" to user.id,
+                "username" to user.username,
+                "displayName" to user.displayName,
+                "email" to user.email,
+                "avatarUrl" to user.avatarUrl,
+                "bio" to user.bio,
+                "followersCount" to user.followersCount.toLong(),
+                "followingCount" to user.followingCount.toLong(),
+                "totalLikes" to user.totalLikes.toLong(),
+                "role" to user.role,
+                "status" to user.status,
+                "strikeCount" to 0L,
+                "isVerified" to (user.role == "admin"),
+                "createdAt" to user.createdAt
+            )
+            userDocRef.set(snapshotMap, SetOptions.merge()).await()
+            Result.success(user)
+        } catch (e: Exception) {
+            Log.e(TAG, "createOrUpdateUserSnapshot warning, proceeding with local snapshot", e)
+            Result.success(user)
+        }
+    }
+
+    suspend fun registerWithEmail(
+        email: String,
+        password: String,
+        rawUsername: String,
+        rawDisplayName: String
+    ): Result<UserEntity> {
+        val authInstance = auth ?: return Result.failure(Exception("Firebase Auth service is unavailable."))
+        return try {
+            val authResult = authInstance.createUserWithEmailAndPassword(email.trim(), password).await()
+            val firebaseUser = authResult.user ?: throw Exception("Failed to register Firebase user.")
+            val uid = firebaseUser.uid
+            val username = rawUsername.trim().ifEmpty { email.substringBefore("@").lowercase().replace(".", "_") }
+            val displayName = rawDisplayName.trim().ifEmpty { username }
+            val photoUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
+            val isAdmin = isAdminEmail(email)
+
+            val newUser = UserEntity(
+                id = uid,
+                username = username,
+                displayName = displayName,
+                email = email.trim(),
+                passwordHash = "AUTH_SECURE",
+                avatarUrl = photoUrl,
+                bio = "Welcome to my TokPulse profile! 🎬",
+                followersCount = 0,
+                followingCount = 0,
+                totalLikes = 0,
+                role = if (isAdmin) "admin" else "user",
+                status = "active",
+                createdAt = System.currentTimeMillis()
+            )
+
+            createOrUpdateUserSnapshot(newUser)
+            Result.success(newUser)
+        } catch (e: Exception) {
+            Log.e(TAG, "Email Registration failed", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun signInWithEmail(email: String, password: String): Result<UserEntity> {
+        val authInstance = auth ?: return Result.failure(Exception("Firebase Auth service is unavailable."))
+        return try {
+            val authResult = authInstance.signInWithEmailAndPassword(email.trim(), password).await()
+            val firebaseUser = authResult.user ?: throw Exception("User not found.")
+            val profile = syncAuthenticatedProfile(firebaseUser.uid, firebaseUser.email, firebaseUser.displayName)
+                ?: UserEntity(
+                    id = firebaseUser.uid,
+                    username = email.substringBefore("@").lowercase().replace(".", "_"),
+                    displayName = firebaseUser.displayName ?: email.substringBefore("@"),
+                    email = email.trim(),
+                    passwordHash = "AUTH_SECURE",
+                    avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+                    bio = "Welcome to my TokPulse profile! 🎬",
+                    role = if (isAdminEmail(email)) "admin" else "user",
+                    status = "active"
+                )
+            Result.success(profile)
+        } catch (e: Exception) {
+            Log.e(TAG, "Email Sign-In failed", e)
+            Result.failure(e)
+        }
+    }
 
     suspend fun signInWithGoogle(): Result<UserEntity> {
         val authInstance = auth ?: return Result.failure(Exception("Firebase Auth is unavailable."))
@@ -99,16 +197,12 @@ class FirebaseService(private val context: Context) {
                     ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
                 val username = email.substringBefore("@").lowercase().replace(".", "_")
 
-                // Check or create Firestore user profile
                 val userDocRef = db.collection("users").document(uid)
                 val existingDoc = userDocRef.get().await()
-
-                val isAdmin = email.equals("ahmedbecetti35@gmail.com", ignoreCase = true) ||
-                    email.equals("ahmedbecetti41@gmail.com", ignoreCase = true) ||
-                    email.contains("admin")
+                val isAdmin = isAdminEmail(email)
 
                 val userEntity = if (existingDoc.exists()) {
-                    val status = existingDoc.getString("status") ?: "active"
+                    val status = existingDoc.getString("status")?.takeIf { it.isNotBlank() } ?: "active"
                     if (status == "banned") {
                         authInstance.signOut()
                         throw Exception("This account has been banned for safety violations.")
@@ -119,19 +213,21 @@ class FirebaseService(private val context: Context) {
                     }
                     val role = if (isAdmin) "admin" else (existingDoc.getString("role") ?: "user")
                     if (role != existingDoc.getString("role")) {
-                        userDocRef.update("role", role).await()
+                        try {
+                            userDocRef.set(mapOf("role" to role), SetOptions.merge()).await()
+                        } catch (_: Exception) {}
                     }
                     UserEntity(
                         id = uid,
-                        username = existingDoc.getString("username") ?: username,
-                        displayName = existingDoc.getString("displayName") ?: displayName,
+                        username = existingDoc.getString("username")?.takeIf { it.isNotBlank() } ?: username,
+                        displayName = existingDoc.getString("displayName")?.takeIf { it.isNotBlank() } ?: displayName,
                         email = email,
                         passwordHash = "GOOGLE_AUTH",
-                        avatarUrl = existingDoc.getString("avatarUrl") ?: photoUrl,
-                        bio = existingDoc.getString("bio") ?: "Welcome to my TokPulse profile! 🎬",
-                        followersCount = (existingDoc.getLong("followersCount") ?: 0).toInt(),
-                        followingCount = (existingDoc.getLong("followingCount") ?: 0).toInt(),
-                        totalLikes = (existingDoc.getLong("totalLikes") ?: 0).toInt(),
+                        avatarUrl = existingDoc.getString("avatarUrl")?.takeIf { it.isNotBlank() } ?: photoUrl,
+                        bio = existingDoc.getString("bio")?.takeIf { it.isNotBlank() } ?: "Welcome to my TokPulse profile! 🎬",
+                        followersCount = (existingDoc.getLong("followersCount") ?: 0L).toInt().coerceAtLeast(0),
+                        followingCount = (existingDoc.getLong("followingCount") ?: 0L).toInt().coerceAtLeast(0),
+                        totalLikes = (existingDoc.getLong("totalLikes") ?: 0L).toInt().coerceAtLeast(0),
                         role = role,
                         status = status,
                         createdAt = existingDoc.getLong("createdAt") ?: System.currentTimeMillis()
@@ -152,23 +248,23 @@ class FirebaseService(private val context: Context) {
                         status = "active",
                         createdAt = System.currentTimeMillis()
                     )
-                    val userMap = hashMapOf(
+                    val userMap = hashMapOf<String, Any>(
                         "id" to newUser.id,
                         "username" to newUser.username,
                         "displayName" to newUser.displayName,
                         "email" to newUser.email,
                         "avatarUrl" to newUser.avatarUrl,
                         "bio" to newUser.bio,
-                        "followersCount" to 0,
-                        "followingCount" to 0,
-                        "totalLikes" to 0,
+                        "followersCount" to 0L,
+                        "followingCount" to 0L,
+                        "totalLikes" to 0L,
                         "role" to newUser.role,
                         "status" to newUser.status,
-                        "strikeCount" to 0,
+                        "strikeCount" to 0L,
                         "isVerified" to isAdmin,
                         "createdAt" to newUser.createdAt
                     )
-                    userDocRef.set(userMap).await()
+                    userDocRef.set(userMap, SetOptions.merge()).await()
                     newUser
                 }
 
@@ -185,29 +281,124 @@ class FirebaseService(private val context: Context) {
         }
     }
 
-    suspend fun syncAuthenticatedProfile(uid: String): UserEntity? {
-        val db = firestore ?: return null
+    suspend fun syncAuthenticatedProfile(
+        uid: String,
+        fallbackEmail: String? = null,
+        fallbackDisplayName: String? = null
+    ): UserEntity? {
+        val db = firestore
+        val authUser = auth?.currentUser
+
+        val effectiveEmail = fallbackEmail ?: authUser?.email ?: ""
+        val effectiveDisplayName = fallbackDisplayName ?: authUser?.displayName ?: "TokPulse Creator"
+        val effectiveUsername = effectiveEmail.substringBefore("@").ifEmpty { "user_${uid.take(6)}" }.lowercase().replace(".", "_")
+        val effectiveAvatar = authUser?.photoUrl?.toString() ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
+        val isAdmin = isAdminEmail(effectiveEmail)
+
+        if (db == null) {
+            return UserEntity(
+                id = uid,
+                username = effectiveUsername,
+                displayName = effectiveDisplayName,
+                email = effectiveEmail,
+                passwordHash = "AUTHENTICATED",
+                avatarUrl = effectiveAvatar,
+                bio = "Welcome to my TokPulse profile! 🎬",
+                followersCount = 0,
+                followingCount = 0,
+                totalLikes = 0,
+                role = if (isAdmin) "admin" else "user",
+                status = "active",
+                createdAt = System.currentTimeMillis()
+            )
+        }
+
         return try {
-            val doc = db.collection("users").document(uid).get().await()
-            if (!doc.exists()) return null
+            val userDocRef = db.collection("users").document(uid)
+            val doc = userDocRef.get().await()
+
+            if (doc.exists()) {
+                val status = doc.getString("status")?.takeIf { it.isNotBlank() } ?: "active"
+                val existingRole = doc.getString("role")?.takeIf { it.isNotBlank() } ?: "user"
+                val role = if (isAdmin) "admin" else existingRole
+
+                if (role != existingRole) {
+                    try {
+                        userDocRef.set(mapOf("role" to role), SetOptions.merge()).await()
+                    } catch (_: Exception) {}
+                }
+
+                UserEntity(
+                    id = uid,
+                    username = doc.getString("username")?.takeIf { it.isNotBlank() } ?: effectiveUsername,
+                    displayName = doc.getString("displayName")?.takeIf { it.isNotBlank() } ?: effectiveDisplayName,
+                    email = doc.getString("email")?.takeIf { it.isNotBlank() } ?: effectiveEmail,
+                    passwordHash = "AUTHENTICATED",
+                    avatarUrl = doc.getString("avatarUrl")?.takeIf { it.isNotBlank() } ?: effectiveAvatar,
+                    bio = doc.getString("bio")?.takeIf { it.isNotBlank() } ?: "Welcome to my TokPulse profile! 🎬",
+                    followersCount = (doc.getLong("followersCount") ?: 0L).toInt().coerceAtLeast(0),
+                    followingCount = (doc.getLong("followingCount") ?: 0L).toInt().coerceAtLeast(0),
+                    totalLikes = (doc.getLong("totalLikes") ?: 0L).toInt().coerceAtLeast(0),
+                    role = role,
+                    status = status,
+                    createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                )
+            } else {
+                val newSnapshot = UserEntity(
+                    id = uid,
+                    username = effectiveUsername,
+                    displayName = effectiveDisplayName,
+                    email = effectiveEmail,
+                    passwordHash = "AUTHENTICATED",
+                    avatarUrl = effectiveAvatar,
+                    bio = "Welcome to my TokPulse profile! 🎬",
+                    followersCount = 0,
+                    followingCount = 0,
+                    totalLikes = 0,
+                    role = if (isAdmin) "admin" else "user",
+                    status = "active",
+                    createdAt = System.currentTimeMillis()
+                )
+                val snapshotMap = hashMapOf<String, Any>(
+                    "id" to newSnapshot.id,
+                    "username" to newSnapshot.username,
+                    "displayName" to newSnapshot.displayName,
+                    "email" to newSnapshot.email,
+                    "avatarUrl" to newSnapshot.avatarUrl,
+                    "bio" to newSnapshot.bio,
+                    "followersCount" to 0L,
+                    "followingCount" to 0L,
+                    "totalLikes" to 0L,
+                    "role" to newSnapshot.role,
+                    "status" to newSnapshot.status,
+                    "strikeCount" to 0L,
+                    "isVerified" to (newSnapshot.role == "admin"),
+                    "createdAt" to newSnapshot.createdAt
+                )
+                try {
+                    userDocRef.set(snapshotMap, SetOptions.merge()).await()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed writing user snapshot to firestore, returning local snapshot", e)
+                }
+                newSnapshot
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "syncAuthenticatedProfile error, creating resilient fallback snapshot", e)
             UserEntity(
                 id = uid,
-                username = doc.getString("username") ?: "creator",
-                displayName = doc.getString("displayName") ?: "TokPulse Creator",
-                email = doc.getString("email") ?: "",
-                passwordHash = "GOOGLE_AUTH",
-                avatarUrl = doc.getString("avatarUrl") ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
-                bio = doc.getString("bio") ?: "",
-                followersCount = (doc.getLong("followersCount") ?: 0).toInt(),
-                followingCount = (doc.getLong("followingCount") ?: 0).toInt(),
-                totalLikes = (doc.getLong("totalLikes") ?: 0).toInt(),
-                role = doc.getString("role") ?: "user",
-                status = doc.getString("status") ?: "active",
-                createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                username = effectiveUsername,
+                displayName = effectiveDisplayName,
+                email = effectiveEmail,
+                passwordHash = "AUTHENTICATED",
+                avatarUrl = effectiveAvatar,
+                bio = "Welcome to my TokPulse profile! 🎬",
+                followersCount = 0,
+                followingCount = 0,
+                totalLikes = 0,
+                role = if (isAdmin) "admin" else "user",
+                status = "active",
+                createdAt = System.currentTimeMillis()
             )
-        } catch (e: Exception) {
-            Log.e(TAG, "syncAuthenticatedProfile error", e)
-            null
         }
     }
 
