@@ -19,18 +19,18 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -76,19 +76,6 @@ import com.example.ui.theme.TokDarkSurface
 import com.example.ui.theme.TokRed
 import kotlinx.coroutines.launch
 
-/**
- * Normalizes Arabic and English search strings (removes hamza variants, taa marbouta, punctuation)
- * to provide resilient, enterprise-grade search results matching YouTube/TikTok algorithms.
- */
-private fun normalizeSearchQuery(text: String): String {
-    return text.lowercase()
-        .replace("[أإآ]".toRegex(), "ا")
-        .replace("ة", "ه")
-        .replace("ى", "ي")
-        .replace("[\\p{Punct}\\s]+".toRegex(), " ")
-        .trim()
-}
-
 @Composable
 fun DiscoverScreen(
     repository: TokPulseRepository,
@@ -104,56 +91,32 @@ fun DiscoverScreen(
     val currentUser by repository.currentUser.collectAsState()
     val followingIds by repository.getFollowingIds(currentUser?.id ?: "").collectAsState(initial = emptyList())
 
-    val normalizedQuery = remember(searchQuery) { normalizeSearchQuery(searchQuery) }
-
-    // Dynamic Video Search matching caption, hashtags, creator, or music title
-    val searchResultsVideos = remember(normalizedQuery, allVideos) {
-        if (normalizedQuery.isBlank()) {
-            allVideos
-        } else {
-            allVideos.filter { video ->
-                val captionNorm = normalizeSearchQuery(video.caption)
-                val tagsNorm = normalizeSearchQuery(video.tags)
-                val creatorNorm = normalizeSearchQuery(video.creatorUsername)
-                val musicNorm = normalizeSearchQuery(video.musicTitle)
-
-                captionNorm.contains(normalizedQuery) ||
-                tagsNorm.contains(normalizedQuery) ||
-                creatorNorm.contains(normalizedQuery) ||
-                musicNorm.contains(normalizedQuery)
+    val searchResultsVideos = remember(searchQuery, allVideos) {
+        if (searchQuery.isBlank()) allVideos else {
+            allVideos.filter {
+                it.caption.contains(searchQuery, ignoreCase = true) ||
+                it.tags.contains(searchQuery, ignoreCase = true) ||
+                it.creatorUsername.contains(searchQuery, ignoreCase = true)
             }
         }
     }
 
-    // Dynamic User Search matching username, display name, or bio
-    val searchResultsUsers = remember(normalizedQuery, allUsers) {
-        if (normalizedQuery.isBlank()) {
-            allUsers.filter { it.role != "admin" }
-        } else {
-            allUsers.filter { user ->
-                val usernameNorm = normalizeSearchQuery(user.username)
-                val displayNameNorm = normalizeSearchQuery(user.displayName)
-                val bioNorm = normalizeSearchQuery(user.bio)
-
-                usernameNorm.contains(normalizedQuery) ||
-                displayNameNorm.contains(normalizedQuery) ||
-                bioNorm.contains(normalizedQuery)
+    val searchResultsUsers = remember(searchQuery, allUsers) {
+        if (searchQuery.isBlank()) allUsers.filter { it.role != "admin" } else {
+            allUsers.filter {
+                it.username.contains(searchQuery, ignoreCase = true) ||
+                it.displayName.contains(searchQuery, ignoreCase = true)
             }
         }
     }
 
     val trendingTags = listOf(
-        Pair("#أغاني", "2.8M views"),
-        Pair("#موسيقى", "1.9M views"),
-        Pair("#طرب", "940K views"),
-        Pair("#رقص", "3.4M views"),
-        Pair("#طبخ", "1.8M views"),
-        Pair("#تقنية", "820K views"),
-        Pair("#رياضة", "650K views"),
-        Pair("#سفر", "1.2M views"),
-        Pair("#كوميديا", "4.1M views"),
-        Pair("#viral", "5.2B views"),
-        Pair("#fyp", "8.9B views")
+        Pair("#skate", "1.2B views"),
+        Pair("#foodtok", "890M views"),
+        Pair("#techtok", "450M views"),
+        Pair("#dancechallenge", "2.4B views"),
+        Pair("#traveltok", "670M views"),
+        Pair("#fpvdrone", "310M views")
     )
 
     Column(
@@ -173,7 +136,7 @@ fun DiscoverScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Search videos, users, #أغاني, #رقص...", color = TextMuted, fontSize = 13.5.sp) },
+                placeholder = { Text("Search videos, users, #hashtags...", color = TextMuted, fontSize = 13.5.sp) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
@@ -211,7 +174,7 @@ fun DiscoverScreen(
             )
         }
 
-        // Filter chips: All, Videos, Users, Hashtags
+        // Filter chips
         LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
@@ -246,8 +209,8 @@ fun DiscoverScreen(
                 .fillMaxSize()
                 .padding(bottom = 60.dp)
         ) {
-            // Trending Hashtags carousel
-            if (selectedFilter == "All" || selectedFilter == "Hashtags") {
+            // Trending Hashtags carousel if search is empty or filter is Hashtags
+            if ((searchQuery.isBlank() || selectedFilter == "Hashtags" || selectedFilter == "All")) {
                 item {
                     Row(
                         modifier = Modifier
@@ -263,7 +226,7 @@ fun DiscoverScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (searchQuery.isBlank()) "Trending Hashtags" else "Hashtags matching \"$searchQuery\"",
+                            text = "Trending Hashtags",
                             color = TextPrimary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
@@ -276,20 +239,13 @@ fun DiscoverScreen(
                             .padding(horizontal = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        val matchingTags = if (normalizedQuery.isBlank()) {
-                            trendingTags
-                        } else {
-                            trendingTags.filter { normalizeSearchQuery(it.first).contains(normalizedQuery) }
-                                .ifEmpty { listOf(Pair("#$searchQuery", "Live tag")) }
-                        }
-
-                        items(matchingTags) { (tag, count) ->
+                        items(trendingTags) { (tag, count) ->
                             Card(
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(containerColor = TokDarkElevated),
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .clickable { searchQuery = tag.removePrefix("#") }
+                                    .clickable { searchQuery = tag }
                                     .border(1.dp, TokBorder, RoundedCornerShape(12.dp))
                             ) {
                                 Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
@@ -313,16 +269,17 @@ fun DiscoverScreen(
                 }
             }
 
-            // Creator Spotlight Section (Horizontal in All, Full vertical list in Users)
-            if (selectedFilter == "All" && searchResultsUsers.isNotEmpty()) {
+            // Creator Spotlight Section
+            if (selectedFilter == "All" || selectedFilter == "Users") {
                 item {
                     Text(
-                        text = if (searchQuery.isBlank()) "Popular Creators" else "Creators (${searchResultsUsers.size})",
+                        text = "Popular Creators",
                         color = TextPrimary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
                     )
+
                     LazyRow(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -343,41 +300,13 @@ fun DiscoverScreen(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
-            } else if (selectedFilter == "Users") {
-                item {
-                    Text(
-                        text = "Creators (${searchResultsUsers.size})",
-                        color = TextPrimary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                    )
-                }
-
-                if (searchResultsUsers.isEmpty()) {
-                    item {
-                        EmptySearchState(query = searchQuery, type = "creators")
-                    }
-                } else {
-                    items(searchResultsUsers) { user ->
-                        val isFollowing = user.id in followingIds
-                        UserListRow(
-                            user = user,
-                            isFollowing = isFollowing,
-                            onProfileClick = { onNavigateToProfile(user.id) },
-                            onToggleFollow = {
-                                scope.launch { repository.toggleFollow(user.id) }
-                            }
-                        )
-                    }
-                }
             }
 
-            // Video Grid Section (Visible in All, Videos, or Hashtags)
-            if (selectedFilter == "All" || selectedFilter == "Videos" || selectedFilter == "Hashtags") {
+            // Video Grid Section
+            if (selectedFilter == "All" || selectedFilter == "Videos") {
                 item {
                     Text(
-                        text = if (searchQuery.isBlank()) "Featured Clips" else "Videos Found (${searchResultsVideos.size})",
+                        text = if (searchQuery.isBlank()) "Featured Clips" else "Search Results (${searchResultsVideos.size})",
                         color = TextPrimary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
@@ -385,141 +314,25 @@ fun DiscoverScreen(
                     )
                 }
 
-                if (searchResultsVideos.isEmpty()) {
-                    item {
-                        EmptySearchState(query = searchQuery, type = "videos")
-                    }
-                } else {
-                    val chunkedVideos = searchResultsVideos.chunked(2)
-                    items(chunkedVideos) { rowVideos ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            rowVideos.forEach { video ->
-                                Box(modifier = Modifier.weight(1f)) {
-                                    VideoGridCard(video = video, onClick = { onSelectVideo(video) })
-                                }
+                // Grid layout inside column
+                val chunkedVideos = searchResultsVideos.chunked(2)
+                items(chunkedVideos) { rowVideos ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        rowVideos.forEach { video ->
+                            Box(modifier = Modifier.weight(1f)) {
+                                VideoGridCard(video = video, onClick = { onSelectVideo(video) })
                             }
-                            if (rowVideos.size == 1) {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
+                        }
+                        if (rowVideos.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptySearchState(query: String, type: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 40.dp, horizontal = 24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = "Empty Search",
-                tint = TextMuted,
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = if (query.isNotBlank()) "No $type found for \"$query\"" else "No $type found",
-                color = TextPrimary,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "Try searching for #أغاني, #رقص, #طبخ, or #تقنية",
-                color = TextMuted,
-                fontSize = 12.sp
-            )
-        }
-    }
-}
-
-@Composable
-private fun UserListRow(
-    user: UserEntity,
-    isFollowing: Boolean,
-    onProfileClick: () -> Unit,
-    onToggleFollow: () -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clickable { onProfileClick() }
-            .border(1.dp, TokBorder, RoundedCornerShape(12.dp))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AsyncImage(
-                model = user.avatarUrl,
-                contentDescription = user.username,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .border(1.5.dp, TokCyan, CircleShape)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = user.displayName,
-                    color = TextPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "@${user.username}",
-                    color = TextMuted,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (user.bio.isNotBlank()) {
-                    Text(
-                        text = user.bio,
-                        color = TextSecondary,
-                        fontSize = 11.5.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = onToggleFollow,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isFollowing) TokDarkElevated else TokRed
-                ),
-                shape = RoundedCornerShape(12.dp),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                modifier = Modifier.height(32.dp)
-            ) {
-                Text(
-                    text = if (isFollowing) "Following" else "Follow",
-                    color = if (isFollowing) TextSecondary else Color.White,
-                    fontSize = 11.5.sp,
-                    fontWeight = FontWeight.Bold
-                )
             }
         }
     }
@@ -555,7 +368,9 @@ private fun CreatorCard(
                     .clip(CircleShape)
                     .border(1.5.dp, TokCyan, CircleShape)
             )
+
             Spacer(modifier = Modifier.height(8.dp))
+
             Text(
                 text = user.displayName,
                 color = TextPrimary,
@@ -564,6 +379,7 @@ private fun CreatorCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+
             Text(
                 text = "@${user.username}",
                 color = TextMuted,
@@ -571,7 +387,9 @@ private fun CreatorCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+
             Spacer(modifier = Modifier.height(8.dp))
+
             Button(
                 onClick = onToggleFollow,
                 colors = ButtonDefaults.buttonColors(
@@ -617,6 +435,7 @@ private fun VideoGridCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+
             // Gradient shadow
             Box(
                 modifier = Modifier
@@ -627,6 +446,7 @@ private fun VideoGridCard(
                         )
                     )
             )
+
             // View count badge
             Row(
                 modifier = Modifier
@@ -649,6 +469,7 @@ private fun VideoGridCard(
                 )
             }
         }
+
         // Caption snippet
         Column(modifier = Modifier.padding(8.dp)) {
             Text(

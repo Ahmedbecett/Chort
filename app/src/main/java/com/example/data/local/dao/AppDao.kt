@@ -93,7 +93,13 @@ interface AppDao {
     @Query("UPDATE videos SET sharesCount = sharesCount + 1 WHERE id = :id")
     suspend fun incrementShares(id: String)
 
-    @Query("SELECT * FROM videos WHERE (caption LIKE '%' || :query || '%' OR tags LIKE '%' || :query || '%' OR creatorUsername LIKE '%' || :query || '%' OR musicTitle LIKE '%' || :query || '%') AND isHidden = 0 AND isDeleted = 0 ORDER BY createdAt DESC")
+    @Query("SELECT COUNT(*) FROM videos WHERE isDeleted = 0")
+    suspend fun getActiveVideosCount(): Int
+
+    @Query("SELECT * FROM videos WHERE isHidden = 0 AND isDeleted = 0 ORDER BY createdAt DESC")
+    suspend fun getAllActiveVideosSync(): List<VideoEntity>
+
+    @Query("SELECT * FROM videos WHERE (caption LIKE '%' || :query || '%' OR tags LIKE '%' || :query || '%' OR musicTitle LIKE '%' || :query || '%' OR creatorUsername LIKE '%' || :query || '%') AND isHidden = 0 AND isDeleted = 0 ORDER BY createdAt DESC")
     fun searchVideos(query: String): Flow<List<VideoEntity>>
 
     // --- COMMENTS ---
