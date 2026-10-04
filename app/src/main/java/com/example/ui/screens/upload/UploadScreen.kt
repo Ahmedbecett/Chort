@@ -479,28 +479,23 @@ fun UploadScreen(
 
                 isUploading = true
                 scope.launch {
-                    uploadStatusText = "Optimizing video bitrate & audio track..."
-                    uploadProgress = 0.2f
-                    delay(300)
-
-                    uploadStatusText = "Uploading video chunks to Cloud Storage..."
-                    uploadProgress = 0.55f
-                    delay(400)
-
-                    uploadStatusText = "Generating HD thumbnail & CDN distribution..."
-                    uploadProgress = 0.85f
-                    delay(300)
+                    uploadStatusText = "Connecting to Cloud Storage & CDN..."
+                    uploadProgress = 0.05f
 
                     val result = repository.uploadVideo(
                         videoUrl = selectedVideoUri,
                         caption = captionText.trim(),
                         tags = "#tokpulse,#fyp,#viral",
                         musicTitle = musicTitle.trim(),
-                        videoUri = selectedDeviceUri
+                        videoUri = selectedDeviceUri,
+                        onProgress = { progress ->
+                            uploadProgress = 0.05f + (progress * 0.9f)
+                            uploadStatusText = "Uploading to Cloud Storage: ${(progress * 100).toInt()}%"
+                        }
                     )
 
                     uploadProgress = 1f
-                    uploadStatusText = "Video published successfully!"
+                    uploadStatusText = "Video published to Cloud & Feed!"
                     delay(200)
 
                     isUploading = false

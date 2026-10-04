@@ -334,7 +334,8 @@ class TokPulseRepository(private val context: Context) {
         caption: String,
         tags: String,
         musicTitle: String,
-        videoUri: Uri? = null
+        videoUri: Uri? = null,
+        onProgress: ((Float) -> Unit)? = null
     ): VideoEntity = withContext(Dispatchers.IO) {
         val user = _currentUser.value
         val creatorId = user?.id ?: "creator_guest"
@@ -345,7 +346,7 @@ class TokPulseRepository(private val context: Context) {
         var finalVideoUrl = videoUrl
 
         if (videoUri != null && firebaseService.isFirebaseAvailable) {
-            val storageResult = firebaseService.uploadVideoToStorage(videoUri, videoId)
+            val storageResult = firebaseService.uploadVideoToStorage(videoUri, videoId, onProgress)
             if (storageResult.isSuccess) {
                 finalVideoUrl = storageResult.getOrThrow()
             }

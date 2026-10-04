@@ -221,11 +221,24 @@ class FirebaseService(private val context: Context) {
 
     // --- VIDEO CLOUD STORAGE & FIRESTORE ---
 
-    suspend fun uploadVideoToStorage(videoUri: Uri, videoId: String): Result<String> {
+    suspend fun uploadVideoToStorage(
+        videoUri: Uri,
+        videoId: String,
+        onProgress: ((Float) -> Unit)? = null
+    ): Result<String> {
         val storageInstance = storage ?: return Result.failure(Exception("Firebase Storage unavailable"))
         return try {
             val ref = storageInstance.reference.child("videos/$videoId.mp4")
-            ref.putFile(videoUri).await()
+            val uploadTask = ref.putFile(videoUri)
+            if (onProgress != null) {
+                uploadTask.addOnProgressListener { snapshot ->
+                    if (snapshot.totalByteCount > 0) {
+                        val progress = snapshot.bytesTransferred.toFloat() / snapshot.totalByteCount.toFloat()
+                        onProgress(progress.coerceIn(0f, 1f))
+                    }
+                }
+            }
+            uploadTask.await()
             val downloadUrl = ref.downloadUrl.await().toString()
             Result.success(downloadUrl)
         } catch (e: Exception) {
