@@ -60,17 +60,25 @@ class TokPulseRepository(private val context: Context) {
     }
 
     suspend fun syncWithCloud() = withContext(Dispatchers.IO) {
+        // Ensure catalog is populated locally
+        seedPlatformVideosToFirestoreIfNeeded()
+
         if (!firebaseService.isFirebaseAvailable) return@withContext
         try {
             // 1. Fetch live videos from Firestore
             val cloudVideos = firebaseService.fetchVideosFromFirestore(limit = 50)
             if (cloudVideos.isNotEmpty()) {
                 dao.insertVideos(cloudVideos)
-            } else {
-                seedLaunchVideoToFirestoreIfNeeded()
             }
 
-            // 2. Fetch admin data from Firestore if current user is admin
+            // 2. Realtime listener for live updates across devices
+            firebaseService.subscribeToVideosRealtime { liveVideos ->
+                CoroutineScope(Dispatchers.IO).launch {
+                    dao.insertVideos(liveVideos)
+                }
+            }
+
+            // 3. Fetch admin data from Firestore if current user is admin
             val user = _currentUser.value
             val isUserAdmin = user?.role == "admin" ||
                 user?.email?.equals("ahmedbecetti35@gmail.com", true) == true ||
@@ -94,29 +102,159 @@ class TokPulseRepository(private val context: Context) {
         }
     }
 
-    private suspend fun seedLaunchVideoToFirestoreIfNeeded() {
-        val launchVideo = VideoEntity(
-            id = "vid_launch_1",
-            creatorId = "tokpulse_official",
-            creatorUsername = "tokpulse",
-            creatorAvatar = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
-            videoUrl = "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/person-bicycle-car-detection.mp4",
-            thumbnailUrl = "https://images.unsplash.com/photo-1564982752979-3f7bc974d29a?w=500",
-            caption = "Welcome to TokPulse! 🎬 The new home for creators, dancers, and visionaries. Drop a like & upload your first clip! #welcome #tokpulse #viral",
-            musicTitle = "TokPulse Anthem - Official Sound",
-            tags = "#welcome,#tokpulse,#viral",
-            likesCount = 120,
-            commentsCount = 8,
-            sharesCount = 24,
-            viewsCount = 540,
-            createdAt = System.currentTimeMillis()
+    private suspend fun seedPlatformVideosToFirestoreIfNeeded() {
+        val initialVideos = listOf(
+            VideoEntity(
+                id = "vid_music_arabic_1",
+                creatorId = "creator_mahmoud",
+                creatorUsername = "mahmoud_music",
+                creatorAvatar = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+                videoUrl = "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/person-bicycle-car-detection.mp4",
+                thumbnailUrl = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500",
+                caption = "أجمل أغاني وموسيقى الريمكس العالمية الحماسية 🎵✨ #أغاني #موسيقى #ترند #طرب #tokpulse",
+                musicTitle = "أغاني حماسية - سولو عود وإيقاع شرقي",
+                tags = "#أغاني,#موسيقى,#طرب,#فن,#music,#songs,#tokpulse",
+                likesCount = 2840,
+                commentsCount = 142,
+                sharesCount = 520,
+                viewsCount = 38900,
+                createdAt = System.currentTimeMillis() - 1000000
+            ),
+            VideoEntity(
+                id = "vid_music_arabic_2",
+                creatorId = "creator_layla",
+                creatorUsername = "layla_vocals",
+                creatorAvatar = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300",
+                videoUrl = "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/face-demographics-walking.mp4",
+                thumbnailUrl = "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500",
+                caption = "أغاني الزمن الجميل بطابع عصري هادئ 🎶🌙 شاركونا رأيكم في التعليقات #أغاني #طرب #فن #كلاسيك",
+                musicTitle = "أغاني كلاسيكية - كمان وبيانو هادئ",
+                tags = "#أغاني,#طرب,#موسيقى,#فن,#classic,#chill,#vocals",
+                likesCount = 4120,
+                commentsCount = 310,
+                sharesCount = 890,
+                viewsCount = 54200,
+                createdAt = System.currentTimeMillis() - 2000000
+            ),
+            VideoEntity(
+                id = "vid_dance_1",
+                creatorId = "creator_samir",
+                creatorUsername = "dance_samir",
+                creatorAvatar = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300",
+                videoUrl = "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/head-pose-face-detection-female.mp4",
+                thumbnailUrl = "https://images.unsplash.com/photo-1547153760-18fc86324498?w=500",
+                caption = "تحدي الرقص السريع مع أقوى إيقاع إلكتروني 🕺🔥 جرب الحركة وشاركنا #رقص #dance #challenge #fyp #viral",
+                musicTitle = "Electro Pulse Dance Beat - TokPulse Sound",
+                tags = "#رقص,#dance,#viral,#fyp,#trend,#challenge",
+                likesCount = 5930,
+                commentsCount = 428,
+                sharesCount = 1200,
+                viewsCount = 89400,
+                createdAt = System.currentTimeMillis() - 3000000
+            ),
+            VideoEntity(
+                id = "vid_food_1",
+                creatorId = "creator_karim",
+                creatorUsername = "chef_karim",
+                creatorAvatar = "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300",
+                videoUrl = "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/classroom.mp4",
+                thumbnailUrl = "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500",
+                caption = "أسرع وألذ وصفة برجر مقرمش في البيت بدقيقة واحدة 🍔🤤 #طبخ #أكل #food #foodtok #cooking #recipe",
+                musicTitle = "Kitchen Beats & Fast ASMR",
+                tags = "#طبخ,#أكل,#food,#foodtok,#cooking,#recipe,#delicious",
+                likesCount = 8240,
+                commentsCount = 612,
+                sharesCount = 1890,
+                viewsCount = 124000,
+                createdAt = System.currentTimeMillis() - 4000000
+            ),
+            VideoEntity(
+                id = "vid_tech_1",
+                creatorId = "creator_ahmed",
+                creatorUsername = "tech_ahmed",
+                creatorAvatar = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300",
+                videoUrl = "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/person-bicycle-car-detection.mp4",
+                thumbnailUrl = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500",
+                caption = "أقوى حيل وتقنيات الذكاء الاصطناعي في 2026 ستغير حياتك اليومية 🤖📱 #تقنية #تكنولوجيا #tech #ai #android",
+                musicTitle = "Cyber Future Synth Wave",
+                tags = "#تقنية,#تكنولوجيا,#tech,#ai,#future,#innovation,#android",
+                likesCount = 6730,
+                commentsCount = 489,
+                sharesCount = 1450,
+                viewsCount = 98000,
+                createdAt = System.currentTimeMillis() - 5000000
+            ),
+            VideoEntity(
+                id = "vid_sports_1",
+                creatorId = "creator_youssef",
+                creatorUsername = "coach_youssef",
+                creatorAvatar = "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300",
+                videoUrl = "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/face-demographics-walking.mp4",
+                thumbnailUrl = "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=500",
+                caption = "تمارين لياقة وصباحية لحرق الدهون وبناء طاقة إيجابية 💪🏃‍♂️ #رياضة #لياقة #fitness #sports #workout #gym",
+                musicTitle = "High BPM Workout Motivation",
+                tags = "#رياضة,#لياقة,#fitness,#sports,#workout,#gym,#health",
+                likesCount = 3450,
+                commentsCount = 205,
+                sharesCount = 670,
+                viewsCount = 45000,
+                createdAt = System.currentTimeMillis() - 6000000
+            ),
+            VideoEntity(
+                id = "vid_travel_1",
+                creatorId = "creator_sarah",
+                creatorUsername = "travel_sarah",
+                creatorAvatar = "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300",
+                videoUrl = "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/head-pose-face-detection-female.mp4",
+                thumbnailUrl = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=500",
+                caption = "سحر جبال الألب والبحيرات النقية في رحلة خيالية 🏔️🛶 #سفر #طبيعة #travel #nature #wanderlust #explore",
+                musicTitle = "Acoustic Nature Breeze",
+                tags = "#سفر,#طبيعة,#travel,#nature,#wanderlust,#mountains,#adventure",
+                likesCount = 9120,
+                commentsCount = 740,
+                sharesCount = 2100,
+                viewsCount = 145000,
+                createdAt = System.currentTimeMillis() - 7000000
+            ),
+            VideoEntity(
+                id = "vid_comedy_1",
+                creatorId = "creator_tariq",
+                creatorUsername = "tariq_comedy",
+                creatorAvatar = "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=300",
+                videoUrl = "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/classroom.mp4",
+                thumbnailUrl = "https://images.unsplash.com/photo-1527224857830-43a7acc85260?w=500",
+                caption = "يوميات مضحكة: لما تقرر تلتزم بالدايت وأصحابك يطلبو شاورما 😂 #كوميديا #ضحك #comedy #funny #humor",
+                musicTitle = "Funny Whistle Comedy Sound",
+                tags = "#كوميديا,#ضحك,#comedy,#funny,#humor,#fun,#lol",
+                likesCount = 11200,
+                commentsCount = 980,
+                sharesCount = 3400,
+                viewsCount = 210000,
+                createdAt = System.currentTimeMillis() - 8000000
+            )
         )
-        dao.insertVideo(launchVideo)
+
+        dao.insertVideos(initialVideos)
+
+        val creators = listOf(
+            UserEntity(id = "creator_mahmoud", username = "mahmoud_music", displayName = "محمود الموسيقار", email = "mahmoud@tokpulse.com", passwordHash = "PROTECTED", avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300", bio = "عازف ومؤلف موسيقى وريمكسات 🎵 | شاركوا في الهاشتاغات", followersCount = 28400, followingCount = 45, totalLikes = 189000, role = "creator"),
+            UserEntity(id = "creator_layla", username = "layla_vocals", displayName = "ليلى صوت الشرق", email = "layla@tokpulse.com", passwordHash = "PROTECTED", avatarUrl = "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300", bio = "أغاني وطرب عربي أصيل 🎤🌙 حسابي الرسمي على TokPulse", followersCount = 41200, followingCount = 80, totalLikes = 312000, role = "creator"),
+            UserEntity(id = "creator_samir", username = "dance_samir", displayName = "سامير راقص الشارع", email = "samir@tokpulse.com", passwordHash = "PROTECTED", avatarUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300", bio = "تحديات رقص وترندات عالمية 🕺🔥", followersCount = 65000, followingCount = 120, totalLikes = 450000, role = "creator"),
+            UserEntity(id = "creator_karim", username = "chef_karim", displayName = "الشيف كريم", email = "karim@tokpulse.com", passwordHash = "PROTECTED", avatarUrl = "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300", bio = "أشهى الأكلات والوصفات السريعة في دقيقة 🍔👨‍🍳", followersCount = 89000, followingCount = 30, totalLikes = 890000, role = "creator"),
+            UserEntity(id = "creator_ahmed", username = "tech_ahmed", displayName = "أحمد للتقنية", email = "tech@tokpulse.com", passwordHash = "PROTECTED", avatarUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300", bio = "مراجعات تقنية، ذكاء اصطناعي، وتطبيقات جديدة 🤖📱", followersCount = 74000, followingCount = 95, totalLikes = 520000, role = "creator"),
+            UserEntity(id = "creator_youssef", username = "coach_youssef", displayName = "الكابتن يوسف", email = "youssef@tokpulse.com", passwordHash = "PROTECTED", avatarUrl = "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300", bio = "مدرب لياقة بدنية وتحفيز رياضي يومي 💪🏃‍♂️", followersCount = 36000, followingCount = 50, totalLikes = 240000, role = "creator"),
+            UserEntity(id = "creator_sarah", username = "travel_sarah", displayName = "سارة حول العالم", email = "sarah@tokpulse.com", passwordHash = "PROTECTED", avatarUrl = "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300", bio = "رحلات، جبال، ومغامرات في بلدان العالم 🏔️✈️", followersCount = 105000, followingCount = 60, totalLikes = 980000, role = "creator"),
+            UserEntity(id = "creator_tariq", username = "tariq_comedy", displayName = "طارق كوميدي", email = "tariq@tokpulse.com", passwordHash = "PROTECTED", avatarUrl = "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=300", bio = "ابتسم كل يوم مع مواقف ويوميات ساخرة 😂🎬", followersCount = 142000, followingCount = 15, totalLikes = 1450000, role = "creator")
+        )
+        dao.insertUsers(creators)
+
         if (firebaseService.isFirebaseAvailable) {
             try {
-                firebaseService.publishVideoToFirestore(launchVideo)
+                for (video in initialVideos) {
+                    firebaseService.publishVideoToFirestore(video)
+                }
             } catch (e: Exception) {
-                // Ignore launch seeding exception if offline or during initial startup
+                // Ignore seeding exceptions if offline
             }
         }
     }

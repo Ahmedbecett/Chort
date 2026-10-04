@@ -120,7 +120,7 @@ fun UploadScreen(
         }
     }
 
-    val suggestedHashtags = listOf("#fyp", "#trending", "#tokpulse", "#viral", "#creators", "#lifestyle", "#vibes")
+    val suggestedHashtags = listOf("#أغاني", "#موسيقى", "#طرب", "#dance", "#طبخ", "#تقنية", "#رياضة", "#fyp", "#viral")
 
     Column(
         modifier = Modifier
@@ -482,11 +482,18 @@ fun UploadScreen(
                     uploadStatusText = "Connecting to Cloud Storage & CDN..."
                     uploadProgress = 0.05f
 
+                    val extractedTags = Regex("#[\\p{L}0-9_]+")
+                        .findAll(captionText)
+                        .map { it.value }
+                        .joinToString(",")
+                    val finalTags = if (extractedTags.isNotBlank()) extractedTags else "#tokpulse,#fyp,#viral"
+                    val finalMusic = if (musicTitle.isNotBlank()) musicTitle.trim() else ("Original Sound - " + (currentUser?.displayName ?: "Creator"))
+
                     val result = repository.uploadVideo(
                         videoUrl = selectedVideoUri,
                         caption = captionText.trim(),
-                        tags = "#tokpulse,#fyp,#viral",
-                        musicTitle = musicTitle.trim(),
+                        tags = finalTags,
+                        musicTitle = finalMusic,
                         videoUri = selectedDeviceUri,
                         onProgress = { progress ->
                             uploadProgress = 0.05f + (progress * 0.9f)

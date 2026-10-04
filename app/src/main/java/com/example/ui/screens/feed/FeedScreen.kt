@@ -106,11 +106,12 @@ fun FeedScreen(
     var showShopSheet by remember { mutableStateOf(false) }
 
     val displayedVideos = remember(allVideos, selectedTab, followingIds) {
+        val sorted = allVideos.sortedByDescending { it.createdAt }
         if (selectedTab == 0) {
-            val followed = allVideos.filter { it.creatorId in followingIds }
-            if (followed.isEmpty()) allVideos else followed
+            val followed = sorted.filter { it.creatorId in followingIds }
+            if (followed.isEmpty()) sorted else followed
         } else {
-            allVideos
+            sorted
         }
     }
 
@@ -219,6 +220,7 @@ fun FeedScreen(
             onLiveClick = onNavigateToLive,
             onTrackingClick = onNavigateToTracking,
             onSearchClick = onNavigateToSearch,
+            onRefresh = { scope.launch { repository.syncWithCloud() } },
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
@@ -303,6 +305,7 @@ private fun TopFeedBar(
     onLiveClick: () -> Unit,
     onTrackingClick: () -> Unit,
     onSearchClick: () -> Unit,
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -409,6 +412,19 @@ private fun TopFeedBar(
                 )
             }
 
+            IconButton(
+                onClick = onRefresh,
+                modifier = Modifier
+                    .size(36.dp)
+                    .testTag("feed_refresh_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Videocam,
+                    contentDescription = "Refresh Feed",
+                    tint = TextPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             IconButton(
                 onClick = onSearchClick,
                 modifier = Modifier

@@ -293,14 +293,16 @@ class FirebaseService(private val context: Context) {
         val db = firestore ?: return emptyList()
         return try {
             val querySnapshot = db.collection("videos")
-                .whereEqualTo("isDeleted", false)
-                .whereEqualTo("isHidden", false)
                 .orderBy("createdAt", Query.Direction.DESCENDING)
                 .limit(limit)
                 .get()
                 .await()
 
             querySnapshot.documents.mapNotNull { doc ->
+                val isHidden = doc.getBoolean("isHidden") ?: false
+                val isDeleted = doc.getBoolean("isDeleted") ?: false
+                if (isHidden || isDeleted) return@mapNotNull null
+
                 VideoEntity(
                     id = doc.getString("id") ?: doc.id,
                     creatorId = doc.getString("creatorId") ?: "",
@@ -315,14 +317,55 @@ class FirebaseService(private val context: Context) {
                     commentsCount = (doc.getLong("commentsCount") ?: 0).toInt(),
                     sharesCount = (doc.getLong("sharesCount") ?: 0).toInt(),
                     viewsCount = (doc.getLong("viewsCount") ?: 0).toInt(),
-                    isHidden = doc.getBoolean("isHidden") ?: false,
-                    isDeleted = doc.getBoolean("isDeleted") ?: false,
+                    isHidden = isHidden,
+                    isDeleted = isDeleted,
                     createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
                 )
             }
         } catch (e: Exception) {
             Log.e(TAG, "fetchVideosFromFirestore error", e)
             emptyList()
+        }
+    }
+
+    fun subscribeToVideosRealtime(onVideosChanged: (List<VideoEntity>) -> Unit) {
+        val db = firestore ?: return
+        try {
+            db.collection("videos")
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(50)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null || snapshot == null) return@addSnapshotListener
+                    val videos = snapshot.documents.mapNotNull { doc ->
+                        val isHidden = doc.getBoolean("isHidden") ?: false
+                        val isDeleted = doc.getBoolean("isDeleted") ?: false
+                        if (isHidden || isDeleted) return@mapNotNull null
+
+                        VideoEntity(
+                            id = doc.getString("id") ?: doc.id,
+                            creatorId = doc.getString("creatorId") ?: "",
+                            creatorUsername = doc.getString("creatorUsername") ?: "creator",
+                            creatorAvatar = doc.getString("creatorAvatar") ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+                            videoUrl = doc.getString("videoUrl") ?: "",
+                            thumbnailUrl = doc.getString("thumbnailUrl") ?: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500",
+                            caption = doc.getString("caption") ?: "",
+                            musicTitle = doc.getString("musicTitle") ?: "Original Sound",
+                            tags = doc.getString("tags") ?: "#tokpulse",
+                            likesCount = (doc.getLong("likesCount") ?: 0).toInt(),
+                            commentsCount = (doc.getLong("commentsCount") ?: 0).toInt(),
+                            sharesCount = (doc.getLong("sharesCount") ?: 0).toInt(),
+                            viewsCount = (doc.getLong("viewsCount") ?: 0).toInt(),
+                            isHidden = isHidden,
+                            isDeleted = isDeleted,
+                            createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis()
+                        )
+                    }
+                    if (videos.isNotEmpty()) {
+                        onVideosChanged(videos)
+                    }
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "subscribeToVideosRealtime error", e)
         }
     }
 
