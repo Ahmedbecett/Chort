@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.admin == true ||
+         request.auth.token.email in ['ahmedbecetti35@gmail.com', 'ahmedbecetti41@gmail.com'] ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isAdmin() || isOwner(userId);
+    }
+
+    // Videos Collection
+    match /videos/{videoId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+    }
+
+    // Comments Collection
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Likes Collection
+    match /likes/{likeId} {
+      allow read, write: if true;
+    }
+
+    // Followers Collection
+    match /followers/{followId} {
+      allow read, write: if true;
+    }
+
+    // Notifications Collection
+    match /notifications/{notifId} {
+      allow read, write: if true;
+    }
+
+    // Reports Collection
+    match /reports/{reportId} {
+      allow read, write: if true;
+    }
+
+    // Violations Collection
+    match /violations/{violationId} {
+      allow read, write: if true;
+    }
+
+    // Privacy Requests
+    match /privacyRequests/{reqId} {
+      allow read, write: if true;
+    }
+
+    // Blocked Users
+    match /blockedUsers/{blockId} {
+      allow read, write: if true;
+    }
+
+    // App Settings
+    match /appSettings/{settingId} {
+      allow read, write: if true;
+    }
+  }
+}

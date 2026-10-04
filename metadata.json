@@ -1,0 +1,6 @@
+{
+  "name": "TokPulse",
+  "description": "Short-video social media platform with immersive TikTok-style feed, video upload, creator profiles, and comprehensive moderation admin dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

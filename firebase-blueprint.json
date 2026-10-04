@@ -1,0 +1,132 @@
+{
+  "entities": {
+    "User": {
+      "collection": "users",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "username": { "type": "string", "required": true },
+        "displayName": { "type": "string", "required": true },
+        "email": { "type": "string", "required": true },
+        "avatarUrl": { "type": "string", "required": false },
+        "bio": { "type": "string", "required": false },
+        "followersCount": { "type": "number", "required": true },
+        "followingCount": { "type": "number", "required": true },
+        "likesReceivedCount": { "type": "number", "required": true },
+        "role": { "type": "string", "required": true },
+        "status": { "type": "string", "required": true },
+        "strikeCount": { "type": "number", "required": true },
+        "isVerified": { "type": "boolean", "required": true },
+        "createdAt": { "type": "number", "required": true }
+      }
+    },
+    "Video": {
+      "collection": "videos",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "creatorId": { "type": "string", "required": true },
+        "creatorUsername": { "type": "string", "required": true },
+        "creatorAvatar": { "type": "string", "required": false },
+        "videoUrl": { "type": "string", "required": true },
+        "thumbnailUrl": { "type": "string", "required": false },
+        "caption": { "type": "string", "required": false },
+        "musicTitle": { "type": "string", "required": false },
+        "tags": { "type": "string", "required": false },
+        "likesCount": { "type": "number", "required": true },
+        "commentsCount": { "type": "number", "required": true },
+        "sharesCount": { "type": "number", "required": true },
+        "viewsCount": { "type": "number", "required": true },
+        "isHidden": { "type": "boolean", "required": true },
+        "isDeleted": { "type": "boolean", "required": true },
+        "createdAt": { "type": "number", "required": true }
+      }
+    },
+    "Comment": {
+      "collection": "comments",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "videoId": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "username": { "type": "string", "required": true },
+        "userAvatar": { "type": "string", "required": false },
+        "text": { "type": "string", "required": true },
+        "likesCount": { "type": "number", "required": true },
+        "createdAt": { "type": "number", "required": true }
+      }
+    },
+    "Like": {
+      "collection": "likes",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "videoId": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "createdAt": { "type": "number", "required": true }
+      }
+    },
+    "Follower": {
+      "collection": "followers",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "followerId": { "type": "string", "required": true },
+        "followingId": { "type": "string", "required": true },
+        "createdAt": { "type": "number", "required": true }
+      }
+    },
+    "Notification": {
+      "collection": "notifications",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "actorId": { "type": "string", "required": true },
+        "actorUsername": { "type": "string", "required": true },
+        "actorAvatar": { "type": "string", "required": false },
+        "type": { "type": "string", "required": true },
+        "message": { "type": "string", "required": true },
+        "videoId": { "type": "string", "required": false },
+        "isRead": { "type": "boolean", "required": true },
+        "createdAt": { "type": "number", "required": true }
+      }
+    },
+    "Report": {
+      "collection": "reports",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "reporterId": { "type": "string", "required": true },
+        "reporterUsername": { "type": "string", "required": true },
+        "targetType": { "type": "string", "required": true },
+        "targetId": { "type": "string", "required": true },
+        "targetOwnerUsername": { "type": "string", "required": true },
+        "targetSnippet": { "type": "string", "required": false },
+        "reason": { "type": "string", "required": true },
+        "description": { "type": "string", "required": false },
+        "status": { "type": "string", "required": true },
+        "resolutionNotes": { "type": "string", "required": false },
+        "resolvedByAdmin": { "type": "string", "required": false },
+        "createdAt": { "type": "number", "required": true }
+      }
+    },
+    "Violation": {
+      "collection": "violations",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "reason": { "type": "string", "required": true },
+        "actionTaken": { "type": "string", "required": true },
+        "adminUsername": { "type": "string", "required": true },
+        "createdAt": { "type": "number", "required": true }
+      }
+    },
+    "PrivacyRequest": {
+      "collection": "privacyRequests",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "username": { "type": "string", "required": true },
+        "email": { "type": "string", "required": true },
+        "requestType": { "type": "string", "required": true },
+        "reason": { "type": "string", "required": false },
+        "status": { "type": "string", "required": true },
+        "createdAt": { "type": "number", "required": true }
+      }
+    }
+  }
+}
