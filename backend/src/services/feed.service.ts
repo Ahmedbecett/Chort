@@ -38,7 +38,22 @@ export class FeedService {
     }
 
     try {
-      // Fetch strictly from PostgreSQL
+      let cursorFilter: { id: string } | undefined = undefined;
+      let skipCount = 0;
+
+      if (options.cursor && options.cursor.trim()) {
+        const cleanCursor = options.cursor.trim();
+        const cursorExists = await prisma.video.findUnique({
+          where: { id: cleanCursor },
+          select: { id: true },
+        });
+        if (cursorExists) {
+          cursorFilter = { id: cleanCursor };
+          skipCount = 1;
+        }
+      }
+
+      // Fetch strictly from PostgreSQL with real cursor pagination
       const dbVideos = await prisma.video.findMany({
         where: {
           status: 'READY',
@@ -51,8 +66,10 @@ export class FeedService {
             },
           },
         },
-        orderBy: [{ createdAt: 'desc' }, { likesCount: 'desc' }],
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: limit,
+        skip: skipCount,
+        cursor: cursorFilter,
       });
 
       const formattedVideos = await Promise.all(
@@ -78,10 +95,14 @@ export class FeedService {
         })
       );
 
+      const lastVideo = formattedVideos[formattedVideos.length - 1];
+      const hasMore = formattedVideos.length === limit;
+      const nextCursor = hasMore && lastVideo ? lastVideo.id : null;
+
       const payload = {
         videos: formattedVideos,
-        nextCursor: formattedVideos.length >= limit ? `cursor_${Date.now()}` : null,
-        hasMore: formattedVideos.length >= limit,
+        nextCursor,
+        hasMore,
         databaseConnected: true,
         source: 'PostgreSQL/Prisma',
       };
