@@ -1,6 +1,6 @@
 # 📱 TokPulse - Scalable Real-Time Short-Video Social Platform
 
-[![Release](https://img.shields.io/github/v/release/Ahmedbecett/Chort?color=blue&label=Latest%20Release)](https://github.com/Ahmedbecett/Chort/releases/tag/v1.1.0)
+[![Release](https://img.shields.io/github/v/release/Ahmedbecett/Chort?color=blue&label=Latest%20Release)](https://github.com/Ahmedbecett/Chort/releases/tag/v2.2.0)
 [![Android](https://img.shields.io/badge/Platform-Android-3DDC84.svg?logo=android&logoColor=white)](https://android.com)
 [![Backend](https://img.shields.io/badge/Backend-Node.js%20%7C%20Express%20%7C%20Prisma-green.svg)](backend/)
 [![Database](https://img.shields.io/badge/Database-PostgreSQL%20%7C%20Redis%207-blue.svg)](backend/prisma/)
@@ -13,8 +13,8 @@
 
 ## 📥 Direct APK Download & Production Releases
 
-- 🚀 **[Download Latest Production APK: TokPulse-v1.1.0-release.apk (33.6 MB)](https://github.com/Ahmedbecett/Chort/releases/download/v1.1.0/TokPulse-v1.1.0-release.apk)**
-- 🔗 **[Official GitHub Releases v1.1.0](https://github.com/Ahmedbecett/Chort/releases/tag/v1.1.0)**
+- 🚀 **[Download Latest Production APK: Chort-v2.2.0-release.apk (22 MB)](https://github.com/Ahmedbecett/Chort/releases/download/v2.2.0/Chort-v2.2.0-release.apk)**
+- 🔗 **[Official GitHub Releases v2.2.0](https://github.com/Ahmedbecett/Chort/releases/tag/v2.2.0)**
 
 ---
 
