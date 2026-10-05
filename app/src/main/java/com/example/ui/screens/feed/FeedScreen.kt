@@ -503,6 +503,7 @@ private fun VideoFeedItem(
             videoUrl = video.videoUrl,
             thumbnailUrl = video.thumbnailUrl,
             isCurrentPage = isCurrentPage,
+            videoId = video.id,
             onDoubleTap = {
                 heartTrigger = System.currentTimeMillis()
                 if (!isLiked) {

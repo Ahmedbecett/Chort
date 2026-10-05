@@ -68,6 +68,8 @@ import coil.compose.AsyncImage
 import com.example.ui.theme.TokCyan
 import com.example.ui.theme.TokRed
 
+import com.example.data.remote.TokPulseApiClient
+
 private const val TAG = "VideoPlayerView"
 
 @OptIn(UnstableApi::class)
@@ -76,6 +78,7 @@ fun VideoPlayerView(
     videoUrl: String,
     thumbnailUrl: String,
     isCurrentPage: Boolean,
+    videoId: String? = null,
     onDoubleTap: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -87,6 +90,16 @@ fun VideoPlayerView(
     var isPrepared by remember { mutableStateOf(false) }
     var hasError by remember { mutableStateOf(false) }
     var retryTrigger by remember { mutableIntStateOf(0) }
+    var refreshAttempted by remember(videoUrl, retryTrigger) { mutableStateOf(false) }
+
+    // Resolve videoId from prop or URL
+    val effectiveVideoId = remember(videoId, videoUrl) {
+        if (!videoId.isNullOrBlank()) videoId
+        else {
+            val match = Regex("vid_[a-zA-Z0-9]+").find(videoUrl)
+            match?.value
+        }
+    }
 
     // Media3 ExoPlayer instance with AudioFocus, high-quality audio decoding and fast buffering
     val exoPlayer = remember(context, retryTrigger) {
@@ -145,6 +158,31 @@ fun VideoPlayerView(
 
                     override fun onPlayerError(error: PlaybackException) {
                         Log.w(TAG, "Media3 ExoPlayer error (${error.errorCode}): ${error.message}")
+                        
+                        // If signed URL expired (403, 404, 416 or HTTP status error), auto-request refreshed signed stream URL
+                        val isHttpStatusOrExpired = error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS
+                            || error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
+                            || (error.message?.contains("403") == true)
+                            || (error.message?.contains("404") == true)
+                            || (error.message?.contains("416") == true)
+
+                        if (isHttpStatusOrExpired && effectiveVideoId != null && !refreshAttempted) {
+                            refreshAttempted = true
+                            isBuffering = true
+                            hasError = false
+                            val refreshedStreamUrl = "${TokPulseApiClient.BASE_URL}api/v1/videos/$effectiveVideoId/stream"
+                            Log.i(TAG, "Refreshing expired signed URL via $refreshedStreamUrl")
+                            try {
+                                val mediaItem = MediaItem.fromUri(Uri.parse(refreshedStreamUrl))
+                                setMediaItem(mediaItem)
+                                prepare()
+                                play()
+                                return
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Failed to refresh stream URL: ${e.message}")
+                            }
+                        }
+
                         isBuffering = false
                         hasError = true
                         isPrepared = false
@@ -163,6 +201,11 @@ fun VideoPlayerView(
                         hasError = true
                         isBuffering = false
                     }
+                } else if (effectiveVideoId != null) {
+                    val canonicalStream = "${TokPulseApiClient.BASE_URL}api/v1/videos/$effectiveVideoId/stream"
+                    val mediaItem = MediaItem.fromUri(Uri.parse(canonicalStream))
+                    setMediaItem(mediaItem)
+                    prepare()
                 } else {
                     hasError = true
                     isBuffering = false
