@@ -80,6 +80,10 @@ import com.example.ui.theme.TokDarkBg
 import com.example.ui.theme.TokPulseTheme
 import com.example.ui.theme.TokRed
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.border
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,9 +122,13 @@ fun TokPulseApp() {
         }
     }
 
+    val showBottomNav = currentScreen in listOf("feed", "discover", "upload", "inbox", "profile") && (currentScreen != "profile" || viewingProfileUserId == null)
+    val navBarBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = TokDarkBg,
+        containerColor = Color.Black,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             AnimatedVisibility(
                 visible = !isOnline,
@@ -131,7 +139,7 @@ fun TokPulseApp() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(TokRed.copy(alpha = 0.95f))
-                        .windowInsetsPadding(WindowInsets.navigationBars)
+                        .statusBarsPadding()
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
@@ -151,154 +159,161 @@ fun TokPulseApp() {
                     )
                 }
             }
-        },
-        bottomBar = {
-            // Only show main bottom nav on the 5 primary tabs
-            val showBottomNav = currentScreen in listOf("feed", "discover", "upload", "inbox", "profile") && (currentScreen != "profile" || viewingProfileUserId == null)
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Main content area - feed goes complete full-screen, others respect bottom nav height
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        bottom = if (showBottomNav && currentScreen != "feed") (48.dp + navBarBottomInset) else 0.dp
+                    )
+            ) {
+                when (currentScreen) {
+                    "feed" -> {
+                        FeedScreen(
+                            repository = repository,
+                            onNavigateToSearch = { currentScreen = "discover" },
+                            onNavigateToProfile = { creatorId ->
+                                viewingProfileUserId = creatorId
+                                currentScreen = "profile"
+                            },
+                            onNavigateToCreate = { currentScreen = "upload" },
+                            onNavigateToLive = { currentScreen = "live" },
+                            onNavigateToSound = { title ->
+                                selectedSoundTitle = title
+                                currentScreen = "sound"
+                            },
+                            onNavigateToTracking = { currentScreen = "tracking" }
+                        )
+                    }
+
+                    "discover" -> {
+                        DiscoverScreen(
+                            repository = repository,
+                            onNavigateToProfile = { creatorId ->
+                                viewingProfileUserId = creatorId
+                                currentScreen = "profile"
+                            },
+                            onSelectVideo = { _ ->
+                                currentScreen = "feed"
+                            },
+                            onNavigateToSound = { title ->
+                                selectedSoundTitle = title
+                                currentScreen = "sound"
+                            }
+                        )
+                    }
+
+                    "upload" -> {
+                        UploadScreen(
+                            repository = repository,
+                            onUploadSuccess = {
+                                currentScreen = "feed"
+                            }
+                        )
+                    }
+
+                    "inbox" -> {
+                        InboxScreen(
+                            repository = repository,
+                            onNavigateToProfile = { actorId ->
+                                viewingProfileUserId = actorId
+                                currentScreen = "profile"
+                            },
+                            onNavigateToChat = {
+                                currentScreen = "chat"
+                            }
+                        )
+                    }
+
+                    "live" -> {
+                        LiveStreamScreen(
+                            onClose = { currentScreen = "feed" }
+                        )
+                    }
+
+                    "sound" -> {
+                        SoundDetailScreen(
+                            soundTitle = selectedSoundTitle,
+                            repository = repository,
+                            onBack = { currentScreen = "feed" },
+                            onUseSound = { currentScreen = "upload" },
+                            onSelectVideo = { _ -> currentScreen = "feed" }
+                        )
+                    }
+
+                    "chat" -> {
+                        DirectMessageScreen(
+                            onBack = { currentScreen = "inbox" }
+                        )
+                    }
+
+                    "tracking" -> {
+                        ExternalTrackingCenterScreen(
+                            repository = repository,
+                            onBack = { currentScreen = "feed" }
+                        )
+                    }
+
+                    "profile" -> {
+                        ProfileScreen(
+                            repository = repository,
+                            userIdToView = viewingProfileUserId,
+                            onNavigateToAdmin = { currentScreen = "admin" },
+                            onNavigateToLegal = { type ->
+                                legalType = type
+                                currentScreen = "legal"
+                            },
+                            onSelectVideo = { _ ->
+                                currentScreen = "feed"
+                            },
+                            onRequireLogin = {
+                                currentScreen = "auth"
+                            }
+                        )
+                    }
+
+                    "admin" -> {
+                        AdminDashboardScreen(
+                            repository = repository,
+                            onBackToFeed = { currentScreen = "feed" }
+                        )
+                    }
+
+                    "auth" -> {
+                        AuthScreen(
+                            repository = repository,
+                            onAuthSuccess = { currentScreen = "feed" }
+                        )
+                    }
+
+                    "legal" -> {
+                        LegalScreen(
+                            type = legalType,
+                            onBack = { currentScreen = "profile" }
+                        )
+                    }
+                }
+            }
+
+            // Bottom Navigation overlay positioned at bottom center
             if (showBottomNav) {
                 TokPulseBottomNavigation(
                     currentScreen = currentScreen,
+                    isFeedScreen = (currentScreen == "feed"),
                     unreadBadgeCount = unreadNotifications,
                     onNavigate = { screen ->
                         if (screen == "profile") {
                             viewingProfileUserId = null
                         }
                         currentScreen = screen
-                    }
+                    },
+                    modifier = Modifier.align(Alignment.BottomCenter)
                 )
-            }
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = if (currentScreen in listOf("discover", "upload", "inbox", "profile") && viewingProfileUserId == null) 56.dp else 0.dp)
-        ) {
-            when (currentScreen) {
-                "feed" -> {
-                    FeedScreen(
-                        repository = repository,
-                        onNavigateToSearch = { currentScreen = "discover" },
-                        onNavigateToProfile = { creatorId ->
-                            viewingProfileUserId = creatorId
-                            currentScreen = "profile"
-                        },
-                        onNavigateToCreate = { currentScreen = "upload" },
-                        onNavigateToLive = { currentScreen = "live" },
-                        onNavigateToSound = { title ->
-                            selectedSoundTitle = title
-                            currentScreen = "sound"
-                        },
-                        onNavigateToTracking = { currentScreen = "tracking" }
-                    )
-                }
-
-                "discover" -> {
-                    DiscoverScreen(
-                        repository = repository,
-                        onNavigateToProfile = { creatorId ->
-                            viewingProfileUserId = creatorId
-                            currentScreen = "profile"
-                        },
-                        onSelectVideo = { _ ->
-                            currentScreen = "feed"
-                        },
-                        onNavigateToSound = { title ->
-                            selectedSoundTitle = title
-                            currentScreen = "sound"
-                        }
-                    )
-                }
-
-                "upload" -> {
-                    UploadScreen(
-                        repository = repository,
-                        onUploadSuccess = {
-                            currentScreen = "feed"
-                        }
-                    )
-                }
-
-                "inbox" -> {
-                    InboxScreen(
-                        repository = repository,
-                        onNavigateToProfile = { actorId ->
-                            viewingProfileUserId = actorId
-                            currentScreen = "profile"
-                        },
-                        onNavigateToChat = {
-                            currentScreen = "chat"
-                        }
-                    )
-                }
-
-                "live" -> {
-                    LiveStreamScreen(
-                        onClose = { currentScreen = "feed" }
-                    )
-                }
-
-                "sound" -> {
-                    SoundDetailScreen(
-                        soundTitle = selectedSoundTitle,
-                        repository = repository,
-                        onBack = { currentScreen = "feed" },
-                        onUseSound = { currentScreen = "upload" },
-                        onSelectVideo = { _ -> currentScreen = "feed" }
-                    )
-                }
-
-                "chat" -> {
-                    DirectMessageScreen(
-                        onBack = { currentScreen = "inbox" }
-                    )
-                }
-
-                "tracking" -> {
-                    ExternalTrackingCenterScreen(
-                        repository = repository,
-                        onBack = { currentScreen = "feed" }
-                    )
-                }
-
-                "profile" -> {
-                    ProfileScreen(
-                        repository = repository,
-                        userIdToView = viewingProfileUserId,
-                        onNavigateToAdmin = { currentScreen = "admin" },
-                        onNavigateToLegal = { type ->
-                            legalType = type
-                            currentScreen = "legal"
-                        },
-                        onSelectVideo = { _ ->
-                            currentScreen = "feed"
-                        },
-                        onRequireLogin = {
-                            currentScreen = "auth"
-                        }
-                    )
-                }
-
-                "admin" -> {
-                    AdminDashboardScreen(
-                        repository = repository,
-                        onBackToFeed = { currentScreen = "feed" }
-                    )
-                }
-
-                "auth" -> {
-                    AuthScreen(
-                        repository = repository,
-                        onAuthSuccess = { currentScreen = "feed" }
-                    )
-                }
-
-                "legal" -> {
-                    LegalScreen(
-                        type = legalType,
-                        onBack = { currentScreen = "profile" }
-                    )
-                }
             }
         }
     }
@@ -307,22 +322,43 @@ fun TokPulseApp() {
 @Composable
 fun TokPulseBottomNavigation(
     currentScreen: String,
+    isFeedScreen: Boolean,
     unreadBadgeCount: Int,
-    onNavigate: (String) -> Unit
+    onNavigate: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = Modifier
+    Box(
+        modifier = modifier
             .fillMaxWidth()
-            .background(Color.Black)
+            .background(
+                if (isFeedScreen) {
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.45f),
+                            Color.Black.copy(alpha = 0.85f)
+                        )
+                    )
+                } else {
+                    androidx.compose.ui.graphics.SolidColor(Color.Black.copy(alpha = 0.96f))
+                }
+            )
             .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
-        HorizontalDivider(color = TokBorder.copy(alpha = 0.6f), thickness = 0.5.dp)
+        // Delicate subtle top hairline only when not on feed
+        if (!isFeedScreen) {
+            HorizontalDivider(
+                color = Color.White.copy(alpha = 0.08f),
+                thickness = 0.5.dp,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
+        }
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .padding(horizontal = 8.dp),
+                .height(48.dp)
+                .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceAround
         ) {
@@ -344,8 +380,10 @@ fun TokPulseBottomNavigation(
                 testTag = "nav_discover"
             )
 
-            // Center Iconic TikTok Upload '+' Button
-            TikTokUploadButton(onClick = { onNavigate("upload") })
+            // Distinctive Chort Center Create '+' Button
+            ChortCenterCreateButton(
+                onClick = { onNavigate("upload") }
+            )
 
             // Notifications
             BottomNavItem(
@@ -384,21 +422,21 @@ private fun BottomNavItem(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .padding(horizontal = 8.dp, vertical = 2.dp)
             .testTag(testTag)
     ) {
         Box(contentAlignment = Alignment.TopEnd) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (isSelected) Color.White else TextMuted,
-                modifier = Modifier.size(24.dp)
+                tint = if (isSelected) Color.White else Color.White.copy(alpha = 0.55f),
+                modifier = Modifier.size(22.dp)
             )
             if (badgeCount > 0) {
                 Box(
                     modifier = Modifier
-                        .offset(x = 6.dp, y = (-3).dp)
-                        .size(8.dp)
+                        .offset(x = 5.dp, y = (-2).dp)
+                        .size(7.dp)
                         .clip(CircleShape)
                         .background(TokRed)
                 )
@@ -407,44 +445,34 @@ private fun BottomNavItem(
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = label,
-            color = if (isSelected) Color.White else TextMuted,
+            color = if (isSelected) Color.White else Color.White.copy(alpha = 0.55f),
             fontSize = 10.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
         )
     }
 }
 
 @Composable
-private fun TikTokUploadButton(onClick: () -> Unit) {
+private fun ChortCenterCreateButton(onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clickable(onClick = onClick)
-            .testTag("nav_upload_center_button"),
+            .testTag("nav_upload_center_button")
+            .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Left Cyan Background Offset
+        // Sleek Chort Squircle with integrated Cyan-Red gradient border and crisp white center
         Box(
             modifier = Modifier
-                .offset(x = (-3.5).dp)
-                .size(width = 44.dp, height = 30.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(TokCyan)
-        )
-
-        // Right Red Background Offset
-        Box(
-            modifier = Modifier
-                .offset(x = 3.5.dp)
-                .size(width = 44.dp, height = 30.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(TokRed)
-        )
-
-        // Center White Pill
-        Box(
-            modifier = Modifier
-                .size(width = 40.dp, height = 30.dp)
+                .size(width = 42.dp, height = 28.dp)
                 .clip(RoundedCornerShape(9.dp))
+                .background(
+                    androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(TokCyan, TokRed)
+                    )
+                )
+                .padding(1.5.dp)
+                .clip(RoundedCornerShape(8.dp))
                 .background(Color.White),
             contentAlignment = Alignment.Center
         ) {
@@ -452,7 +480,7 @@ private fun TikTokUploadButton(onClick: () -> Unit) {
                 imageVector = Icons.Default.Add,
                 contentDescription = "Create Video",
                 tint = Color.Black,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(18.dp)
             )
         }
     }

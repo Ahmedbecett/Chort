@@ -51,7 +51,28 @@ class TokPulseRepository(private val context: Context) {
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
     val currentUser = _currentUser.asStateFlow()
 
+    private val _savedVideoIds = MutableStateFlow<Set<String>>(emptySet())
+    val savedVideoIds = _savedVideoIds.asStateFlow()
+
+    fun isVideoSaved(videoId: String): Boolean = _savedVideoIds.value.contains(videoId)
+
+    suspend fun toggleSave(videoId: String): Boolean = withContext(Dispatchers.IO) {
+        val currentSet = _savedVideoIds.value.toMutableSet()
+        val isSaved = currentSet.contains(videoId)
+        if (isSaved) {
+            currentSet.remove(videoId)
+        } else {
+            currentSet.add(videoId)
+        }
+        _savedVideoIds.value = currentSet
+        sharedPrefs.edit().putStringSet("saved_videos", currentSet).apply()
+        !isSaved
+    }
+
     init {
+        val savedSet = sharedPrefs.getStringSet("saved_videos", emptySet()) ?: emptySet()
+        _savedVideoIds.value = savedSet
+
         CoroutineScope(Dispatchers.IO).launch {
             // Restore persistent session
             val savedToken = sharedPrefs.getString("auth_token", null)
