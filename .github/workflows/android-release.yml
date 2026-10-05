@@ -29,16 +29,34 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # Installed manually instead of via a third-party action: the SDK tools are
+      # pinned so the runner cannot silently pick a cmdline-tools build that
+      # requires a newer JDK (that broke an earlier run of this workflow).
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        run: |
+          set -euo pipefail
+          SDK_ROOT="$RUNNER_TEMP/android-sdk"
+          rm -rf "$SDK_ROOT"
+          mkdir -p "$SDK_ROOT/cmdline-tools"
+          curl -sSLo /tmp/cmdline-tools.zip \
+            https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q /tmp/cmdline-tools.zip -d "$SDK_ROOT/cmdline-tools"
+          mv "$SDK_ROOT/cmdline-tools/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
+          {
+            echo "ANDROID_HOME=$SDK_ROOT"
+            echo "ANDROID_SDK_ROOT=$SDK_ROOT"
+          } >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
 
       - name: Install SDK packages
         run: |
+          yes | sdkmanager --licenses > /dev/null
           sdkmanager --install \
+            "platform-tools" \
             "platforms;android-36" \
             "platforms;android-36.1" \
             "build-tools;36.1.0" \
-            "platform-tools"
+            "build-tools;36.0.0"
 
       - name: Read version + commit
         id: meta
@@ -76,6 +94,18 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          overwrite_files: true
+          body: |
+            Chort v${{ steps.meta.outputs.name }} (versionCode ${{ steps.meta.outputs.code }})
+
+            Built from commit `${{ steps.meta.outputs.commit }}` by this workflow and
+            verified against the source tree before publishing (`scripts/verify_apk.py`:
+            the top speaker icon is absent from `VideoPlayerViewKt`, the bottom audio
+            control `feed_mute_button` is present, and `BuildConfig.GIT_COMMIT` matches).
+
+            Signed with the production key (`CN=Ahmed Becetti`, APK Signature Scheme v2+v3).
+            If a previous build signed with the debug key is installed, uninstall it once
+            before installing this APK.
           files: |
             release/*.apk
             release/VERIFICATION_REPORT.md
