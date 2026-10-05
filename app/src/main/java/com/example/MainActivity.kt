@@ -300,14 +300,14 @@ fun TokPulseBottomNavigation(
             // Center Iconic TikTok Upload '+' Button
             TikTokUploadButton(onClick = { onNavigate("upload") })
 
-            // Inbox / Notifications
+            // Notifications
             BottomNavItem(
                 icon = if (currentScreen == "inbox") Icons.Default.Notifications else Icons.Outlined.Notifications,
-                label = "Inbox",
+                label = "Notifications",
                 isSelected = (currentScreen == "inbox"),
                 badgeCount = unreadBadgeCount,
                 onClick = { onNavigate("inbox") },
-                testTag = "nav_inbox"
+                testTag = "nav_notifications"
             )
 
             // Profile

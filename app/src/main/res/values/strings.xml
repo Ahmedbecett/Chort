@@ -1,4 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">TokPulse</string>
     <string name="default_web_client_id">40606023128-ib7uarp2ei0opl4ekh0b2ghfj6oof1ca.apps.googleusercontent.com</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_discover">Discover</string>
+    <string name="tab_create">Create</string>
+    <string name="tab_notifications">Notifications</string>
+    <string name="tab_profile">Profile</string>
 </resources>

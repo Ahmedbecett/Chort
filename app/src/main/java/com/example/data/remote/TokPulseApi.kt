@@ -84,6 +84,7 @@ data class ApiVideo(
     val creatorAvatar: String? = null,
     val caption: String,
     val streamUrl: String? = null,
+    val videoUrl: String? = null,
     val thumbnailUrl: String? = null,
     val musicTitle: String? = null,
     val likesCount: Int = 0,

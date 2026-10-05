@@ -1,13 +1,10 @@
 package com.example.ui.components
 
-import android.graphics.SurfaceTexture
-import android.media.AudioAttributes
-import android.media.MediaPlayer
 import android.net.Uri
 import android.util.Log
-import android.view.Surface
-import android.view.TextureView
+import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -53,10 +50,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.example.ui.theme.TokCyan
 import com.example.ui.theme.TokRed
 
+private const val TAG = "VideoPlayerView"
+
+@OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayerView(
     videoUrl: String,
@@ -66,7 +75,6 @@ fun VideoPlayerView(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val TAG = "VideoPlayerView"
 
     var isPlaying by remember { mutableStateOf(true) }
     var isBuffering by remember { mutableStateOf(true) }
@@ -74,50 +82,78 @@ fun VideoPlayerView(
     var hasError by remember { mutableStateOf(false) }
     var retryTrigger by remember { mutableIntStateOf(0) }
 
-    var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
-    var surfaceRef by remember { mutableStateOf<Surface?>(null) }
+    // Media3 ExoPlayer instance with AudioFocus and high-quality AAC/Video decoding
+    val exoPlayer = remember(context, retryTrigger) {
+        val audioAttributes = AudioAttributes.Builder()
+            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+            .setUsage(C.USAGE_MEDIA)
+            .build()
 
-    // Playback state synchronization: ONLY call start/pause when MediaPlayer is in Prepared state
-    LaunchedEffect(isCurrentPage, isPlaying, isPrepared) {
-        if (!isPrepared) return@LaunchedEffect
-        mediaPlayer?.let { mp ->
-            try {
-                if (isCurrentPage && isPlaying) {
-                    if (!mp.isPlaying) {
-                        mp.start()
+        ExoPlayer.Builder(context)
+            .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ true)
+            .build().apply {
+                repeatMode = Player.REPEAT_MODE_ONE
+                videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
+
+                addListener(object : Player.Listener {
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        when (playbackState) {
+                            Player.STATE_BUFFERING -> {
+                                isBuffering = true
+                            }
+                            Player.STATE_READY -> {
+                                isBuffering = false
+                                isPrepared = true
+                                hasError = false
+                            }
+                            Player.STATE_ENDED -> {
+                                isBuffering = false
+                            }
+                            Player.STATE_IDLE -> {
+                                // idle
+                            }
+                        }
                     }
+
+                    override fun onPlayerError(error: PlaybackException) {
+                        Log.w(TAG, "Media3 ExoPlayer error: ${error.message}", error)
+                        isBuffering = false
+                        hasError = true
+                        isPrepared = false
+                    }
+                })
+
+                if (videoUrl.isNotBlank()) {
+                    val mediaItem = MediaItem.fromUri(Uri.parse(videoUrl))
+                    setMediaItem(mediaItem)
+                    prepare()
                 } else {
-                    if (mp.isPlaying) {
-                        mp.pause()
-                    }
+                    hasError = true
+                    isBuffering = false
                 }
-            } catch (e: Exception) {
-                Log.w(TAG, "Safe playback transition handled: ${e.message}")
+            }
+    }
+
+    // Playback state synchronization: strictly play only when visible and user hasn't paused
+    LaunchedEffect(isCurrentPage, isPlaying, exoPlayer) {
+        if (isCurrentPage && isPlaying) {
+            exoPlayer.playWhenReady = true
+        } else {
+            exoPlayer.playWhenReady = false
+            if (!isCurrentPage) {
+                exoPlayer.pause()
             }
         }
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(exoPlayer) {
         onDispose {
-            isPrepared = false
             try {
-                mediaPlayer?.let { mp ->
-                    try {
-                        if (mp.isPlaying) {
-                            mp.stop()
-                        }
-                    } catch (e: Exception) {}
-                    mp.reset()
-                    mp.release()
-                }
+                exoPlayer.stop()
+                exoPlayer.release()
             } catch (e: Exception) {
-                Log.w(TAG, "Safe disposal error: ${e.message}")
+                Log.w(TAG, "Error disposing ExoPlayer: ${e.message}")
             }
-            mediaPlayer = null
-            try {
-                surfaceRef?.release()
-            } catch (e: Exception) {}
-            surfaceRef = null
         }
     }
 
@@ -132,25 +168,13 @@ fun VideoPlayerView(
                     },
                     onTap = {
                         if (!isPrepared || hasError) return@detectTapGestures
-                        mediaPlayer?.let { mp ->
-                            try {
-                                if (isPlaying) {
-                                    if (mp.isPlaying) mp.pause()
-                                    isPlaying = false
-                                } else {
-                                    mp.start()
-                                    isPlaying = true
-                                }
-                            } catch (e: Exception) {
-                                isPlaying = !isPlaying
-                            }
-                        }
+                        isPlaying = !isPlaying
                     }
                 )
             },
         contentAlignment = Alignment.Center
     ) {
-        // Thumbnail preview backdrop
+        // Thumbnail preview backdrop for immediate visual feedback
         if (thumbnailUrl.isNotBlank()) {
             AsyncImage(
                 model = thumbnailUrl,
@@ -160,105 +184,23 @@ fun VideoPlayerView(
             )
         }
 
-        // TextureView player
+        // Media3 PlayerView with full-screen zoom aspect ratio
         key(retryTrigger) {
             AndroidView(
                 factory = { ctx ->
-                    TextureView(ctx).apply {
+                    PlayerView(ctx).apply {
                         layoutParams = FrameLayout.LayoutParams(
-                            FrameLayout.LayoutParams.MATCH_PARENT,
-                            FrameLayout.LayoutParams.MATCH_PARENT
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
                         )
-
-                        surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                            override fun onSurfaceTextureAvailable(st: SurfaceTexture, width: Int, height: Int) {
-                                val surface = Surface(st)
-                                surfaceRef = surface
-
-                                val mp = MediaPlayer().apply {
-                                    setSurface(surface)
-                                    setAudioAttributes(
-                                        AudioAttributes.Builder()
-                                            .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
-                                            .setUsage(AudioAttributes.USAGE_MEDIA)
-                                            .build()
-                                    )
-                                    isLooping = true
-
-                                    setOnPreparedListener { player ->
-                                        isPrepared = true
-                                        isBuffering = false
-                                        hasError = false
-                                        try {
-                                            if (isCurrentPage && isPlaying) {
-                                                player.start()
-                                            }
-                                        } catch (e: Exception) {
-                                            Log.w(TAG, "Initial start error handled: ${e.message}")
-                                        }
-                                    }
-
-                                    setOnInfoListener { _, what, _ ->
-                                        if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) {
-                                            isBuffering = true
-                                        } else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END ||
-                                            what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START
-                                        ) {
-                                            isBuffering = false
-                                        }
-                                        false
-                                    }
-
-                                    setOnErrorListener { _, what, extra ->
-                                        Log.w(TAG, "MediaPlayer error: what=$what, extra=$extra")
-                                        isPrepared = false
-                                        isBuffering = false
-                                        hasError = true
-                                        true
-                                    }
-                                }
-
-                                try {
-                                    if (videoUrl.isNotBlank()) {
-                                        val uri = Uri.parse(videoUrl)
-                                        mp.setDataSource(ctx, uri)
-                                        mp.prepareAsync()
-                                    } else {
-                                        hasError = true
-                                        isBuffering = false
-                                    }
-                                } catch (e: Exception) {
-                                    Log.w(TAG, "prepareAsync failed: ${e.message}")
-                                    hasError = true
-                                    isBuffering = false
-                                }
-
-                                mediaPlayer = mp
-                            }
-
-                            override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, width: Int, height: Int) {}
-
-                            override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
-                                isPrepared = false
-                                try {
-                                    mediaPlayer?.let { mp ->
-                                        try {
-                                            if (mp.isPlaying) mp.pause()
-                                        } catch (e: Exception) {}
-                                        mp.setSurface(null)
-                                    }
-                                    surfaceRef?.release()
-                                    surfaceRef = null
-                                } catch (e: Exception) {
-                                    Log.w(TAG, "Surface destruction handled: ${e.message}")
-                                }
-                                return true
-                            }
-
-                            override fun onSurfaceTextureUpdated(st: SurfaceTexture) {
-                                isBuffering = false
-                            }
-                        }
+                        useController = false
+                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                        player = exoPlayer
+                    }
+                },
+                update = { playerView ->
+                    if (playerView.player != exoPlayer) {
+                        playerView.player = exoPlayer
                     }
                 },
                 modifier = Modifier.fillMaxSize()
