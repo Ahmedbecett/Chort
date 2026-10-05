@@ -58,6 +58,10 @@ export class FeedService {
         where: {
           status: 'READY',
           visibility: 'PUBLIC',
+          AND: [
+            { id: { not: 'vid_test_123' } },
+            { streamUrl: { not: { contains: 'test.com' } } },
+          ],
         },
         include: {
           user: {
