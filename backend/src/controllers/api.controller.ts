@@ -23,11 +23,54 @@ export class ApiController {
       tablesCount: dbStatus.tablesCount || 0,
       tablesVerified: dbStatus.tablesVerified || [],
       storage: isStorageConfigured()
-        ? 'Cloud Object Storage Configured (S3/R2)'
+        ? `Cloud Object Storage Configured (${config.s3.endpoint ? 'S3-Compatible / Neon' : 'AWS S3'}, Bucket: ${config.s3.bucket})`
         : 'Storage Not Configured (Missing S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY)',
+      storageConfigured: isStorageConfigured(),
       cdn: config.cdn.baseUrl,
       vercelProduction: true,
     });
+  }
+
+  // --- STORAGE HEALTH & UPLOAD TICKET TEST ---
+  static async checkStorage(req: Request, res: Response) {
+    if (!isStorageConfigured()) {
+      return res.status(503).json({
+        configured: false,
+        message: 'Object Storage is not configured. Required environment variables: S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, and S3_ENDPOINT (for Neon / S3-compatible).',
+        requiredVariables: [
+          'S3_BUCKET',
+          'S3_ACCESS_KEY_ID',
+          'S3_SECRET_ACCESS_KEY',
+          'S3_ENDPOINT',
+          'S3_REGION',
+        ],
+      });
+    }
+
+    try {
+      const testTicket = await VideoService.createSignedUploadUrl({
+        userId: 'storage_health_checker',
+        filename: 'health_check_test.mp4',
+        contentType: 'video/mp4',
+      });
+
+      return res.status(200).json({
+        configured: true,
+        provider: config.s3.endpoint ? 'Neon Object Storage / S3-Compatible' : 'AWS S3',
+        bucket: config.s3.bucket,
+        endpoint: config.s3.endpoint || 'AWS Standard',
+        region: config.s3.region,
+        forcePathStyle: config.s3.forcePathStyle,
+        testUploadUrlGenerated: true,
+        expiresInSeconds: 900,
+        sampleUploadUrlPreview: testTicket.uploadUrl.substring(0, 80) + '...',
+      });
+    } catch (err: any) {
+      return res.status(500).json({
+        configured: true,
+        error: `Storage verification failed: ${err.message}`,
+      });
+    }
   }
 
   // --- MANUAL SCHEMA MIGRATION / INITIALIZATION ---

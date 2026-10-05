@@ -45,8 +45,9 @@ export class VideoService {
     });
 
     const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });
-    const finalUrl = config.s3.endpoint
-      ? `${config.s3.endpoint}/${config.s3.bucket}/${objectKey}`
+    const cleanEndpoint = config.s3.endpoint?.replace(/\/+$/, '');
+    const finalUrl = cleanEndpoint
+      ? `${cleanEndpoint}/${config.s3.bucket}/${objectKey}`
       : `https://${config.s3.bucket}.s3.${config.s3.region}.amazonaws.com/${objectKey}`;
 
     return {
@@ -55,7 +56,7 @@ export class VideoService {
       uploadUrl,
       directUpload: false,
       streamUrl: finalUrl,
-      thumbnailUrl: `${config.cdn.baseUrl}/thumbnails/${videoId}.jpg`,
+      thumbnailUrl: `${finalUrl}#t=0.1`,
     };
   }
 
