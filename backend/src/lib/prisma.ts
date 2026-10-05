@@ -68,19 +68,38 @@ export async function ensureDatabaseSchema(force = false): Promise<{
   const client = getPrisma();
 
   try {
-    // Check if the primary table "Video" exists
-    const checkTable: any[] = await client.$queryRawUnsafe(`
-      SELECT to_regclass('public."Video"') as reg;
+    // Check existing tables safely using information_schema.tables (standard text columns)
+    const existingTablesResult: Array<{ table_name: string }> = await client.$queryRawUnsafe(`
+      SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
     `);
 
-    const videoTableExists = checkTable && checkTable.length > 0 && checkTable[0]?.reg !== null;
+    const existingTables = new Set(existingTablesResult.map((r) => r.table_name));
+    const requiredTables = [
+      'User',
+      'Profile',
+      'Video',
+      'VideoMetadata',
+      'Comment',
+      'Like',
+      'Follow',
+      'View',
+      'Share',
+      'SavedVideo',
+      'Hashtag',
+      'VideoHashtag',
+      'Notification',
+      'Report',
+      'Session',
+    ];
 
-    if (videoTableExists && !force) {
+    const allTablesExist = requiredTables.every((t) => existingTables.has(t));
+
+    if (allTablesExist && !force) {
       isSchemaEnsured = true;
       return {
         success: true,
         message: 'Neon PostgreSQL schema verified. All tables exist.',
-        tablesVerified: ['User', 'Profile', 'Video', 'Comment', 'Like', 'Follow', 'View', 'Share', 'Notification'],
+        tablesVerified: Array.from(existingTables),
       };
     }
 
@@ -400,11 +419,17 @@ export async function ensureDatabaseSchema(force = false): Promise<{
       END $$;
     `);
 
+    // Verify all created tables
+    const finalTablesResult: Array<{ table_name: string }> = await client.$queryRawUnsafe(`
+      SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
+    `);
+
+    const verifiedTables = finalTablesResult.map((r) => r.table_name);
     isSchemaEnsured = true;
     return {
       success: true,
       message: 'Neon PostgreSQL schema successfully created and synchronized.',
-      tablesVerified: ['User', 'Profile', 'Video', 'VideoMetadata', 'Comment', 'Like', 'Follow', 'View', 'Share', 'SavedVideo', 'Hashtag', 'VideoHashtag', 'Notification', 'Report', 'Session'],
+      tablesVerified: verifiedTables,
     };
   } catch (err: any) {
     return {
@@ -419,6 +444,8 @@ export async function checkDatabaseConnection(): Promise<{
   connected: boolean;
   latencyMs?: number;
   schemaReady?: boolean;
+  tablesCount?: number;
+  tablesVerified?: string[];
   error?: string;
 }> {
   if (!isDbConfigured()) {
@@ -439,6 +466,8 @@ export async function checkDatabaseConnection(): Promise<{
       connected: true,
       latencyMs: latency,
       schemaReady: schemaStatus.success,
+      tablesCount: schemaStatus.tablesVerified?.length,
+      tablesVerified: schemaStatus.tablesVerified,
       error: schemaStatus.success ? undefined : schemaStatus.error,
     };
   } catch (err: any) {

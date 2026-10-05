@@ -17,9 +17,11 @@ export class ApiController {
       timestamp: new Date().toISOString(),
       version: '1.2.0',
       database: dbStatus.connected
-        ? `PostgreSQL + Prisma Connected (${dbStatus.latencyMs}ms)${dbStatus.schemaReady ? ' [Schema Ready]' : ' [Schema Initializing]'}`
+        ? `PostgreSQL + Prisma Connected (${dbStatus.latencyMs}ms)${dbStatus.schemaReady ? ` [Schema Ready: ${dbStatus.tablesCount || 15} Tables]` : ` [Schema Initializing: ${dbStatus.error || 'Pending'}]`}`
         : `PostgreSQL Disconnected (${dbStatus.error || 'Check DATABASE_URL'})`,
-      databaseConnected: dbStatus.connected && Boolean(dbStatus.schemaReady),
+      databaseConnected: Boolean(dbStatus.connected && dbStatus.schemaReady),
+      tablesCount: dbStatus.tablesCount || 0,
+      tablesVerified: dbStatus.tablesVerified || [],
       storage: isStorageConfigured()
         ? 'Cloud Object Storage Configured (S3/R2)'
         : 'Storage Not Configured (Missing S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY)',
