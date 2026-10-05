@@ -45,6 +45,7 @@ export interface CacheClient {
   get(key: string): Promise<string | null>;
   set(key: string, value: string, mode?: string, duration?: number): Promise<string>;
   incr(key: string): Promise<number>;
+  del(key: string): Promise<number>;
 }
 
 class InMemoryCache implements CacheClient {
@@ -74,6 +75,11 @@ class InMemoryCache implements CacheClient {
     const count = (current ? parseInt(current, 10) : 0) + 1;
     this.store.set(key, { value: count.toString() });
     return count;
+  }
+
+  async del(key: string): Promise<number> {
+    const deleted = this.store.delete(key);
+    return deleted ? 1 : 0;
   }
 }
 

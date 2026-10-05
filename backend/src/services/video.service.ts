@@ -115,6 +115,13 @@ export class VideoService {
       },
     });
 
+    try {
+      await redis.del('feed:fyp:guest:top');
+      await redis.del(`feed:fyp:${userId}:top`);
+    } catch {
+      // Invalidation ignore
+    }
+
     return video;
   }
 
