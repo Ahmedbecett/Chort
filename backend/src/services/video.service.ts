@@ -434,14 +434,14 @@ export class VideoService {
         const videoKey = video.originalKey
           ? (video.originalKey.startsWith('videos/') ? video.originalKey : `videos/${video.originalKey}.mp4`)
           : `videos/${videoId}.mp4`;
-        await s3Client.send(new DeleteObjectCommand({
+        await (s3Client as any).send(new DeleteObjectCommand({
           Bucket: config.s3.bucket,
           Key: videoKey,
         }));
 
         // Delete thumbnail if custom thumbnail was uploaded
         const thumbKey = `thumbnails/${videoId}.jpg`;
-        await s3Client.send(new DeleteObjectCommand({
+        await (s3Client as any).send(new DeleteObjectCommand({
           Bucket: config.s3.bucket,
           Key: thumbKey,
         })).catch(() => {});
