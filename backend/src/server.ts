@@ -28,8 +28,8 @@ app.use('/api/v1', apiRouter);
 // Root Status
 app.get('/', (req, res) => {
   res.json({
-    app: 'TokPulse High-Scale Video Platform Backend',
-    version: '1.2.0',
+    app: 'Chort High-Scale Video Platform Backend',
+    version: '2.2.0',
     documentation: '/api/v1/health',
     status: 'ONLINE',
   });

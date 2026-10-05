@@ -17,9 +17,19 @@ export class VideoService {
   static async resolvePlayableStreamUrl(videoId: string, originalKey?: string | null, fallbackUrl?: string | null): Promise<string> {
     if (isStorageConfigured()) {
       try {
-        const key = originalKey
-          ? (originalKey.startsWith('videos/') ? originalKey : `videos/${originalKey}.mp4`)
-          : `videos/${videoId}.mp4`;
+        let key = originalKey;
+        if (!key && fallbackUrl) {
+          const match = fallbackUrl.match(/videos\/[^?#]+/);
+          if (match) {
+            key = match[0];
+          }
+        }
+        if (!key) {
+          key = `videos/${videoId}.mp4`;
+        } else if (!key.startsWith('videos/')) {
+          key = `videos/${key}.mp4`;
+        }
+
         const command = new GetObjectCommand({
           Bucket: config.s3.bucket,
           Key: key,
@@ -29,7 +39,10 @@ export class VideoService {
         console.warn('Could not presign stream URL:', err.message);
       }
     }
-    return fallbackUrl || '';
+    if (fallbackUrl && !fallbackUrl.includes('.neon.tech')) {
+      return fallbackUrl;
+    }
+    return `${config.cdn.baseUrl}/api/v1/videos/${videoId}/stream`;
   }
   /**
    * Generates a pre-signed PUT URL for direct upload to S3 / Cloudflare R2 / Supabase / MinIO.

@@ -40,6 +40,7 @@ export const prisma = new Proxy({} as PrismaClient, {
 });
 
 let isSchemaEnsured = false;
+let verifiedTablesCache: string[] = [];
 
 // Sequential DDL statements to avoid prepared statement multi-command errors in PostgreSQL
 const DDL_STATEMENTS: string[] = [
@@ -341,10 +342,11 @@ export async function ensureDatabaseSchema(force = false): Promise<{
     };
   }
 
-  if (isSchemaEnsured && !force) {
+  if (isSchemaEnsured && !force && verifiedTablesCache.length > 0) {
     return {
       success: true,
       message: 'Database schema is already synchronized and verified.',
+      tablesVerified: verifiedTablesCache,
     };
   }
 
@@ -379,10 +381,11 @@ export async function ensureDatabaseSchema(force = false): Promise<{
 
     if (allTablesExist && !force) {
       isSchemaEnsured = true;
+      verifiedTablesCache = Array.from(existingTables);
       return {
         success: true,
         message: 'Neon PostgreSQL schema verified. All tables exist.',
-        tablesVerified: Array.from(existingTables),
+        tablesVerified: verifiedTablesCache,
       };
     }
 
@@ -401,6 +404,7 @@ export async function ensureDatabaseSchema(force = false): Promise<{
 
     const verifiedTables = finalTablesResult.map((r) => r.table_name);
     isSchemaEnsured = true;
+    verifiedTablesCache = verifiedTables;
     return {
       success: true,
       message: 'Neon PostgreSQL schema successfully created and synchronized.',
@@ -436,13 +440,14 @@ export async function checkDatabaseConnection(): Promise<{
 
     // Self-healing: automatically ensure schema exists
     const schemaStatus = await ensureDatabaseSchema();
+    const verifiedList = schemaStatus.tablesVerified || verifiedTablesCache;
 
     return {
       connected: true,
       latencyMs: latency,
       schemaReady: schemaStatus.success,
-      tablesCount: schemaStatus.tablesVerified?.length,
-      tablesVerified: schemaStatus.tablesVerified,
+      tablesCount: verifiedList.length,
+      tablesVerified: verifiedList,
       error: schemaStatus.success ? undefined : schemaStatus.error,
     };
   } catch (err: any) {

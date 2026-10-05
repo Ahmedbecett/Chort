@@ -13,14 +13,14 @@ export class ApiController {
 
     return res.status(200).json({
       status: 'UP',
-      service: 'TokPulse Video Platform API',
+      service: 'Chort Video Platform API',
       timestamp: new Date().toISOString(),
-      version: '1.2.0',
+      version: '2.2.0',
       database: dbStatus.connected
         ? `PostgreSQL + Prisma Connected (${dbStatus.latencyMs}ms)${dbStatus.schemaReady ? ` [Schema Ready: ${dbStatus.tablesCount || 15} Tables]` : ` [Schema Initializing: ${dbStatus.error || 'Pending'}]`}`
         : `PostgreSQL Disconnected (${dbStatus.error || 'Check DATABASE_URL'})`,
       databaseConnected: Boolean(dbStatus.connected && dbStatus.schemaReady),
-      tablesCount: dbStatus.tablesCount || 0,
+      tablesCount: dbStatus.tablesCount || dbStatus.tablesVerified?.length || 0,
       tablesVerified: dbStatus.tablesVerified || [],
       storage: isStorageConfigured()
         ? `Cloud Object Storage Configured (${config.s3.endpoint ? 'S3-Compatible / Neon' : 'AWS S3'}, Bucket: ${config.s3.bucket})`
@@ -403,6 +403,20 @@ export class ApiController {
       });
     } catch (err: any) {
       return res.status(500).json({ error: `Profile fetch failed: ${err.message}` });
+    }
+  }
+
+  // --- VIEWS ---
+  static async recordView(req: Request, res: Response) {
+    try {
+      const { videoId } = req.params;
+      const userId = (req as any).user?.userId;
+      const ip = req.ip;
+
+      const result = await VideoService.recordView(videoId, userId, ip);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
     }
   }
 
