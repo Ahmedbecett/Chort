@@ -406,17 +406,23 @@ export class ApiController {
     }
   }
 
-  // --- VIEWS ---
-  static async recordView(req: Request, res: Response) {
+  // --- STREAMING REDIRECT ---
+  static async streamVideo(req: Request, res: Response) {
     try {
       const { videoId } = req.params;
-      const userId = (req as any).user?.userId;
-      const ip = req.ip;
+      await ensureDatabaseSchema();
+      const video = await prisma.video.findUnique({ where: { id: videoId } });
+      if (!video) {
+        return res.status(404).json({ error: 'Video not found in PostgreSQL' });
+      }
 
-      const result = await VideoService.recordView(videoId, userId, ip);
-      return res.status(200).json(result);
+      const streamUrl = await VideoService.resolvePlayableStreamUrl(video.id, video.originalKey, video.streamUrl);
+      if (streamUrl && streamUrl.startsWith('http')) {
+        return res.redirect(302, streamUrl);
+      }
+      return res.status(404).json({ error: 'Video stream not ready or storage not accessible' });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: `Streaming failed: ${err.message}` });
     }
   }
 }

@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
@@ -42,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -56,6 +60,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -77,23 +82,36 @@ fun VideoPlayerView(
     val context = LocalContext.current
 
     var isPlaying by remember { mutableStateOf(true) }
+    var isMuted by remember { mutableStateOf(false) }
     var isBuffering by remember { mutableStateOf(true) }
     var isPrepared by remember { mutableStateOf(false) }
     var hasError by remember { mutableStateOf(false) }
     var retryTrigger by remember { mutableIntStateOf(0) }
 
-    // Media3 ExoPlayer instance with AudioFocus and high-quality AAC/Video decoding
+    // Media3 ExoPlayer instance with AudioFocus, high-quality audio decoding and fast buffering
     val exoPlayer = remember(context, retryTrigger) {
         val audioAttributes = AudioAttributes.Builder()
             .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
             .setUsage(C.USAGE_MEDIA)
             .build()
 
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                /* minBufferMs = */ 1500,
+                /* maxBufferMs = */ 8000,
+                /* bufferForPlaybackMs = */ 500,
+                /* bufferForPlaybackAfterRebufferMs = */ 1000
+            )
+            .build()
+
         ExoPlayer.Builder(context)
             .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ true)
+            .setHandleAudioBecomingNoisy(true)
+            .setLoadControl(loadControl)
             .build().apply {
                 repeatMode = Player.REPEAT_MODE_ONE
                 videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
+                volume = 1.0f
 
                 addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(playbackState: Int) {
@@ -116,7 +134,7 @@ fun VideoPlayerView(
                     }
 
                     override fun onPlayerError(error: PlaybackException) {
-                        Log.w(TAG, "Media3 ExoPlayer error: ${error.message}", error)
+                        Log.w(TAG, "Media3 ExoPlayer error (${error.errorCode}): ${error.message}", error)
                         isBuffering = false
                         hasError = true
                         isPrepared = false
@@ -134,7 +152,12 @@ fun VideoPlayerView(
             }
     }
 
-    // Playback state synchronization: strictly play only when visible and user hasn't paused
+    // Dynamic Volume & Mute control
+    LaunchedEffect(isMuted, exoPlayer) {
+        exoPlayer.volume = if (isMuted) 0f else 1.0f
+    }
+
+    // Playback state synchronization: play only when visible and user hasn't paused
     LaunchedEffect(isCurrentPage, isPlaying, exoPlayer) {
         if (isCurrentPage && isPlaying) {
             exoPlayer.playWhenReady = true
@@ -207,6 +230,25 @@ fun VideoPlayerView(
             )
         }
 
+        // Sound Mute/Unmute Indicator Button at top-end
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 64.dp, end = 16.dp)
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.55f))
+                .clickable { isMuted = !isMuted },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                contentDescription = if (isMuted) "Unmute Audio" else "Mute Audio",
+                tint = if (isMuted) TokRed else Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
         // Buffering loader
         if (isBuffering && isCurrentPage && !hasError) {
             CircularProgressIndicator(
@@ -220,7 +262,7 @@ fun VideoPlayerView(
         if (hasError && isCurrentPage) {
             Column(
                 modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(16.dp))
+                    .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
@@ -233,7 +275,7 @@ fun VideoPlayerView(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Video stream unavailable",
+                    text = "Video stream connecting...",
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium

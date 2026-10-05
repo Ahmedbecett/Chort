@@ -20,6 +20,7 @@ apiRouter.post('/videos/complete-upload', ApiController.completeUpload);
 apiRouter.get('/feed', ApiController.getFeed);
 apiRouter.get('/feed/fyp', ApiController.getFeed);
 apiRouter.get('/videos', ApiController.getFeed);
+apiRouter.get('/videos/:videoId/stream', ApiController.streamVideo);
 apiRouter.post('/videos/:videoId/view', ApiController.recordView);
 
 // Interactions (Likes, Comments)

@@ -19,18 +19,17 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -58,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -77,15 +77,23 @@ import com.example.ui.theme.TokDarkSurface
 import com.example.ui.theme.TokRed
 import kotlinx.coroutines.launch
 
+data class SoundSearchResult(
+    val title: String,
+    val creator: String,
+    val videoCount: Int,
+    val sampleVideo: VideoEntity?
+)
+
 @Composable
 fun DiscoverScreen(
     repository: TokPulseRepository,
     onNavigateToProfile: (String) -> Unit,
-    onSelectVideo: (VideoEntity) -> Unit
+    onSelectVideo: (VideoEntity) -> Unit,
+    onNavigateToSound: (String) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     var searchQuery by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf("All") } // "All", "Videos", "Users", "Hashtags"
+    var selectedFilter by remember { mutableStateOf("All") } // "All", "Videos", "Users", "Sounds", "Hashtags"
 
     val allVideos by repository.getActiveVideos().collectAsState(initial = emptyList())
     val allUsers by repository.getAllUsersAdmin().collectAsState(initial = emptyList())
@@ -98,16 +106,19 @@ fun DiscoverScreen(
         }
     }
 
+    // Video search includes caption, tags, creator, AND music/sound title!
     val searchResultsVideos = remember(searchQuery, allVideos) {
         if (searchQuery.isBlank()) allVideos else {
             allVideos.filter {
                 it.caption.contains(searchQuery, ignoreCase = true) ||
                 it.tags.contains(searchQuery, ignoreCase = true) ||
-                it.creatorUsername.contains(searchQuery, ignoreCase = true)
+                it.creatorUsername.contains(searchQuery, ignoreCase = true) ||
+                it.musicTitle.contains(searchQuery, ignoreCase = true)
             }
         }
     }
 
+    // User search
     val searchResultsUsers = remember(searchQuery, allUsers) {
         if (searchQuery.isBlank()) allUsers.filter { it.role != "admin" } else {
             allUsers.filter {
@@ -117,14 +128,47 @@ fun DiscoverScreen(
         }
     }
 
-    val trendingTags = listOf(
-        Pair("#skate", "1.2B views"),
-        Pair("#foodtok", "890M views"),
-        Pair("#techtok", "450M views"),
-        Pair("#dancechallenge", "2.4B views"),
-        Pair("#traveltok", "670M views"),
-        Pair("#fpvdrone", "310M views")
-    )
+    // Sound / Music search results extracted from real videos
+    val allSounds = remember(allVideos) {
+        allVideos
+            .filter { it.musicTitle.isNotBlank() }
+            .groupBy { it.musicTitle }
+            .map { (title, vids) ->
+                SoundSearchResult(
+                    title = title,
+                    creator = vids.firstOrNull()?.creatorUsername ?: "Creator",
+                    videoCount = vids.size,
+                    sampleVideo = vids.firstOrNull()
+                )
+            }
+    }
+
+    val searchResultsSounds = remember(searchQuery, allSounds) {
+        if (searchQuery.isBlank()) allSounds else {
+            allSounds.filter {
+                it.title.contains(searchQuery, ignoreCase = true) ||
+                it.creator.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+
+    // Dynamic real hashtags extracted from actual video tags
+    val dynamicTags = remember(allVideos) {
+        val tagMap = mutableMapOf<String, Int>()
+        allVideos.forEach { vid ->
+            vid.tags.split(",", " ", "#").filter { it.isNotBlank() }.forEach { tag ->
+                val clean = "#${tag.trim()}"
+                tagMap[clean] = (tagMap[clean] ?: 0) + 1
+            }
+        }
+        if (tagMap.isEmpty()) {
+            listOf(Pair("#chort", "Official"), Pair("#fyp", "Trending"), Pair("#viral", "Featured"))
+        } else {
+            tagMap.entries.sortedByDescending { it.value }.map { Pair(it.key, "${it.value} clips") }
+        }
+    }
+
+    val hasAnyResults = searchResultsVideos.isNotEmpty() || searchResultsUsers.isNotEmpty() || searchResultsSounds.isNotEmpty()
 
     Column(
         modifier = Modifier
@@ -143,7 +187,7 @@ fun DiscoverScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Search videos, users, #hashtags...", color = TextMuted, fontSize = 13.5.sp) },
+                placeholder = { Text("Search songs, creators, videos, #hashtags...", color = TextMuted, fontSize = 13.5.sp) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
@@ -181,14 +225,14 @@ fun DiscoverScreen(
             )
         }
 
-        // Filter chips
+        // Filter chips (All, Videos, Users, Sounds, Hashtags)
         LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val filters = listOf("All", "Videos", "Users", "Hashtags")
+            val filters = listOf("All", "Videos", "Users", "Sounds", "Hashtags")
             items(filters) { filter ->
                 FilterChip(
                     selected = (selectedFilter == filter),
@@ -211,132 +255,272 @@ fun DiscoverScreen(
             }
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 60.dp)
-        ) {
-            // Trending Hashtags carousel if search is empty or filter is Hashtags
-            if ((searchQuery.isBlank() || selectedFilter == "Hashtags" || selectedFilter == "All")) {
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+        // Empty state when search produces no matches
+        if (searchQuery.isNotBlank() && !hasAnyResults) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SearchOff,
+                        contentDescription = "No results",
+                        tint = TokRed,
+                        modifier = Modifier.size(56.dp)
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = "No results found for \"$searchQuery\"",
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Try searching by creator handle, song title, or #hashtag.",
+                        color = TextMuted,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(18.dp))
+                    Button(
+                        onClick = { searchQuery = "" },
+                        colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.border(1.dp, TokBorder, RoundedCornerShape(12.dp))
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.TrendingUp,
-                            contentDescription = "Trending",
-                            tint = TokCyan,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Trending Hashtags",
-                            color = TextPrimary,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("Reset Search", color = TokCyan, fontWeight = FontWeight.SemiBold)
                     }
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 60.dp)
+            ) {
+                // Trending Hashtags section
+                if (searchQuery.isBlank() || selectedFilter == "Hashtags" || selectedFilter == "All") {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.TrendingUp,
+                                contentDescription = "Trending",
+                                tint = TokCyan,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Trending Hashtags",
+                                color = TextPrimary,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(trendingTags) { (tag, count) ->
-                            Card(
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = TokDarkElevated),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable { searchQuery = tag }
-                                    .border(1.dp, TokBorder, RoundedCornerShape(12.dp))
-                            ) {
-                                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                    Text(
-                                        text = tag,
-                                        color = TokCyan,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = count,
-                                        color = TextMuted,
-                                        fontSize = 11.sp
-                                    )
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(dynamicTags) { (tag, count) ->
+                                Card(
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = TokDarkElevated),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .clickable { searchQuery = tag.removePrefix("#") }
+                                        .border(1.dp, TokBorder, RoundedCornerShape(12.dp))
+                                ) {
+                                    Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                                        Text(
+                                            text = tag,
+                                            color = TokCyan,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = count,
+                                            color = TextMuted,
+                                            fontSize = 11.sp
+                                        )
+                                    }
                                 }
                             }
                         }
+                        Spacer(modifier = Modifier.height(14.dp))
                     }
-                    Spacer(modifier = Modifier.height(14.dp))
                 }
-            }
 
-            // Creator Spotlight Section
-            if (selectedFilter == "All" || selectedFilter == "Users") {
-                item {
-                    Text(
-                        text = "Popular Creators",
-                        color = TextPrimary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                    )
-
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(searchResultsUsers) { user ->
-                            val isFollowing = user.id in followingIds
-                            CreatorCard(
-                                user = user,
-                                isFollowing = isFollowing,
-                                onProfileClick = { onNavigateToProfile(user.id) },
-                                onToggleFollow = {
-                                    scope.launch { repository.toggleFollow(user.id) }
-                                }
+                // Sounds & Music Section (Search for songs / أغاني)
+                if ((selectedFilter == "All" || selectedFilter == "Sounds") && searchResultsSounds.isNotEmpty()) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MusicNote,
+                                contentDescription = null,
+                                tint = AccentGold,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (searchQuery.isBlank()) "Popular Sounds & Music" else "Songs & Sounds (${searchResultsSounds.size})",
+                                color = TextPrimary,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-            }
 
-            // Video Grid Section
-            if (selectedFilter == "All" || selectedFilter == "Videos") {
-                item {
-                    Text(
-                        text = if (searchQuery.isBlank()) "Featured Clips" else "Search Results (${searchResultsVideos.size})",
-                        color = TextPrimary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                    )
-                }
+                    items(searchResultsSounds.take(6)) { sound ->
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 4.dp)
+                                .border(1.dp, TokBorder, RoundedCornerShape(14.dp))
+                                .clickable { onNavigateToSound(sound.title) }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .clip(CircleShape)
+                                        .background(TokDarkElevated)
+                                        .border(1.5.dp, TokCyan, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.GraphicEq,
+                                        contentDescription = "Sound",
+                                        tint = AccentGold,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
 
-                // Grid layout inside column
-                val chunkedVideos = searchResultsVideos.chunked(2)
-                items(chunkedVideos) { rowVideos ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        rowVideos.forEach { video ->
-                            Box(modifier = Modifier.weight(1f)) {
-                                VideoGridCard(video = video, onClick = { onSelectVideo(video) })
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = sound.title,
+                                        color = TextPrimary,
+                                        fontSize = 13.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "By @${sound.creator} • ${sound.videoCount} videos",
+                                        color = TextMuted,
+                                        fontSize = 11.5.sp,
+                                        maxLines = 1
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Button(
+                                    onClick = { onNavigateToSound(sound.title) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = TokRed),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier.height(32.dp)
+                                ) {
+                                    Text("Listen", color = Color.White, fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
-                        if (rowVideos.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
+                    }
+
+                    item { Spacer(modifier = Modifier.height(14.dp)) }
+                }
+
+                // Creator Spotlight Section
+                if ((selectedFilter == "All" || selectedFilter == "Users") && searchResultsUsers.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = if (searchQuery.isBlank()) "Creators" else "Users (${searchResultsUsers.size})",
+                            color = TextPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                        )
+
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(searchResultsUsers) { user ->
+                                val isFollowing = user.id in followingIds
+                                CreatorCard(
+                                    user = user,
+                                    isFollowing = isFollowing,
+                                    onProfileClick = { onNavigateToProfile(user.id) },
+                                    onToggleFollow = {
+                                        scope.launch { repository.toggleFollow(user.id) }
+                                    }
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
+
+                // Video Grid Section
+                if ((selectedFilter == "All" || selectedFilter == "Videos") && searchResultsVideos.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = if (searchQuery.isBlank()) "Featured Videos" else "Video Results (${searchResultsVideos.size})",
+                            color = TextPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                        )
+                    }
+
+                    val chunkedVideos = searchResultsVideos.chunked(2)
+                    items(chunkedVideos) { rowVideos ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            rowVideos.forEach { video ->
+                                Box(modifier = Modifier.weight(1f)) {
+                                    VideoGridCard(video = video, onClick = { onSelectVideo(video) })
+                                }
+                            }
+                            if (rowVideos.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
                         }
                     }
                 }
@@ -436,14 +620,15 @@ private fun VideoGridCard(
                 .fillMaxWidth()
                 .aspectRatio(0.72f)
         ) {
-            AsyncImage(
-                model = video.thumbnailUrl,
-                contentDescription = video.caption,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+            if (video.thumbnailUrl.isNotBlank()) {
+                AsyncImage(
+                    model = video.thumbnailUrl,
+                    contentDescription = video.caption,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
-            // Gradient shadow
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -454,7 +639,6 @@ private fun VideoGridCard(
                     )
             )
 
-            // View count badge
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -477,7 +661,6 @@ private fun VideoGridCard(
             }
         }
 
-        // Caption snippet
         Column(modifier = Modifier.padding(8.dp)) {
             Text(
                 text = video.caption,

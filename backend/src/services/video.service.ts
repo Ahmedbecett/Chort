@@ -1,4 +1,4 @@
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client, config, redis, isStorageConfigured } from '../config';
 import { prisma } from '../lib/prisma';
@@ -11,6 +11,26 @@ export interface CreateUploadUrlInput {
 }
 
 export class VideoService {
+  /**
+   * Generates a playable streaming URL (presigned if S3/Neon bucket requires it)
+   */
+  static async resolvePlayableStreamUrl(videoId: string, originalKey?: string | null, fallbackUrl?: string | null): Promise<string> {
+    if (isStorageConfigured()) {
+      try {
+        const key = originalKey
+          ? (originalKey.startsWith('videos/') ? originalKey : `videos/${originalKey}.mp4`)
+          : `videos/${videoId}.mp4`;
+        const command = new GetObjectCommand({
+          Bucket: config.s3.bucket,
+          Key: key,
+        });
+        return await getSignedUrl(s3Client, command, { expiresIn: 86400 });
+      } catch (err: any) {
+        console.warn('Could not presign stream URL:', err.message);
+      }
+    }
+    return fallbackUrl || '';
+  }
   /**
    * Generates a pre-signed PUT URL for direct upload to S3 / Cloudflare R2 / Supabase / MinIO.
    * Strictly uses real Object Storage configuration - Never returns fake or mock URLs.
@@ -241,21 +261,27 @@ export class VideoService {
     ]);
 
     return {
-      videos: videos.map((v) => ({
-        id: v.id,
-        creatorId: v.userId,
-        creatorUsername: v.user.username,
-        creatorAvatar: v.user.profile?.avatarUrl || '',
-        caption: v.caption,
-        streamUrl: v.streamUrl,
-        thumbnailUrl: v.thumbnailUrl,
-        musicTitle: v.musicTitle,
-        likesCount: v.likesCount,
-        commentsCount: v.commentsCount,
-        sharesCount: v.sharesCount,
-        viewsCount: v.viewsCount,
-        createdAt: v.createdAt.getTime(),
-      })),
+      videos: await Promise.all(
+        videos.map(async (v) => {
+          const playableUrl = await VideoService.resolvePlayableStreamUrl(v.id, v.originalKey, v.streamUrl);
+          return {
+            id: v.id,
+            creatorId: v.userId,
+            creatorUsername: v.user.username,
+            creatorAvatar: v.user.profile?.avatarUrl || '',
+            caption: v.caption,
+            streamUrl: playableUrl,
+            videoUrl: playableUrl,
+            thumbnailUrl: v.thumbnailUrl || (playableUrl ? `${playableUrl}#t=0.1` : ''),
+            musicTitle: v.musicTitle || 'Original Audio',
+            likesCount: v.likesCount,
+            commentsCount: v.commentsCount,
+            sharesCount: v.sharesCount,
+            viewsCount: v.viewsCount,
+            createdAt: v.createdAt.getTime(),
+          };
+        })
+      ),
       users: users.map((u) => ({
         id: u.id,
         username: u.username,

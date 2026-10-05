@@ -1,5 +1,6 @@
 package com.example.ui.screens.sound
 
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -44,6 +45,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,17 +62,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
 import com.example.data.repository.TokPulseRepository
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TokBorder
 import com.example.ui.theme.TokCyan
 import com.example.ui.theme.TokDarkBg
 import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
 import com.example.ui.theme.TokRed
 
 @Composable
@@ -82,8 +88,57 @@ fun SoundDetailScreen(
 ) {
     val context = LocalContext.current
     val allVideos by repository.getActiveVideos().collectAsState(initial = emptyList())
+    val matchingVideos = remember(allVideos, soundTitle) {
+        val filtered = allVideos.filter {
+            it.musicTitle.contains(soundTitle, ignoreCase = true) ||
+            soundTitle.contains(it.musicTitle, ignoreCase = true)
+        }
+        if (filtered.isNotEmpty()) filtered else allVideos
+    }
+
     var isPlaying by remember { mutableStateOf(true) }
     var isBookmarked by remember { mutableStateOf(false) }
+
+    // Real audio player with Media3 ExoPlayer for sound preview
+    val audioPlayer = remember(context, matchingVideos) {
+        val streamUrl = matchingVideos.firstOrNull { it.videoUrl.isNotBlank() }?.videoUrl
+        if (!streamUrl.isNullOrBlank()) {
+            val audioAttributes = AudioAttributes.Builder()
+                .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                .setUsage(C.USAGE_MEDIA)
+                .build()
+
+            ExoPlayer.Builder(context)
+                .setAudioAttributes(audioAttributes, true)
+                .build().apply {
+                    val item = MediaItem.fromUri(Uri.parse(streamUrl))
+                    setMediaItem(item)
+                    repeatMode = Player.REPEAT_MODE_ONE
+                    volume = 1.0f
+                    prepare()
+                }
+        } else {
+            null
+        }
+    }
+
+    LaunchedEffect(isPlaying, audioPlayer) {
+        if (isPlaying) {
+            audioPlayer?.playWhenReady = true
+        } else {
+            audioPlayer?.playWhenReady = false
+            audioPlayer?.pause()
+        }
+    }
+
+    DisposableEffect(audioPlayer) {
+        onDispose {
+            try {
+                audioPlayer?.stop()
+                audioPlayer?.release()
+            } catch (_: Exception) {}
+        }
+    }
 
     // Vinyl spinning rotation
     val infiniteTransition = rememberInfiniteTransition(label = "vinyl_rotation")
@@ -119,7 +174,7 @@ fun SoundDetailScreen(
                 )
             }
             Text(
-                text = "Original Sound",
+                text = "Audio Track",
                 color = TextPrimary,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold
@@ -201,7 +256,7 @@ fun SoundDetailScreen(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "TokPulse Verified Audio • 0:45",
+                    text = "Chort Verified Audio • ${if (isPlaying) "Playing now" else "Tap play to listen"}",
                     color = TokCyan,
                     fontSize = 12.sp
                 )
@@ -215,7 +270,7 @@ fun SoundDetailScreen(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "142.8K videos created",
+                        text = "${matchingVideos.size} videos created",
                         color = TextMuted,
                         fontSize = 11.5.sp
                     )
@@ -281,7 +336,7 @@ fun SoundDetailScreen(
 
         // VIDEOS USING THIS SOUND
         Text(
-            text = "Trending Videos with this Audio",
+            text = "Videos with this Audio (${matchingVideos.size})",
             color = TextPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
@@ -296,7 +351,7 @@ fun SoundDetailScreen(
             horizontalArrangement = Arrangement.spacedBy(3.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            items(allVideos) { video ->
+            items(matchingVideos) { video ->
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -304,12 +359,14 @@ fun SoundDetailScreen(
                         .background(TokDarkElevated)
                         .clickable { onSelectVideo(video.id) }
                 ) {
-                    AsyncImage(
-                        model = video.thumbnailUrl,
-                        contentDescription = video.caption,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    if (video.thumbnailUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = video.thumbnailUrl,
+                            contentDescription = video.caption,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
                     // Views tag
                     Box(
@@ -329,7 +386,7 @@ fun SoundDetailScreen(
                             )
                             Spacer(modifier = Modifier.width(2.dp))
                             Text(
-                                text = "${video.viewsCount / 1000}k",
+                                text = "${video.viewsCount}",
                                 color = Color.White,
                                 fontSize = 9.sp
                             )

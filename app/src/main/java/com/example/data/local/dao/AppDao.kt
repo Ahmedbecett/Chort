@@ -134,9 +134,18 @@ interface AppDao {
     @Query("SELECT videoId FROM likes WHERE userId = :userId")
     fun getUserLikedVideoIds(userId: String): Flow<List<String>>
 
+    @Query("SELECT COUNT(*) FROM likes WHERE videoId IN (SELECT id FROM videos WHERE creatorId = :userId AND isDeleted = 0)")
+    fun getTotalLikesReceived(userId: String): Flow<Int>
+
     // --- FOLLOWS ---
     @Query("SELECT COUNT(*) FROM follows WHERE followerId = :followerId AND followingId = :followingId")
     suspend fun countFollow(followerId: String, followingId: String): Int
+
+    @Query("SELECT COUNT(*) FROM follows WHERE followingId = :userId")
+    fun getFollowersCount(userId: String): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM follows WHERE followerId = :userId")
+    fun getFollowingCount(userId: String): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFollow(follow: FollowEntity)

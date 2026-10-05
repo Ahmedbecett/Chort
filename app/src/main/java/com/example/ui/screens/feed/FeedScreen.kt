@@ -75,8 +75,6 @@ import com.example.ui.components.BurstHeart
 import com.example.ui.components.CommentBottomSheet
 import com.example.ui.components.ReportDialog
 import com.example.ui.components.ShareBottomSheet
-import com.example.ui.components.StoryRow
-import com.example.ui.components.TikTokShopSheet
 import com.example.ui.components.VideoPlayerView
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.TextMuted
@@ -92,6 +90,7 @@ fun FeedScreen(
     repository: TokPulseRepository,
     onNavigateToSearch: () -> Unit,
     onNavigateToProfile: (String) -> Unit,
+    onNavigateToCreate: () -> Unit = {},
     onNavigateToLive: () -> Unit = {},
     onNavigateToSound: (String) -> Unit = {},
     onNavigateToTracking: () -> Unit = {}
@@ -103,7 +102,6 @@ fun FeedScreen(
     val followingIds by repository.getFollowingIds(currentUser?.id ?: "").collectAsState(initial = emptyList())
 
     var selectedTab by remember { mutableIntStateOf(1) } // 0 = Following, 1 = For You
-    var showShopSheet by remember { mutableStateOf(false) }
 
     val displayedVideos = remember(allVideos, selectedTab, followingIds) {
         if (selectedTab == 0) {
@@ -139,15 +137,40 @@ fun FeedScreen(
     ) {
         if (displayedVideos.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(24.dp)
+                ) {
                     Icon(
-                        imageVector = Icons.Default.GraphicEq,
-                        contentDescription = "Loading Feed",
+                        imageVector = Icons.Default.Videocam,
+                        contentDescription = "No Videos",
                         tint = TokCyan,
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(54.dp)
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Loading TokPulse feed...", color = TextSecondary, fontSize = 14.sp)
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = if (selectedTab == 0) "No followed creators with videos yet" else "No videos published yet",
+                        color = Color.White,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Be the first to create and publish a video on Chort!",
+                        color = TextSecondary,
+                        fontSize = 13.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(18.dp))
+                    androidx.compose.material3.Button(
+                        onClick = onNavigateToCreate,
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = TokRed),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Create Video", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         } else {
@@ -191,24 +214,10 @@ fun FeedScreen(
                     onOpenSound = {
                         onNavigateToSound(video.musicTitle)
                     },
-                    onOpenShop = {
-                        showShopSheet = true
-                    },
                     onReport = {
                         activeReportTarget = Triple("video", video.id, video.caption)
                     }
                 )
-            }
-        }
-
-        // Stories Row (When on Following tab or as top bar)
-        if (selectedTab == 0) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 58.dp)
-            ) {
-                StoryRow(onAddStory = { onNavigateToProfile(currentUser?.id ?: "user_me") })
             }
         }
 
@@ -223,11 +232,6 @@ fun FeedScreen(
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
         )
-
-        // TikTok Shop Bottom Sheet
-        if (showShopSheet) {
-            TikTokShopSheet(onDismiss = { showShopSheet = false })
-        }
 
         // Comment Sheet
         if (activeCommentVideo != null) {
@@ -438,7 +442,6 @@ private fun VideoFeedItem(
     onOpenShare: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenSound: () -> Unit,
-    onOpenShop: () -> Unit,
     onReport: () -> Unit
 ) {
     var heartTrigger by remember { mutableLongStateOf(0L) }
@@ -494,31 +497,6 @@ private fun VideoFeedItem(
                 .fillMaxWidth(0.78f)
                 .padding(start = 16.dp, end = 8.dp, bottom = 80.dp)
         ) {
-            // TikTok Shop Tag
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Black.copy(alpha = 0.6f))
-                    .clickable { onOpenShop() }
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LocalMall,
-                    contentDescription = null,
-                    tint = TokRed,
-                    modifier = Modifier.size(13.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "TikTok Shop • Featured Item $18.99",
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
 
             // Creator Handle
             Row(

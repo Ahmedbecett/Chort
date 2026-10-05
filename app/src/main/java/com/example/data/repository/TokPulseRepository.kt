@@ -87,10 +87,10 @@ class TokPulseRepository(private val context: Context) {
                         email = "ahmedbecetti41@gmail.com",
                         passwordHash = "INITIAL_ACTIVE",
                         avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
-                        bio = "Official TokPulse Platform Creator & Developer 🎬",
-                        followersCount = 1250,
-                        followingCount = 180,
-                        totalLikes = 8400,
+                        bio = "Chort Platform Creator & Developer 🎬",
+                        followersCount = 0,
+                        followingCount = 0,
+                        totalLikes = 0,
                         role = "admin",
                         status = "active",
                         createdAt = System.currentTimeMillis()
@@ -356,10 +356,10 @@ class TokPulseRepository(private val context: Context) {
             email = "ahmedbecetti35@gmail.com",
             passwordHash = "PROTECTED",
             avatarUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300",
-            bio = "Official TokPulse Platform Administrator & Moderation Lead.",
-            followersCount = 100000,
-            followingCount = 1,
-            totalLikes = 500000,
+            bio = "Chort Platform Administrator & Moderation Lead.",
+            followersCount = 0,
+            followingCount = 0,
+            totalLikes = 0,
             role = "admin",
             status = "active",
             createdAt = System.currentTimeMillis()
@@ -498,7 +498,13 @@ class TokPulseRepository(private val context: Context) {
         dao.incrementCommentLikes(commentId)
     }
 
+    fun getTotalLikesReceived(userId: String): Flow<Int> = dao.getTotalLikesReceived(userId)
+
     // --- FOLLOWS ---
+
+    fun getFollowersCount(userId: String): Flow<Int> = dao.getFollowersCount(userId)
+
+    fun getFollowingCount(userId: String): Flow<Int> = dao.getFollowingCount(userId)
 
     fun getFollowingIds(userId: String): Flow<List<String>> = dao.getFollowingIds(userId)
 

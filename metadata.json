@@ -1,6 +1,6 @@
 {
-  "name": "TokPulse",
-  "description": "Short-video social media platform with TikTok-style feed, real-time Firestore sync, video upload, search, creator profiles, and admin moderation dashboard.",
+  "name": "Chort",
+  "description": "Short-video social platform with vertical video feed, music discovery, creator profiles, video upload, and real-time interaction.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

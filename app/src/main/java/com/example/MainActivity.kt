@@ -20,11 +20,16 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
@@ -43,6 +48,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.example.util.NetworkConnectivityMonitor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -87,13 +94,17 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun TokPulseApp() {
+    val context = LocalContext.current
     val repository = TokPulseApplication.instance.repository
     val currentUser by repository.currentUser.collectAsState()
     val unreadNotifications by repository.getUnreadCount(currentUser?.id ?: "user_me").collectAsState(initial = 0)
 
+    val connectivityMonitor = remember { NetworkConnectivityMonitor(context) }
+    val isOnline by connectivityMonitor.isOnline.collectAsState(initial = true)
+
     var currentScreen by remember { mutableStateOf("feed") } // "feed", "discover", "upload", "inbox", "profile", "admin", "auth", "legal", "live", "sound", "chat", "tracking"
     var viewingProfileUserId by remember { mutableStateOf<String?>(null) }
-    var selectedSoundTitle by remember { mutableStateOf("Original Sound - TokPulse Creator") }
+    var selectedSoundTitle by remember { mutableStateOf("Original Sound - Chort Creator") }
     var legalType by remember { mutableStateOf("terms") } // "terms" or "privacy"
 
     // Back handling for sub screens
@@ -110,6 +121,37 @@ fun TokPulseApp() {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = TokDarkBg,
+        topBar = {
+            AnimatedVisibility(
+                visible = !isOnline,
+                enter = slideInVertically(initialOffsetY = { -it }),
+                exit = slideOutVertically(targetOffsetY = { -it })
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(TokRed.copy(alpha = 0.95f))
+                        .windowInsetsPadding(WindowInsets.navigationBars)
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CloudOff,
+                        contentDescription = "Offline Mode",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "No Internet Connection • Running in Offline Mode",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        },
         bottomBar = {
             // Only show main bottom nav on the 5 primary tabs
             val showBottomNav = currentScreen in listOf("feed", "discover", "upload", "inbox", "profile") && (currentScreen != "profile" || viewingProfileUserId == null)
@@ -141,6 +183,7 @@ fun TokPulseApp() {
                             viewingProfileUserId = creatorId
                             currentScreen = "profile"
                         },
+                        onNavigateToCreate = { currentScreen = "upload" },
                         onNavigateToLive = { currentScreen = "live" },
                         onNavigateToSound = { title ->
                             selectedSoundTitle = title
@@ -159,6 +202,10 @@ fun TokPulseApp() {
                         },
                         onSelectVideo = { _ ->
                             currentScreen = "feed"
+                        },
+                        onNavigateToSound = { title ->
+                            selectedSoundTitle = title
+                            currentScreen = "sound"
                         }
                     )
                 }

@@ -1,5 +1,6 @@
 import { prisma, isDbConfigured } from '../lib/prisma';
 import { redis } from '../config';
+import { VideoService } from './video.service';
 
 export interface FeedQueryOptions {
   userId?: string;
@@ -54,23 +55,28 @@ export class FeedService {
         take: limit,
       });
 
-      const formattedVideos = dbVideos.map((v) => ({
-        id: v.id,
-        creatorId: v.userId,
-        creatorUsername: v.user.username,
-        creatorAvatar: v.user.profile?.avatarUrl || '',
-        caption: v.caption,
-        streamUrl: v.streamUrl,
-        videoUrl: v.streamUrl,
-        thumbnailUrl: v.thumbnailUrl || (v.streamUrl ? `${v.streamUrl}#t=0.1` : ''),
-        musicTitle: v.musicTitle || 'Original Audio',
-        likesCount: v.likesCount,
-        commentsCount: v.commentsCount,
-        sharesCount: v.sharesCount,
-        viewsCount: v.viewsCount,
-        aspectRatio: v.aspectRatio,
-        createdAt: v.createdAt.getTime(),
-      }));
+      const formattedVideos = await Promise.all(
+        dbVideos.map(async (v) => {
+          const playableUrl = await VideoService.resolvePlayableStreamUrl(v.id, v.originalKey, v.streamUrl);
+          return {
+            id: v.id,
+            creatorId: v.userId,
+            creatorUsername: v.user.username,
+            creatorAvatar: v.user.profile?.avatarUrl || '',
+            caption: v.caption,
+            streamUrl: playableUrl,
+            videoUrl: playableUrl,
+            thumbnailUrl: v.thumbnailUrl || (playableUrl ? `${playableUrl}#t=0.1` : ''),
+            musicTitle: v.musicTitle || 'Original Audio',
+            likesCount: v.likesCount,
+            commentsCount: v.commentsCount,
+            sharesCount: v.sharesCount,
+            viewsCount: v.viewsCount,
+            aspectRatio: v.aspectRatio,
+            createdAt: v.createdAt.getTime(),
+          };
+        })
+      );
 
       const payload = {
         videos: formattedVideos,

@@ -124,6 +124,10 @@ fun ProfileScreen(
     val followingIds by repository.getFollowingIds(loggedInUser?.id ?: "").collectAsState(initial = emptyList())
     val isFollowing = remember(followingIds, targetUserId) { targetUserId in followingIds }
 
+    val realFollowersCount by repository.getFollowersCount(targetUserId).collectAsState(initial = profileUser?.followersCount ?: 0)
+    val realFollowingCount by repository.getFollowingCount(targetUserId).collectAsState(initial = profileUser?.followingCount ?: 0)
+    val realLikesCount by repository.getTotalLikesReceived(targetUserId).collectAsState(initial = profileUser?.totalLikes ?: 0)
+
     var selectedTab by remember { mutableIntStateOf(0) } // 0 = Videos, 1 = Liked, 2 = Private
     var showMenu by remember { mutableStateOf(false) }
     var showEditProfileDialog by remember { mutableStateOf(false) }
@@ -302,14 +306,14 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Counters (Following, Followers, Likes)
+                    // Counters (Following, Followers, Likes) - 100% Real Database Signals
                     Row(
                         modifier = Modifier.fillMaxWidth(0.85f),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        ProfileStat(label = "Following", count = profileUser?.followingCount ?: 0)
-                        ProfileStat(label = "Followers", count = profileUser?.followersCount ?: 0)
-                        ProfileStat(label = "Likes", count = profileUser?.totalLikes ?: 0)
+                        ProfileStat(label = "Following", count = realFollowingCount)
+                        ProfileStat(label = "Followers", count = realFollowersCount)
+                        ProfileStat(label = "Likes", count = realLikesCount)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
