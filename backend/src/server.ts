@@ -16,7 +16,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // Global Rate Limiting (Protects from DDoS / brute force)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Limit each IP to 1000 requests per windowMs
+  max: 2000, // Limit each IP
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -29,13 +29,16 @@ app.use('/api/v1', apiRouter);
 app.get('/', (req, res) => {
   res.json({
     app: 'TokPulse High-Scale Video Platform Backend',
-    version: '1.1.0',
+    version: '1.2.0',
     documentation: '/api/v1/health',
+    status: 'ONLINE',
   });
 });
 
-app.listen(config.port, '0.0.0.0', () => {
-  console.log(`🚀 TokPulse API Server running on port ${config.port} (Production Mode)`);
-});
+if (!process.env.VERCEL) {
+  app.listen(config.port, '0.0.0.0', () => {
+    console.log(`🚀 TokPulse API Server running on port ${config.port} (Production Mode)`);
+  });
+}
 
 export default app;

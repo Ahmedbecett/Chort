@@ -19,3 +19,7 @@ debug.keystore
 debug.keystore.base64
 .build-outputs/
 .aistudio/
+node_modules/
+dist/
+*.log
+.vercel

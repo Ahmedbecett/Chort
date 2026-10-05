@@ -1,0 +1,10 @@
+{
+  "name": "tokpulse-chort",
+  "version": "1.0.0",
+  "description": "TokPulse Video Social Platform Backend and Monorepo",
+  "scripts": {
+    "build": "cd backend && npm install && npx prisma generate && npm run build",
+    "start": "cd backend && npm start"
+  },
+  "dependencies": {}
+}

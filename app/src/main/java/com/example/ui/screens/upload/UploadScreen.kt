@@ -91,16 +91,8 @@ fun UploadScreen(
     val scope = rememberCoroutineScope()
     val currentUser by repository.currentUser.collectAsState()
 
-    // Verified fast global CDN clips
-    val presetClips = listOf(
-        Pair("Venice Skate", "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/person-bicycle-car-detection.mp4"),
-        Pair("Gourmet Cooking", "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/face-demographics-walking.mp4"),
-        Pair("Cyberpunk Lab", "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/head-pose-face-detection-female.mp4"),
-        Pair("Dance Beat", "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/classroom.mp4")
-    )
-
     var selectedDeviceUri by remember { mutableStateOf<Uri?>(null) }
-    var selectedVideoUri by remember { mutableStateOf<String>(presetClips[0].second) }
+    var selectedVideoUri by remember { mutableStateOf<String>("") }
     var captionText by remember { mutableStateOf("") }
     var musicTitle by remember { mutableStateOf("") }
     var privacySetting by remember { mutableStateOf("Public") } // "Public", "Followers", "Private"
@@ -171,7 +163,7 @@ fun UploadScreen(
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        // Video Preview Card
+        // Video Picker Card
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
@@ -180,97 +172,92 @@ fun UploadScreen(
                 .border(1.dp, TokBorder, RoundedCornerShape(16.dp))
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1.2f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Black)
-                ) {
-                    VideoPlayerView(
-                        videoUrl = selectedVideoUri,
-                        thumbnailUrl = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500",
-                        isCurrentPage = true,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        onClick = {
-                            videoPickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
-                            )
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.border(1.dp, TokBorder, RoundedCornerShape(12.dp))
+                if (selectedDeviceUri != null && selectedVideoUri.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1.2f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.Black)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.VideoLibrary,
-                            contentDescription = "Device Storage",
-                            tint = TokCyan,
-                            modifier = Modifier.size(18.dp)
+                        VideoPlayerView(
+                            videoUrl = selectedVideoUri,
+                            thumbnailUrl = "",
+                            isCurrentPage = true,
+                            modifier = Modifier.fillMaxSize()
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Pick from Device", color = TextPrimary, fontSize = 12.sp)
                     }
 
-                    Text(
-                        text = "Or choose sample preset below",
-                        color = TextMuted,
-                        fontSize = 11.sp
-                    )
-                }
-            }
-        }
+                    Spacer(modifier = Modifier.height(12.dp))
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Preset video clips selector
-        Text(
-            text = "PRESET CREATOR CLIPS",
-            color = TextMuted,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(presetClips) { (name, url) ->
-                val isSelected = (selectedVideoUri == url)
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isSelected) TokCyan.copy(alpha = 0.2f) else TokDarkElevated)
-                        .border(1.dp, if (isSelected) TokCyan else TokBorder, RoundedCornerShape(12.dp))
-                        .clickable { selectedVideoUri = url }
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Movie,
-                            contentDescription = name,
-                            tint = if (isSelected) TokCyan else TextMuted,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = name,
-                            color = if (isSelected) Color.White else TextSecondary,
+                            text = "Video selected from device",
+                            color = TokCyan,
                             fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = FontWeight.SemiBold
                         )
+
+                        Button(
+                            onClick = {
+                                videoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+                                )
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.border(1.dp, TokBorder, RoundedCornerShape(12.dp))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.VideoLibrary,
+                                contentDescription = "Change Video",
+                                tint = TokCyan,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Change Video", color = TextPrimary, fontSize = 12.sp)
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(TokDarkElevated)
+                            .border(1.5.dp, TokBorder, RoundedCornerShape(12.dp))
+                            .clickable {
+                                videoPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.VideoLibrary,
+                                contentDescription = "Select Video",
+                                tint = TokCyan,
+                                modifier = Modifier.size(44.dp)
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "Select Video from Gallery",
+                                color = TextPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Tap to pick your MP4/WebM video file",
+                                color = TextMuted,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
                 }
             }
@@ -473,6 +460,11 @@ fun UploadScreen(
         // Submit Button
         Button(
             onClick = {
+                if (selectedDeviceUri == null) {
+                    Toast.makeText(context, "Please select a video from your device first", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
                 if (captionText.isBlank()) {
                     captionText = "Check out this energetic moment! ✨ #tokpulse #viral"
                 }

@@ -2,6 +2,7 @@ package com.example.data.repository
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import com.example.data.local.AppDatabase
 import com.example.data.local.entities.CommentEntity
 import com.example.data.local.entities.FollowEntity
@@ -12,19 +13,34 @@ import com.example.data.local.entities.ReportEntity
 import com.example.data.local.entities.UserEntity
 import com.example.data.local.entities.VideoEntity
 import com.example.data.local.entities.ViolationEntity
+import com.example.data.remote.AddCommentRequest
+import com.example.data.remote.CompleteUploadRequest
 import com.example.data.remote.FirebaseService
+import com.example.data.remote.LikeRequest
+import com.example.data.remote.LoginRequest
+import com.example.data.remote.RegisterRequest
+import com.example.data.remote.TokPulseApiClient
+import com.example.data.remote.UploadTicketRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import okio.BufferedSink
+import org.json.JSONObject
+import java.io.InputStream
 import java.util.UUID
 
 class TokPulseRepository(private val context: Context) {
 
+    private val TAG = "TokPulseRepository"
+    private val sharedPrefs = context.getSharedPreferences("tokpulse_session", Context.MODE_PRIVATE)
     private val db = AppDatabase.getInstance(context)
     private val dao = db.appDao()
     val firebaseService = FirebaseService(context)
@@ -37,19 +53,29 @@ class TokPulseRepository(private val context: Context) {
 
     init {
         CoroutineScope(Dispatchers.IO).launch {
-            val authUser = firebaseService.auth?.currentUser
-            if (authUser != null) {
-                val profile = firebaseService.syncAuthenticatedProfile(authUser.uid, authUser.email, authUser.displayName)
-                if (profile != null) {
-                    dao.insertUser(profile)
-                    _currentUserId.value = profile.id
-                    _currentUser.value = profile
+            // Restore persistent session
+            val savedToken = sharedPrefs.getString("auth_token", null)
+            val savedUserId = sharedPrefs.getString("user_id", null)
+
+            if (!savedToken.isNullOrBlank()) {
+                TokPulseApiClient.setAuthToken(savedToken)
+            }
+
+            if (!savedUserId.isNullOrBlank()) {
+                val savedUser = dao.getUserByIdSync(savedUserId)
+                if (savedUser != null) {
+                    _currentUserId.value = savedUser.id
+                    _currentUser.value = savedUser
                 }
-            } else {
+            }
+
+            // Fallback to active creator user if no saved session
+            if (_currentUser.value == null) {
                 val existingMe = dao.getUserByIdSync("user_me")
                     ?: dao.getUserByEmail("ahmedbecetti41@gmail.com")
                     ?: dao.getUserByEmail("ahmedbecetti35@gmail.com")
                     ?: dao.getUserByIdSync("user_admin")
+
                 if (existingMe != null) {
                     _currentUserId.value = existingMe.id
                     _currentUser.value = existingMe
@@ -72,76 +98,84 @@ class TokPulseRepository(private val context: Context) {
                     dao.insertUser(initialUser)
                     _currentUserId.value = initialUser.id
                     _currentUser.value = initialUser
-                    firebaseService.createOrUpdateUserSnapshot(initialUser)
                 }
             }
+
+            // Sync video feed from Vercel API and Database
             syncWithCloud()
         }
     }
 
     suspend fun syncWithCloud() = withContext(Dispatchers.IO) {
-        if (!firebaseService.isFirebaseAvailable) return@withContext
+        // 1. Fetch real feed from Vercel API
         try {
-            // 1. Fetch live videos from Firestore
-            val cloudVideos = firebaseService.fetchVideosFromFirestore(limit = 50)
-            if (cloudVideos.isNotEmpty()) {
-                dao.insertVideos(cloudVideos)
+            val feedResponse = TokPulseApiClient.api.getFeed()
+            if (feedResponse.isSuccessful) {
+                val feedBody = feedResponse.body()
+                if (feedBody != null && feedBody.videos.isNotEmpty()) {
+                    val entities = feedBody.videos.map { apiVid ->
+                        VideoEntity(
+                            id = apiVid.id,
+                            creatorId = apiVid.creatorId,
+                            creatorUsername = apiVid.creatorUsername,
+                            creatorAvatar = apiVid.creatorAvatar ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+                            videoUrl = apiVid.streamUrl ?: "",
+                            thumbnailUrl = apiVid.thumbnailUrl ?: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500",
+                            caption = apiVid.caption,
+                            musicTitle = apiVid.musicTitle ?: "Original Audio",
+                            tags = "#tokpulse,#fyp,#viral",
+                            likesCount = apiVid.likesCount,
+                            commentsCount = apiVid.commentsCount,
+                            sharesCount = apiVid.sharesCount,
+                            viewsCount = apiVid.viewsCount,
+                            createdAt = if (apiVid.createdAt > 0) apiVid.createdAt else System.currentTimeMillis()
+                        )
+                    }
+                    dao.insertVideos(entities)
+                    Log.i(TAG, "Successfully synced ${entities.size} videos from Vercel API")
+                }
             } else {
-                seedLaunchVideoToFirestoreIfNeeded()
-            }
-
-            // 2. Fetch admin data from Firestore if current user is admin
-            val user = _currentUser.value
-            val isUserAdmin = user?.role == "admin" ||
-                user?.email?.equals("ahmedbecetti35@gmail.com", true) == true ||
-                user?.email?.equals("ahmedbecetti41@gmail.com", true) == true
-
-            if (isUserAdmin) {
-                val cloudUsers = firebaseService.fetchUsersAdminFirestore()
-                if (cloudUsers.isNotEmpty()) dao.insertUsers(cloudUsers)
-
-                val cloudReports = firebaseService.fetchReportsAdminFirestore()
-                if (cloudReports.isNotEmpty()) dao.insertReports(cloudReports)
-
-                val cloudViolations = firebaseService.fetchViolationsAdminFirestore()
-                if (cloudViolations.isNotEmpty()) dao.insertViolations(cloudViolations)
-
-                val cloudPrivacy = firebaseService.fetchPrivacyRequestsAdminFirestore()
-                if (cloudPrivacy.isNotEmpty()) dao.insertPrivacyRequests(cloudPrivacy)
+                Log.w(TAG, "Vercel API feed returned code: ${feedResponse.code()}")
             }
         } catch (e: Exception) {
-            // Log sync warning, continue gracefully with local cache
+            Log.w(TAG, "Vercel API feed sync exception: ${e.message}")
         }
-    }
 
-    private suspend fun seedLaunchVideoToFirestoreIfNeeded() {
-        val launchVideo = VideoEntity(
-            id = "vid_launch_1",
-            creatorId = "tokpulse_official",
-            creatorUsername = "tokpulse",
-            creatorAvatar = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
-            videoUrl = "https://raw.githubusercontent.com/intel-iot-devkit/sample-videos/master/person-bicycle-car-detection.mp4",
-            thumbnailUrl = "https://images.unsplash.com/photo-1564982752979-3f7bc974d29a?w=500",
-            caption = "Welcome to TokPulse! 🎬 The new home for creators, dancers, and visionaries. Drop a like & upload your first clip! #welcome #tokpulse #viral",
-            musicTitle = "TokPulse Anthem - Official Sound",
-            tags = "#welcome,#tokpulse,#viral",
-            likesCount = 120,
-            commentsCount = 8,
-            sharesCount = 24,
-            viewsCount = 540,
-            createdAt = System.currentTimeMillis()
-        )
-        dao.insertVideo(launchVideo)
+        // 2. Also sync with Firebase Firestore if available
         if (firebaseService.isFirebaseAvailable) {
             try {
-                firebaseService.publishVideoToFirestore(launchVideo)
+                val cloudVideos = firebaseService.fetchVideosFromFirestore(limit = 50)
+                if (cloudVideos.isNotEmpty()) {
+                    dao.insertVideos(cloudVideos)
+                }
+
+                val user = _currentUser.value
+                val isUserAdmin = user?.role == "admin" ||
+                    user?.email?.equals("ahmedbecetti35@gmail.com", true) == true ||
+                    user?.email?.equals("ahmedbecetti41@gmail.com", true) == true
+
+                if (isUserAdmin) {
+                    val cloudUsers = firebaseService.fetchUsersAdminFirestore()
+                    if (cloudUsers.isNotEmpty()) dao.insertUsers(cloudUsers)
+
+                    val cloudReports = firebaseService.fetchReportsAdminFirestore()
+                    if (cloudReports.isNotEmpty()) dao.insertReports(cloudReports)
+
+                    val cloudViolations = firebaseService.fetchViolationsAdminFirestore()
+                    if (cloudViolations.isNotEmpty()) dao.insertViolations(cloudViolations)
+
+                    val cloudPrivacy = firebaseService.fetchPrivacyRequestsAdminFirestore()
+                    if (cloudPrivacy.isNotEmpty()) dao.insertPrivacyRequests(cloudPrivacy)
+                }
             } catch (e: Exception) {
-                // Ignore launch seeding exception if offline or during initial startup
+                Log.w(TAG, "Firestore sync notice: ${e.message}")
             }
         }
     }
 
     suspend fun logout() = withContext(Dispatchers.IO) {
+        sharedPrefs.edit().clear().apply()
+        TokPulseApiClient.setAuthToken(null)
         firebaseService.signOut()
         _currentUserId.value = null
         _currentUser.value = null
@@ -157,7 +191,7 @@ class TokPulseRepository(private val context: Context) {
         }
     }
 
-    // --- AUTHENTICATION & USER SNAPSHOT SYNC ---
+    // --- AUTHENTICATION ---
 
     suspend fun registerWithEmail(
         email: String,
@@ -165,27 +199,141 @@ class TokPulseRepository(private val context: Context) {
         username: String,
         displayName: String
     ): Result<UserEntity> = withContext(Dispatchers.IO) {
-        val result = firebaseService.registerWithEmail(email, password, username, displayName)
-        if (result.isSuccess) {
-            val user = result.getOrThrow()
+        try {
+            val response = TokPulseApiClient.api.register(
+                RegisterRequest(
+                    email = email.trim(),
+                    username = username.trim(),
+                    password = password.trim(),
+                    displayName = displayName.trim()
+                )
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                val apiUser = body.user
+                if (apiUser != null) {
+                    val token = body.token
+                    if (!token.isNullOrBlank()) {
+                        TokPulseApiClient.setAuthToken(token)
+                        sharedPrefs.edit()
+                            .putString("auth_token", token)
+                            .putString("user_id", apiUser.id)
+                            .apply()
+                    }
+
+                    val userEntity = UserEntity(
+                        id = apiUser.id,
+                        username = apiUser.username,
+                        displayName = apiUser.displayName ?: displayName.ifBlank { apiUser.username },
+                        email = apiUser.email,
+                        passwordHash = "JWT_SECURED",
+                        avatarUrl = apiUser.avatarUrl ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+                        bio = apiUser.bio ?: "",
+                        followersCount = apiUser.followersCount ?: 0,
+                        followingCount = apiUser.followingCount ?: 0,
+                        totalLikes = 0,
+                        role = apiUser.role ?: "user",
+                        status = "active",
+                        createdAt = System.currentTimeMillis()
+                    )
+
+                    dao.insertUser(userEntity)
+                    _currentUserId.value = userEntity.id
+                    _currentUser.value = userEntity
+                    syncWithCloud()
+                    return@withContext Result.success(userEntity)
+                }
+            } else {
+                val errJson = response.errorBody()?.string()
+                val errMsg = try {
+                    JSONObject(errJson ?: "").optString("error", "Registration failed (${response.code()})")
+                } catch (e: Exception) {
+                    "Registration failed (${response.code()})"
+                }
+                return@withContext Result.failure(Exception(errMsg))
+            }
+        } catch (netErr: Exception) {
+            Log.w(TAG, "Vercel register error: ${netErr.message}")
+        }
+
+        // Secondary fallback to Firebase
+        val fbResult = firebaseService.registerWithEmail(email, password, username, displayName)
+        if (fbResult.isSuccess) {
+            val user = fbResult.getOrThrow()
             dao.insertUser(user)
             _currentUserId.value = user.id
             _currentUser.value = user
-            syncWithCloud()
         }
-        result
+        fbResult
     }
 
-    suspend fun signInWithEmail(email: String, password: String): Result<UserEntity> = withContext(Dispatchers.IO) {
-        val result = firebaseService.signInWithEmail(email, password)
-        if (result.isSuccess) {
-            val user = result.getOrThrow()
+    suspend fun signInWithEmail(identifier: String, password: String): Result<UserEntity> = withContext(Dispatchers.IO) {
+        try {
+            val response = TokPulseApiClient.api.login(
+                LoginRequest(
+                    identifier = identifier.trim(),
+                    password = password.trim()
+                )
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                val apiUser = body.user
+                if (apiUser != null) {
+                    val token = body.token
+                    if (!token.isNullOrBlank()) {
+                        TokPulseApiClient.setAuthToken(token)
+                        sharedPrefs.edit()
+                            .putString("auth_token", token)
+                            .putString("user_id", apiUser.id)
+                            .apply()
+                    }
+
+                    val userEntity = UserEntity(
+                        id = apiUser.id,
+                        username = apiUser.username,
+                        displayName = apiUser.displayName ?: apiUser.username,
+                        email = apiUser.email,
+                        passwordHash = "JWT_SECURED",
+                        avatarUrl = apiUser.avatarUrl ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+                        bio = apiUser.bio ?: "",
+                        followersCount = apiUser.followersCount ?: 0,
+                        followingCount = apiUser.followingCount ?: 0,
+                        totalLikes = 0,
+                        role = apiUser.role ?: "user",
+                        status = "active",
+                        createdAt = System.currentTimeMillis()
+                    )
+
+                    dao.insertUser(userEntity)
+                    _currentUserId.value = userEntity.id
+                    _currentUser.value = userEntity
+                    syncWithCloud()
+                    return@withContext Result.success(userEntity)
+                }
+            } else {
+                val errJson = response.errorBody()?.string()
+                val errMsg = try {
+                    JSONObject(errJson ?: "").optString("error", "Sign in failed (${response.code()})")
+                } catch (e: Exception) {
+                    "Sign in failed (${response.code()})"
+                }
+                return@withContext Result.failure(Exception(errMsg))
+            }
+        } catch (netErr: Exception) {
+            Log.w(TAG, "Vercel login error: ${netErr.message}")
+        }
+
+        // Secondary fallback to Firebase
+        val fbResult = firebaseService.signInWithEmail(identifier, password)
+        if (fbResult.isSuccess) {
+            val user = fbResult.getOrThrow()
             dao.insertUser(user)
             _currentUserId.value = user.id
             _currentUser.value = user
-            syncWithCloud()
         }
-        result
+        fbResult
     }
 
     suspend fun signInWithGoogle(): Result<UserEntity> = withContext(Dispatchers.IO) {
@@ -235,6 +383,14 @@ class TokPulseRepository(private val context: Context) {
     suspend fun toggleLike(videoId: String): Boolean = withContext(Dispatchers.IO) {
         val user = _currentUser.value ?: return@withContext false
         val isLiked = dao.countLike(videoId, user.id) > 0
+
+        // Background call to Vercel API
+        try {
+            TokPulseApiClient.api.toggleLike(videoId, LikeRequest(user.id))
+        } catch (e: Exception) {
+            Log.w(TAG, "Vercel toggleLike notice: ${e.message}")
+        }
+
         if (isLiked) {
             dao.deleteLike(videoId, user.id)
             dao.updateLikesCount(videoId, -1)
@@ -248,6 +404,7 @@ class TokPulseRepository(private val context: Context) {
             if (firebaseService.isFirebaseAvailable) {
                 firebaseService.toggleLikeInFirestore(videoId, user.id, false)
             }
+
             val video = dao.getVideoById(videoId)
             if (video != null && video.creatorId != user.id) {
                 dao.insertNotification(
@@ -300,9 +457,17 @@ class TokPulseRepository(private val context: Context) {
         dao.insertComment(comment)
         dao.updateCommentsCount(videoId, 1)
 
+        // Background call to Vercel API
+        try {
+            TokPulseApiClient.api.addComment(videoId, AddCommentRequest(user.id, text))
+        } catch (e: Exception) {
+            Log.w(TAG, "Vercel addComment notice: ${e.message}")
+        }
+
         if (firebaseService.isFirebaseAvailable) {
             firebaseService.addCommentToFirestore(comment)
         }
+
         val video = dao.getVideoById(videoId)
         if (video != null && video.creatorId != user.id) {
             dao.insertNotification(
@@ -376,7 +541,7 @@ class TokPulseRepository(private val context: Context) {
         }
     }
 
-    // --- VIDEO UPLOAD & FIREBASE STORAGE ---
+    // --- VIDEO UPLOAD PIPELINE ---
 
     suspend fun uploadVideo(
         videoUrl: String,
@@ -391,13 +556,56 @@ class TokPulseRepository(private val context: Context) {
         val creatorName = user?.username ?: "creator"
         val creatorAvatar = user?.avatarUrl ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
 
-        val videoId = "vid_${UUID.randomUUID().toString().take(8)}"
         var finalVideoUrl = videoUrl
+        var videoId = "vid_${UUID.randomUUID().toString().take(8)}"
 
-        if (videoUri != null && firebaseService.isFirebaseAvailable) {
-            val storageResult = firebaseService.uploadVideoToStorage(videoUri, videoId, onProgress)
-            if (storageResult.isSuccess) {
-                finalVideoUrl = storageResult.getOrThrow()
+        // 1. Request upload ticket from Vercel API
+        try {
+            val ticketResp = TokPulseApiClient.api.requestUploadUrl(
+                UploadTicketRequest(
+                    filename = "video_${System.currentTimeMillis()}.mp4",
+                    contentType = "video/mp4",
+                    userId = creatorId
+                )
+            )
+
+            if (ticketResp.isSuccessful && ticketResp.body() != null) {
+                val ticket = ticketResp.body()!!
+                videoId = ticket.videoId
+                finalVideoUrl = ticket.streamUrl
+
+                // 2. Direct binary upload to S3/Cloud Storage presigned URL if device video selected
+                if (videoUri != null) {
+                    onProgress?.invoke(0.15f)
+                    val uploadSuccess = uploadBinaryToUrl(ticket.uploadUrl, videoUri, onProgress)
+                    if (!uploadSuccess && firebaseService.isFirebaseAvailable) {
+                        val fbRes = firebaseService.uploadVideoToStorage(videoUri, videoId, onProgress)
+                        if (fbRes.isSuccess) {
+                            finalVideoUrl = fbRes.getOrThrow()
+                        }
+                    }
+                }
+
+                // 3. Complete upload in PostgreSQL via Vercel API
+                TokPulseApiClient.api.completeUpload(
+                    CompleteUploadRequest(
+                        videoId = videoId,
+                        userId = creatorId,
+                        caption = caption,
+                        videoUrl = finalVideoUrl,
+                        thumbnailUrl = ticket.thumbnailUrl,
+                        musicTitle = musicTitle,
+                        aspectRatio = "9:16"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Vercel upload ticket error: ${e.message}")
+            if (videoUri != null && firebaseService.isFirebaseAvailable) {
+                val storageResult = firebaseService.uploadVideoToStorage(videoUri, videoId, onProgress)
+                if (storageResult.isSuccess) {
+                    finalVideoUrl = storageResult.getOrThrow()
+                }
             }
         }
 
@@ -420,9 +628,46 @@ class TokPulseRepository(private val context: Context) {
 
         dao.insertVideo(newVideo)
         if (firebaseService.isFirebaseAvailable) {
-            firebaseService.publishVideoToFirestore(newVideo)
+            try { firebaseService.publishVideoToFirestore(newVideo) } catch (e: Exception) {}
         }
         newVideo
+    }
+
+    private fun uploadBinaryToUrl(uploadUrl: String, videoUri: Uri, onProgress: ((Float) -> Unit)?): Boolean {
+        return try {
+            val contentResolver = context.contentResolver
+            val inputStream: InputStream = contentResolver.openInputStream(videoUri) ?: return false
+            val bytes = inputStream.readBytes()
+            inputStream.close()
+
+            val client = OkHttpClient()
+            val requestBody = object : RequestBody() {
+                override fun contentType() = "video/mp4".toMediaTypeOrNull()
+                override fun contentLength() = bytes.size.toLong()
+                override fun writeTo(sink: BufferedSink) {
+                    val total = bytes.size
+                    var written = 0
+                    val chunkSize = 8192
+                    while (written < total) {
+                        val len = minOf(chunkSize, total - written)
+                        sink.write(bytes, written, len)
+                        written += len
+                        onProgress?.invoke(written.toFloat() / total.toFloat())
+                    }
+                }
+            }
+
+            val request = Request.Builder()
+                .url(uploadUrl)
+                .put(requestBody)
+                .build()
+
+            val response = client.newCall(request).execute()
+            response.isSuccessful
+        } catch (e: Exception) {
+            Log.w(TAG, "uploadBinaryToUrl error: ${e.message}")
+            false
+        }
     }
 
     // --- SEARCH & PROFILES ---
@@ -599,7 +844,6 @@ class TokPulseRepository(private val context: Context) {
             adminUsername = admin
         )
         dao.insertViolation(violation)
-
         when (actionTaken) {
             "permanent_ban" -> {
                 dao.updateUserStatus(userId, "banned")

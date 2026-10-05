@@ -15,18 +15,31 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -36,11 +49,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
-import com.example.R
 import com.example.ui.theme.TokCyan
+import com.example.ui.theme.TokRed
 
 @Composable
 fun VideoPlayerView(
@@ -56,16 +71,13 @@ fun VideoPlayerView(
     var isPlaying by remember { mutableStateOf(true) }
     var isBuffering by remember { mutableStateOf(true) }
     var isPrepared by remember { mutableStateOf(false) }
+    var hasError by remember { mutableStateOf(false) }
+    var retryTrigger by remember { mutableIntStateOf(0) }
 
-    // Retain MediaPlayer and Surface references
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var surfaceRef by remember { mutableStateOf<Surface?>(null) }
 
-    val fallbackLocalUri = remember {
-        Uri.parse("android.resource://${context.packageName}/${R.raw.vid_sample1}")
-    }
-
-    // Playback state synchronization: ONLY call start/pause when MediaPlayer is in Prepared state (State 5)
+    // Playback state synchronization: ONLY call start/pause when MediaPlayer is in Prepared state
     LaunchedEffect(isCurrentPage, isPlaying, isPrepared) {
         if (!isPrepared) return@LaunchedEffect
         mediaPlayer?.let { mp ->
@@ -113,13 +125,13 @@ fun VideoPlayerView(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(isPrepared) {
+            .pointerInput(isPrepared, hasError) {
                 detectTapGestures(
                     onDoubleTap = {
                         onDoubleTap()
                     },
                     onTap = {
-                        if (!isPrepared) return@detectTapGestures
+                        if (!isPrepared || hasError) return@detectTapGestures
                         mediaPlayer?.let { mp ->
                             try {
                                 if (isPlaying) {
@@ -139,115 +151,122 @@ fun VideoPlayerView(
         contentAlignment = Alignment.Center
     ) {
         // Thumbnail preview backdrop
-        AsyncImage(
-            model = thumbnailUrl,
-            contentDescription = "Video Backdrop",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
+        if (thumbnailUrl.isNotBlank()) {
+            AsyncImage(
+                model = thumbnailUrl,
+                contentDescription = "Video Backdrop",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
-        // TextureView player - strict state machine preventing state 4 (-38, 0) exceptions
-        AndroidView(
-            factory = { ctx ->
-                TextureView(ctx).apply {
-                    layoutParams = FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT
-                    )
+        // TextureView player
+        key(retryTrigger) {
+            AndroidView(
+                factory = { ctx ->
+                    TextureView(ctx).apply {
+                        layoutParams = FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.MATCH_PARENT,
+                            FrameLayout.LayoutParams.MATCH_PARENT
+                        )
 
-                    surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                        override fun onSurfaceTextureAvailable(st: SurfaceTexture, width: Int, height: Int) {
-                            val surface = Surface(st)
-                            surfaceRef = surface
+                        surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                            override fun onSurfaceTextureAvailable(st: SurfaceTexture, width: Int, height: Int) {
+                                val surface = Surface(st)
+                                surfaceRef = surface
 
-                            val mp = MediaPlayer().apply {
-                                setSurface(surface)
-                                setAudioAttributes(
-                                    AudioAttributes.Builder()
-                                        .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
-                                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                                        .build()
-                                )
-                                isLooping = true
+                                val mp = MediaPlayer().apply {
+                                    setSurface(surface)
+                                    setAudioAttributes(
+                                        AudioAttributes.Builder()
+                                            .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+                                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                                            .build()
+                                    )
+                                    isLooping = true
 
-                                setOnPreparedListener { player ->
-                                    isPrepared = true
-                                    isBuffering = false
-                                    try {
-                                        if (isCurrentPage && isPlaying) {
-                                            player.start()
+                                    setOnPreparedListener { player ->
+                                        isPrepared = true
+                                        isBuffering = false
+                                        hasError = false
+                                        try {
+                                            if (isCurrentPage && isPlaying) {
+                                                player.start()
+                                            }
+                                        } catch (e: Exception) {
+                                            Log.w(TAG, "Initial start error handled: ${e.message}")
                                         }
-                                    } catch (e: Exception) {
-                                        Log.w(TAG, "Initial start error handled: ${e.message}")
+                                    }
+
+                                    setOnInfoListener { _, what, _ ->
+                                        if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) {
+                                            isBuffering = true
+                                        } else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END ||
+                                            what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START
+                                        ) {
+                                            isBuffering = false
+                                        }
+                                        false
+                                    }
+
+                                    setOnErrorListener { _, what, extra ->
+                                        Log.w(TAG, "MediaPlayer error: what=$what, extra=$extra")
+                                        isPrepared = false
+                                        isBuffering = false
+                                        hasError = true
+                                        true
                                     }
                                 }
 
-                                setOnInfoListener { _, what, _ ->
-                                    if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) {
-                                        isBuffering = true
-                                    } else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END ||
-                                        what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START
-                                    ) {
+                                try {
+                                    if (videoUrl.isNotBlank()) {
+                                        val uri = Uri.parse(videoUrl)
+                                        mp.setDataSource(ctx, uri)
+                                        mp.prepareAsync()
+                                    } else {
+                                        hasError = true
                                         isBuffering = false
                                     }
-                                    false
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "prepareAsync failed: ${e.message}")
+                                    hasError = true
+                                    isBuffering = false
                                 }
 
-                                setOnErrorListener { player, what, extra ->
-                                    Log.w(TAG, "MediaPlayer error intercepted: what=$what, extra=$extra")
-                                    isPrepared = false
-                                    isBuffering = false
-                                    true // Handled to prevent unhandled native crash
-                                }
+                                mediaPlayer = mp
                             }
 
-                            // Start preparing asynchronously (enters state 4)
-                            try {
-                                val targetUri = if (videoUrl.startsWith("http")) Uri.parse(videoUrl) else fallbackLocalUri
-                                mp.setDataSource(ctx, targetUri)
-                                mp.prepareAsync()
-                            } catch (e: Exception) {
+                            override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, width: Int, height: Int) {}
+
+                            override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+                                isPrepared = false
                                 try {
-                                    mp.setDataSource(ctx, fallbackLocalUri)
-                                    mp.prepareAsync()
-                                } catch (e2: Exception) {
-                                    isBuffering = false
+                                    mediaPlayer?.let { mp ->
+                                        try {
+                                            if (mp.isPlaying) mp.pause()
+                                        } catch (e: Exception) {}
+                                        mp.setSurface(null)
+                                    }
+                                    surfaceRef?.release()
+                                    surfaceRef = null
+                                } catch (e: Exception) {
+                                    Log.w(TAG, "Surface destruction handled: ${e.message}")
                                 }
+                                return true
                             }
 
-                            mediaPlayer = mp
-                        }
-
-                        override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, width: Int, height: Int) {}
-
-                        override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
-                            isPrepared = false
-                            try {
-                                mediaPlayer?.let { mp ->
-                                    try {
-                                        if (mp.isPlaying) mp.pause()
-                                    } catch (e: Exception) {}
-                                    mp.setSurface(null)
-                                }
-                                surfaceRef?.release()
-                                surfaceRef = null
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Surface destruction handled: ${e.message}")
+                            override fun onSurfaceTextureUpdated(st: SurfaceTexture) {
+                                isBuffering = false
                             }
-                            return true
-                        }
-
-                        override fun onSurfaceTextureUpdated(st: SurfaceTexture) {
-                            isBuffering = false
                         }
                     }
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
         // Buffering loader
-        if (isBuffering && isCurrentPage) {
+        if (isBuffering && isCurrentPage && !hasError) {
             CircularProgressIndicator(
                 color = TokCyan,
                 strokeWidth = 3.dp,
@@ -255,9 +274,53 @@ fun VideoPlayerView(
             )
         }
 
+        // Error with Retry button
+        if (hasError && isCurrentPage) {
+            Column(
+                modifier = Modifier
+                    .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(16.dp))
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Playback Error",
+                    tint = TokRed,
+                    modifier = Modifier.size(40.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Video stream unavailable",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                Button(
+                    onClick = {
+                        hasError = false
+                        isBuffering = true
+                        retryTrigger++
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = TokCyan),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Retry",
+                        tint = Color.Black,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.size(6.dp))
+                    Text(text = "Retry", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
         // Pause indicator overlay
         AnimatedVisibility(
-            visible = !isPlaying && !isBuffering,
+            visible = !isPlaying && !isBuffering && !hasError,
             enter = fadeIn() + scaleIn(initialScale = 0.7f),
             exit = fadeOut() + scaleOut(targetScale = 0.7f)
         ) {
