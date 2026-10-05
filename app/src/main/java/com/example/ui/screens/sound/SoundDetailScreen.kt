@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
@@ -101,22 +102,38 @@ fun SoundDetailScreen(
 
     // Real audio player with Media3 ExoPlayer for sound preview
     val audioPlayer = remember(context, matchingVideos) {
-        val streamUrl = matchingVideos.firstOrNull { it.videoUrl.isNotBlank() }?.videoUrl
+        val streamUrl = matchingVideos.firstOrNull {
+            val url = it.videoUrl.trim()
+            url.isNotBlank() &&
+                !url.contains("test.com") &&
+                !url.contains("example.com") &&
+                (url.startsWith("http://") || url.startsWith("https://"))
+        }?.videoUrl
+
         if (!streamUrl.isNullOrBlank()) {
             val audioAttributes = AudioAttributes.Builder()
                 .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                 .setUsage(C.USAGE_MEDIA)
                 .build()
 
-            ExoPlayer.Builder(context)
-                .setAudioAttributes(audioAttributes, true)
-                .build().apply {
-                    val item = MediaItem.fromUri(Uri.parse(streamUrl))
-                    setMediaItem(item)
-                    repeatMode = Player.REPEAT_MODE_ONE
-                    volume = 1.0f
-                    prepare()
-                }
+            try {
+                ExoPlayer.Builder(context)
+                    .setAudioAttributes(audioAttributes, true)
+                    .build().apply {
+                        addListener(object : Player.Listener {
+                            override fun onPlayerError(error: PlaybackException) {
+                                isPlaying = false
+                            }
+                        })
+                        val item = MediaItem.fromUri(Uri.parse(streamUrl))
+                        setMediaItem(item)
+                        repeatMode = Player.REPEAT_MODE_ONE
+                        volume = 1.0f
+                        prepare()
+                    }
+            } catch (e: Exception) {
+                null
+            }
         } else {
             null
         }

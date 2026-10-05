@@ -104,10 +104,20 @@ fun VideoPlayerView(
             )
             .build()
 
+        val httpDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+            .setConnectTimeoutMs(8000)
+            .setReadTimeoutMs(15000)
+            .setAllowCrossProtocolRedirects(true)
+            .setKeepPostFor302Redirects(true)
+
+        val dataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(context, httpDataSourceFactory)
+        val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
+
         ExoPlayer.Builder(context)
             .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ true)
             .setHandleAudioBecomingNoisy(true)
             .setLoadControl(loadControl)
+            .setMediaSourceFactory(mediaSourceFactory)
             .build().apply {
                 repeatMode = Player.REPEAT_MODE_ONE
                 videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
@@ -134,17 +144,25 @@ fun VideoPlayerView(
                     }
 
                     override fun onPlayerError(error: PlaybackException) {
-                        Log.w(TAG, "Media3 ExoPlayer error (${error.errorCode}): ${error.message}", error)
+                        Log.w(TAG, "Media3 ExoPlayer error (${error.errorCode}): ${error.message}")
                         isBuffering = false
                         hasError = true
                         isPrepared = false
                     }
                 })
 
-                if (videoUrl.isNotBlank()) {
-                    val mediaItem = MediaItem.fromUri(Uri.parse(videoUrl))
-                    setMediaItem(mediaItem)
-                    prepare()
+                val trimmedUrl = videoUrl.trim()
+                val isInvalidDummyHost = trimmedUrl.contains("test.com") || trimmedUrl.contains("example.com")
+                if (trimmedUrl.isNotBlank() && !isInvalidDummyHost && (trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://"))) {
+                    try {
+                        val mediaItem = MediaItem.fromUri(Uri.parse(trimmedUrl))
+                        setMediaItem(mediaItem)
+                        prepare()
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to setMediaItem: ${e.message}")
+                        hasError = true
+                        isBuffering = false
+                    }
                 } else {
                     hasError = true
                     isBuffering = false
@@ -275,7 +293,7 @@ fun VideoPlayerView(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Video stream connecting...",
+                    text = "تعذر تحميل الفيديو أو لا يوجد اتصال",
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium

@@ -128,20 +128,36 @@ class TokPulseRepository(private val context: Context) {
     }
 
     suspend fun syncWithCloud() = withContext(Dispatchers.IO) {
+        // Clean any invalid/dummy test videos that cannot be resolved
+        try {
+            dao.cleanInvalidVideos()
+        } catch (e: Exception) {
+            Log.w(TAG, "cleanInvalidVideos notice: ${e.message}")
+        }
+
         // 1. Fetch real feed from Vercel API
         try {
             val feedResponse = TokPulseApiClient.api.getFeed()
             if (feedResponse.isSuccessful) {
                 val feedBody = feedResponse.body()
                 if (feedBody != null && feedBody.videos.isNotEmpty()) {
-                    val entities = feedBody.videos.map { apiVid ->
+                    val validVideos = feedBody.videos.filter { apiVid ->
+                        val url = (apiVid.videoUrl ?: apiVid.streamUrl ?: "").trim()
+                        url.isNotBlank() &&
+                            !url.contains("test.com") &&
+                            !url.contains("example.com") &&
+                            !url.startsWith("http://localhost") &&
+                            (url.startsWith("http://") || url.startsWith("https://"))
+                    }
+                    val entities = validVideos.map { apiVid ->
+                        val url = (apiVid.videoUrl ?: apiVid.streamUrl ?: "").trim()
                         VideoEntity(
                             id = apiVid.id,
                             creatorId = apiVid.creatorId,
                             creatorUsername = apiVid.creatorUsername,
                             creatorAvatar = apiVid.creatorAvatar ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
-                            videoUrl = apiVid.videoUrl ?: apiVid.streamUrl ?: "",
-                            thumbnailUrl = apiVid.thumbnailUrl?.ifBlank { null } ?: "${apiVid.videoUrl ?: apiVid.streamUrl ?: ""}#t=0.1",
+                            videoUrl = url,
+                            thumbnailUrl = apiVid.thumbnailUrl?.ifBlank { null } ?: "$url#t=0.1",
                             caption = apiVid.caption,
                             musicTitle = apiVid.musicTitle ?: "Original Audio",
                             tags = "#tokpulse,#fyp,#viral",
@@ -152,8 +168,10 @@ class TokPulseRepository(private val context: Context) {
                             createdAt = if (apiVid.createdAt > 0) apiVid.createdAt else System.currentTimeMillis()
                         )
                     }
-                    dao.insertVideos(entities)
-                    Log.i(TAG, "Successfully synced ${entities.size} videos from Vercel API")
+                    if (entities.isNotEmpty()) {
+                        dao.insertVideos(entities)
+                    }
+                    Log.i(TAG, "Successfully synced ${entities.size} valid videos from Vercel API")
                 }
             } else {
                 Log.w(TAG, "Vercel API feed returned code: ${feedResponse.code()}")
