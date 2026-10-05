@@ -1,7 +1,7 @@
 {
-  "name": "tokpulse-backend",
-  "version": "1.0.0",
-  "description": "Production Scalable Video Platform Backend for TokPulse (TikTok-style Video Streaming, Processing, Transcoding & CDN)",
+  "name": "chort-backend",
+  "version": "2.2.0",
+  "description": "Production Scalable Video Platform Backend for Chort (Short Video Streaming, Processing, Transcoding & CDN)",
   "main": "dist/server.js",
   "scripts": {
     "build": "prisma generate && (prisma db push --skip-generate || true) && tsc",

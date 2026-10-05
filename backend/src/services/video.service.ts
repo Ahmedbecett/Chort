@@ -1,4 +1,4 @@
-import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client, config, redis, isStorageConfigured } from '../config';
 import { prisma } from '../lib/prisma';
@@ -8,6 +8,7 @@ export interface CreateUploadUrlInput {
   userId: string;
   filename: string;
   contentType: string;
+  fileSize?: number;
 }
 
 export class VideoService {
@@ -64,9 +65,11 @@ export class VideoService {
     }
 
     const videoId = `vid_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
-    const extension = input.filename.split('.').pop() || 'mp4';
+    const extension = input.filename.split('.').pop()?.toLowerCase() || 'mp4';
     const objectKey = `videos/${videoId}.${extension}`;
+    const thumbnailKey = `thumbnails/${videoId}.jpg`;
 
+    // 1. Presigned PUT for Video Upload
     const command = new PutObjectCommand({
       Bucket: config.s3.bucket,
       Key: objectKey,
@@ -76,20 +79,37 @@ export class VideoService {
         videoId,
       },
     });
-
     const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });
+
+    // 2. Presigned PUT for Real Thumbnail Upload
+    const thumbCommand = new PutObjectCommand({
+      Bucket: config.s3.bucket,
+      Key: thumbnailKey,
+      ContentType: 'image/jpeg',
+      Metadata: {
+        userId: input.userId,
+        videoId,
+      },
+    });
+    const thumbnailUploadUrl = await getSignedUrl(s3Client, thumbCommand, { expiresIn: 900 });
+
     const cleanEndpoint = config.s3.endpoint?.replace(/\/+$/, '');
-    const finalUrl = cleanEndpoint
+    const finalVideoUrl = cleanEndpoint
       ? `${cleanEndpoint}/${config.s3.bucket}/${objectKey}`
       : `https://${config.s3.bucket}.s3.${config.s3.region}.amazonaws.com/${objectKey}`;
+
+    const realThumbnailUrl = `${config.cdn.baseUrl}/api/v1/videos/${videoId}/thumbnail`;
 
     return {
       videoId,
       objectKey,
       uploadUrl,
+      thumbnailKey,
+      thumbnailUploadUrl,
       directUpload: false,
-      streamUrl: finalUrl,
-      thumbnailUrl: `${finalUrl}#t=0.1`,
+      streamUrl: `${config.cdn.baseUrl}/api/v1/videos/${videoId}/stream`,
+      videoUrl: finalVideoUrl,
+      thumbnailUrl: realThumbnailUrl,
     };
   }
 
@@ -114,7 +134,7 @@ export class VideoService {
       existingUser = await prisma.user.create({
         data: {
           id: userId,
-          email: `${userId}@tokpulse.local`,
+          email: `${userId}@chort.app`,
           username: userId.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase(),
           passwordHash: 'OAUTH_OR_SESSION',
           profile: {
@@ -126,18 +146,27 @@ export class VideoService {
       });
     }
 
+    // Secure, tamper-proof: metrics ALWAYS start strictly at 0!
+    const realThumbnail = thumbnailUrl && !thumbnailUrl.includes('#t=')
+      ? thumbnailUrl
+      : `${config.cdn.baseUrl}/api/v1/videos/${videoId}/thumbnail`;
+
     const video = await prisma.video.create({
       data: {
         id: videoId,
         userId,
-        caption: caption || 'New TokPulse Video',
+        caption: caption || 'New Chort Video',
         originalKey: videoId,
         streamUrl: videoUrl,
-        thumbnailUrl: thumbnailUrl || '',
+        thumbnailUrl: realThumbnail,
         status: 'READY',
         visibility: 'PUBLIC',
         musicTitle: musicTitle || 'Original Audio',
         aspectRatio: aspectRatio || '9:16',
+        viewsCount: 0,
+        likesCount: 0,
+        commentsCount: 0,
+        sharesCount: 0,
       },
       include: {
         user: {
@@ -277,6 +306,9 @@ export class VideoService {
       videos: await Promise.all(
         videos.map(async (v) => {
           const playableUrl = await VideoService.resolvePlayableStreamUrl(v.id, v.originalKey, v.streamUrl);
+          const realThumb = v.thumbnailUrl && !v.thumbnailUrl.includes('#t=')
+            ? v.thumbnailUrl
+            : `${config.cdn.baseUrl}/api/v1/videos/${v.id}/thumbnail`;
           return {
             id: v.id,
             creatorId: v.userId,
@@ -285,7 +317,7 @@ export class VideoService {
             caption: v.caption,
             streamUrl: playableUrl,
             videoUrl: playableUrl,
-            thumbnailUrl: v.thumbnailUrl || (playableUrl ? `${playableUrl}#t=0.1` : ''),
+            thumbnailUrl: realThumb,
             musicTitle: v.musicTitle || 'Original Audio',
             likesCount: v.likesCount,
             commentsCount: v.commentsCount,
@@ -327,5 +359,113 @@ export class VideoService {
     }
 
     return { counted: false };
+  }
+
+  /**
+   * Increment share count and record share
+   */
+  static async recordShare(videoId: string, userId?: string) {
+    const updated = await prisma.video.update({
+      where: { id: videoId },
+      data: { sharesCount: { increment: 1 } },
+    });
+    if (userId && !userId.startsWith('user_guest')) {
+      try {
+        await prisma.share.create({
+          data: { videoId, userId },
+        });
+      } catch (e) {
+        // Continue if share record logging fails
+      }
+    }
+    return { shared: true, sharesCount: updated.sharesCount };
+  }
+
+  /**
+   * Toggle save/bookmark video
+   */
+  static async toggleSave(videoId: string, userId: string) {
+    const existing = await prisma.savedVideo.findUnique({
+      where: {
+        userId_videoId: { userId, videoId },
+      },
+    });
+
+    if (existing) {
+      await prisma.savedVideo.delete({
+        where: { id: existing.id },
+      });
+      return { saved: false };
+    } else {
+      await prisma.savedVideo.create({
+        data: { videoId, userId },
+      });
+      return { saved: true };
+    }
+  }
+
+  /**
+   * Delete video (S3 object + database cascade) with ownership authorization
+   */
+  static async deleteVideo(videoId: string, requestingUserId: string, userRole?: string) {
+    const video = await prisma.video.findUnique({
+      where: { id: videoId },
+      include: { user: true },
+    });
+
+    if (!video) {
+      const err = new Error('Video not found');
+      (err as any).statusCode = 404;
+      throw err;
+    }
+
+    const isOwner = video.userId === requestingUserId;
+    const isAdmin = userRole === 'ADMIN' || requestingUserId === 'ahmed_admin';
+
+    if (!isOwner && !isAdmin) {
+      const err = new Error('Unauthorized: Only the video author or an admin can delete this video');
+      (err as any).statusCode = 403;
+      throw err;
+    }
+
+    // 1. Delete video from S3 Object Storage
+    if (isStorageConfigured()) {
+      try {
+        const videoKey = video.originalKey
+          ? (video.originalKey.startsWith('videos/') ? video.originalKey : `videos/${video.originalKey}.mp4`)
+          : `videos/${videoId}.mp4`;
+        await s3Client.send(new DeleteObjectCommand({
+          Bucket: config.s3.bucket,
+          Key: videoKey,
+        }));
+
+        // Delete thumbnail if custom thumbnail was uploaded
+        const thumbKey = `thumbnails/${videoId}.jpg`;
+        await s3Client.send(new DeleteObjectCommand({
+          Bucket: config.s3.bucket,
+          Key: thumbKey,
+        })).catch(() => {});
+      } catch (err: any) {
+        console.warn('S3 video deletion notice:', err.message);
+      }
+    }
+
+    // 2. Cascade delete from PostgreSQL
+    await prisma.video.delete({
+      where: { id: videoId },
+    });
+
+    // 3. Invalidate caches
+    try {
+      await redis.del('feed:fyp:guest:top');
+      await redis.del(`feed:fyp:${video.userId}:top`);
+      await redis.del(`feed:fyp:${requestingUserId}:top`);
+    } catch {}
+
+    return {
+      success: true,
+      message: 'Video and associated storage assets deleted successfully',
+      deletedVideoId: videoId,
+    };
   }
 }

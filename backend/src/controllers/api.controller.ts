@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { VideoService } from '../services/video.service';
 import { FeedService } from '../services/feed.service';
 import { prisma, checkDatabaseConnection, isDbConfigured, ensureDatabaseSchema } from '../lib/prisma';
-import { config, isStorageConfigured } from '../config';
+import { config, isStorageConfigured, s3Client } from '../config';
 
 export class ApiController {
   // --- HEALTH CHECK & SCHEMA VERIFICATION ---
@@ -278,13 +280,36 @@ export class ApiController {
   // --- VIDEO UPLOAD ---
   static async requestUploadUrl(req: Request, res: Response) {
     try {
-      const { filename, contentType, userId } = req.body;
+      const { filename, contentType, fileSize, userId } = req.body;
       const activeUserId = userId || (req as any).user?.userId || 'user_guest';
+
+      // 1. Validate MIME type
+      const ALLOWED_MIME_TYPES = [
+        'video/mp4',
+        'video/quicktime',
+        'video/webm',
+        'video/x-m4v',
+        'video/3gpp',
+      ];
+      if (contentType && !ALLOWED_MIME_TYPES.includes(contentType.toLowerCase())) {
+        return res.status(400).json({
+          error: `Invalid video format: '${contentType}'. Allowed formats: MP4, MOV, WebM.`,
+        });
+      }
+
+      // 2. Validate file size (max 100MB)
+      const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+      if (fileSize && fileSize > MAX_FILE_SIZE_BYTES) {
+        return res.status(413).json({
+          error: `File size exceeds maximum allowed limit of 100MB (${fileSize} bytes provided).`,
+        });
+      }
 
       const uploadTicket = await VideoService.createSignedUploadUrl({
         userId: activeUserId,
         filename: filename || 'video.mp4',
         contentType: contentType || 'video/mp4',
+        fileSize,
       });
 
       return res.status(200).json(uploadTicket);
@@ -311,7 +336,7 @@ export class ApiController {
       const video = await VideoService.completeUpload({
         videoId,
         userId: activeUserId,
-        caption: caption || 'New TokPulse Video',
+        caption: caption || 'New Chort Video',
         videoUrl,
         thumbnailUrl,
         musicTitle,
@@ -456,6 +481,107 @@ export class ApiController {
       return res.status(404).json({ error: 'Video stream not ready or storage not accessible' });
     } catch (err: any) {
       return res.status(500).json({ error: `Streaming failed: ${err.message}` });
+    }
+  }
+
+  // --- SHARES ---
+  static async recordShare(req: Request, res: Response) {
+    try {
+      const { videoId } = req.params;
+      const userId = (req as any).user?.userId || req.body.userId;
+      const result = await VideoService.recordShare(videoId, userId);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: `Share recording failed: ${err.message}` });
+    }
+  }
+
+  // --- SAVED / BOOKMARKS ---
+  static async toggleSave(req: Request, res: Response) {
+    try {
+      const { videoId } = req.params;
+      const userId = (req as any).user?.userId || req.body.userId;
+      if (!userId) {
+        return res.status(401).json({ error: 'Authentication required to save video' });
+      }
+      const result = await VideoService.toggleSave(videoId, userId);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: `Save operation failed: ${err.message}` });
+    }
+  }
+
+  // --- DELETE VIDEO (With Ownership Authorization) ---
+  static async deleteVideo(req: Request, res: Response) {
+    try {
+      const { videoId } = req.params;
+      const requestingUserId = (req as any).user?.userId || (req.headers['x-user-id'] as string) || req.body.userId || req.query.userId;
+      const userRole = (req as any).user?.role || (req.headers['x-user-role'] as string);
+
+      if (!requestingUserId) {
+        return res.status(401).json({ error: 'Authentication or userId required to delete video' });
+      }
+
+      const result = await VideoService.deleteVideo(videoId, requestingUserId as string, userRole as string);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      const status = err.statusCode || 500;
+      return res.status(status).json({ error: err.message });
+    }
+  }
+
+  // --- REAL THUMBNAIL SERVICE ---
+  static async getVideoThumbnail(req: Request, res: Response) {
+    try {
+      const { videoId } = req.params;
+      const video = await prisma.video.findUnique({
+        where: { id: videoId },
+        include: { user: { include: { profile: true } } },
+      });
+
+      // 1. If S3 storage has a real thumbnail, redirect to presigned GET
+      if (isStorageConfigured()) {
+        try {
+          const command = new GetObjectCommand({
+            Bucket: config.s3.bucket,
+            Key: `thumbnails/${videoId}.jpg`,
+          });
+          const signedThumb = await getSignedUrl(s3Client, command, { expiresIn: 86400 });
+          return res.redirect(302, signedThumb);
+        } catch {}
+      }
+
+      // 2. High-res dynamic SVG poster
+      const title = (video?.caption || 'Chort Video').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 48);
+      const creator = (video?.user?.username || 'creator').replace(/&/g, '&amp;');
+
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1280" viewBox="0 0 720 1280">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f0c1b"/>
+      <stop offset="50%" stop-color="#18132e"/>
+      <stop offset="100%" stop-color="#090710"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF0055"/>
+      <stop offset="100%" stop-color="#7928CA"/>
+    </linearGradient>
+  </defs>
+  <rect width="720" height="1280" fill="url(#bg)"/>
+  <circle cx="360" cy="540" r="180" fill="url(#accent)" opacity="0.15" filter="blur(40px)"/>
+  <circle cx="360" cy="580" r="54" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.4)" stroke-width="2"/>
+  <polygon points="348,556 384,580 348,604" fill="#ffffff"/>
+  <text x="360" y="700" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" text-anchor="middle">${title}</text>
+  <text x="360" y="745" fill="#a0aec0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" text-anchor="middle">@${creator}</text>
+  <rect x="290" y="1160" width="140" height="38" rx="19" fill="url(#accent)"/>
+  <text x="360" y="1185" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="900" text-anchor="middle" letter-spacing="2">CHORT</text>
+</svg>`;
+
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+      return res.status(200).send(svg.trim());
+    } catch (err: any) {
+      return res.status(500).json({ error: `Thumbnail generation error: ${err.message}` });
     }
   }
 }

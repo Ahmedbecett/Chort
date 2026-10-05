@@ -37,7 +37,7 @@ app.get('/', (req, res) => {
 
 if (!process.env.VERCEL) {
   app.listen(config.port, '0.0.0.0', () => {
-    console.log(`🚀 TokPulse API Server running on port ${config.port} (Production Mode)`);
+    console.log(`🚀 Chort API Server running on port ${config.port} (Production Mode)`);
   });
 }
 

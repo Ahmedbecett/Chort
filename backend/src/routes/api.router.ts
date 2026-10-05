@@ -21,10 +21,14 @@ apiRouter.get('/feed', ApiController.getFeed);
 apiRouter.get('/feed/fyp', ApiController.getFeed);
 apiRouter.get('/videos', ApiController.getFeed);
 apiRouter.get('/videos/:videoId/stream', ApiController.streamVideo);
+apiRouter.get('/videos/:videoId/thumbnail', ApiController.getVideoThumbnail);
 apiRouter.post('/videos/:videoId/view', ApiController.recordView);
+apiRouter.delete('/videos/:videoId', ApiController.deleteVideo);
 
-// Interactions (Likes, Comments)
+// Interactions (Likes, Comments, Shares, Saves)
 apiRouter.post('/videos/:videoId/like', ApiController.toggleLike);
+apiRouter.post('/videos/:videoId/share', ApiController.recordShare);
+apiRouter.post('/videos/:videoId/save', ApiController.toggleSave);
 apiRouter.get('/videos/:videoId/comments', ApiController.getComments);
 apiRouter.post('/videos/:videoId/comments', ApiController.addComment);
 

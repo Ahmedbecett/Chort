@@ -1,5 +1,5 @@
 import { prisma, isDbConfigured } from '../lib/prisma';
-import { redis } from '../config';
+import { redis, config } from '../config';
 import { VideoService } from './video.service';
 
 export interface FeedQueryOptions {
@@ -79,6 +79,10 @@ export class FeedService {
       const formattedVideos = await Promise.all(
         dbVideos.map(async (v) => {
           const playableUrl = await VideoService.resolvePlayableStreamUrl(v.id, v.originalKey, v.streamUrl);
+          const realThumb = v.thumbnailUrl && !v.thumbnailUrl.includes('#t=')
+            ? v.thumbnailUrl
+            : `${config.cdn.baseUrl}/api/v1/videos/${v.id}/thumbnail`;
+
           return {
             id: v.id,
             creatorId: v.userId,
@@ -87,7 +91,7 @@ export class FeedService {
             caption: v.caption,
             streamUrl: playableUrl,
             videoUrl: playableUrl,
-            thumbnailUrl: v.thumbnailUrl || (playableUrl ? `${playableUrl}#t=0.1` : ''),
+            thumbnailUrl: realThumb,
             musicTitle: v.musicTitle || 'Original Audio',
             likesCount: v.likesCount,
             commentsCount: v.commentsCount,

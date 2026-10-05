@@ -7,7 +7,7 @@ dotenv.config();
 export const config = {
   port: parseInt(process.env.PORT || '4000', 10),
   nodeEnv: process.env.NODE_ENV || 'production',
-  jwtSecret: process.env.JWT_SECRET || 'tokpulse-super-secure-production-jwt-key-2026',
+  jwtSecret: process.env.JWT_SECRET || 'chort-super-secure-production-jwt-key-2026',
   databaseUrl: process.env.DATABASE_URL || '',
   redisUrl: process.env.REDIS_URL || '',
   s3: {
