@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import com.example.BuildConfig
 import com.example.data.local.entities.UserEntity
 import com.example.data.local.entities.VideoEntity
 import com.example.data.repository.TokPulseRepository
@@ -238,6 +239,22 @@ fun ProfileScreen(
                                 }
                             )
                         }
+
+                        // Build identity stamp: lets the installed build be verified
+                        // directly on-device (version + versionCode + source commit).
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = "Chort v${BuildConfig.VERSION_NAME} " +
+                                        "(${BuildConfig.VERSION_CODE}) · " +
+                                        "${BuildConfig.GIT_COMMIT}",
+                                    color = TextMuted,
+                                    fontSize = 11.sp
+                                )
+                            },
+                            enabled = false,
+                            onClick = {}
+                        )
                     }
                 }
             }

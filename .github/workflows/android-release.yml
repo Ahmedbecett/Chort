@@ -1,0 +1,81 @@
+name: Android Release APK
+
+# Builds, signs and verifies a release APK straight from the pushed commit, then
+# publishes it as a downloadable artifact (and attaches it to the GitHub Release
+# when a v* tag is pushed). This is why a stale APK can no longer be shipped:
+# the artifact is rebuilt from source on every release.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history so the commit stamp is meaningful)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: |
+          sdkmanager --install \
+            "platforms;android-36" \
+            "platforms;android-36.1" \
+            "build-tools;36.1.0" \
+            "platform-tools"
+
+      - name: Read version + commit
+        id: meta
+        run: |
+          echo "code=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts | head -1)" >> "$GITHUB_OUTPUT"
+          echo "name=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build signed release APK
+        run: |
+          ./gradlew --no-daemon clean assembleRelease
+          mkdir -p release
+          cp app/build/outputs/apk/release/app-release.apk \
+             "release/Chort-v${{ steps.meta.outputs.name }}-release.apk"
+
+      - name: Verify APK against the current source code
+        run: |
+          python3 scripts/verify_apk.py \
+            --apk "release/Chort-v${{ steps.meta.outputs.name }}-release.apk" \
+            --expect-version-code "${{ steps.meta.outputs.code }}" \
+            --expect-version-name "${{ steps.meta.outputs.name }}" \
+            --source-commit "${{ steps.meta.outputs.commit }}" \
+            --report release/VERIFICATION_REPORT.md
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Chort-v${{ steps.meta.outputs.name }}-release
+          path: |
+            release/*.apk
+            release/VERIFICATION_REPORT.md
+          if-no-files-found: error
+
+      - name: Attach APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.apk
+            release/VERIFICATION_REPORT.md

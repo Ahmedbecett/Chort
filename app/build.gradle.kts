@@ -8,6 +8,29 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
+// --------------------------------------------------------------------
+// Reproducible release keystore committed with the repo. Production/Play
+// builds should override it with their own key via STORE_PASSWORD +
+// my-upload-key.jks (see RELEASE.md).
+// --------------------------------------------------------------------
+val fallbackKeystoreFile = file("${rootDir}/chort-release.jks")
+val fallbackKeystorePassword = "chortrelease"
+val fallbackKeyAlias = "chort"
+
+/**
+ * Short hash of the git revision this build is compiled from, stamped into
+ * BuildConfig.GIT_COMMIT so an APK can always be traced back to its source
+ * commit. Falls back to "unknown" outside a git checkout.
+ */
+fun resolveGitCommit(): String = try {
+  providers.exec {
+    commandLine("git", "rev-parse", "--short", "HEAD")
+    workingDir = rootDir
+  }.standardOutput.asText.get().trim().ifBlank { "unknown" }
+} catch (e: Exception) {
+  "unknown"
+}
+
 android {
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
@@ -16,35 +39,72 @@ android {
     applicationId = "com.aistudio.tokpulse.social"
     minSdk = 24
     targetSdk = 36
-    versionCode = 20200
-    versionName = "2.2.0"
+
+    // ------------------------------------------------------------------
+    // VERSION BUMP (was versionCode 20200 / versionName "2.2.0").
+    // The previous APK shipped with the exact same versionCode/versionName
+    // as the source, which made stale builds indistinguishable from new
+    // ones on-device. Bump BOTH on every release.
+    // ------------------------------------------------------------------
+    versionCode = 20300
+    versionName = "2.3.0"
+
+    // Commit stamp compiled into BuildConfig.GIT_COMMIT so any APK can be
+    // traced back to the exact git revision it was built from.
+    buildConfigField("String", "GIT_COMMIT", "\"${resolveGitCommit()}\"")
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   signingConfigs {
+    // ------------------------------------------------------------------
+    // DETERMINISTIC RELEASE SIGNING
+    // Previously this silently fell back to a debug keystore, so "release"
+    // APKs were debug-signed (CN=Android Debug) while the README advertised a
+    // production certificate. Resolution order is now explicit and logged:
+    //   1. KEYSTORE_PATH env var                  -> explicit keystore file
+    //   2. STORE_PASSWORD + my-upload-key.jks     -> official production key
+    //   3. chort-release.jks (committed, documented) -> reproducible builds
+    // ------------------------------------------------------------------
     create("release") {
-      val customKeystore = file("${rootDir}/my-upload-key.jks")
+      val explicitKeystore = System.getenv("KEYSTORE_PATH")
+        ?.takeIf { it.isNotBlank() }
+        ?.let { file(it) }
+      val officialKeystore = file("${rootDir}/my-upload-key.jks")
       val envStorePass = System.getenv("STORE_PASSWORD")
-      if (envStorePass != null && customKeystore.exists()) {
-        storeFile = customKeystore
-        storePassword = envStorePass
-        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
-        keyPassword = System.getenv("KEY_PASSWORD") ?: envStorePass
-      } else {
-        storeFile = file("${rootDir}/debug.keystore")
-        storePassword = "android"
-        keyAlias = "androiddebugkey"
-        keyPassword = "android"
+
+      val chosen = when {
+        explicitKeystore != null && explicitKeystore.exists() ->
+          explicitKeystore to (envStorePass ?: fallbackKeystorePassword)
+        envStorePass != null && officialKeystore.exists() ->
+          officialKeystore to envStorePass
+        fallbackKeystoreFile.exists() ->
+          fallbackKeystoreFile to fallbackKeystorePassword
+        else -> error(
+          "No release keystore available. Set KEYSTORE_PATH or STORE_PASSWORD, " +
+            "or restore ${fallbackKeystoreFile.name}."
+        )
       }
+
+      storeFile = chosen.first
+      storePassword = chosen.second
+      keyAlias = System.getenv("KEY_ALIAS")
+        ?: if (chosen.first == fallbackKeystoreFile) fallbackKeyAlias else "upload"
+      keyPassword = System.getenv("KEY_PASSWORD") ?: chosen.second
       enableV1Signing = true
       enableV2Signing = true
+      enableV3Signing = true
+
+      logger.lifecycle("[Chort] Release signing keystore: ${chosen.first.name}")
     }
     create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+      // debug.keystore is git-ignored and absent on fresh clones, which used to
+      // break `assembleDebug`. Re-use the committed keystore when it's missing.
+      val useFallback = fallbackKeystoreFile.exists()
+      storeFile = if (useFallback) fallbackKeystoreFile else file("${rootDir}/debug.keystore")
+      storePassword = if (useFallback) fallbackKeystorePassword else "android"
+      keyAlias = if (useFallback) fallbackKeyAlias else "androiddebugkey"
+      keyPassword = if (useFallback) fallbackKeystorePassword else "android"
       enableV1Signing = true
       enableV2Signing = true
     }

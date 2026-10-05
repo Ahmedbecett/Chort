@@ -1,6 +1,6 @@
 # 📱 Chort - Scalable Real-Time Short-Video Social Platform
 
-[![Release](https://img.shields.io/github/v/release/Ahmedbecett/Chort?color=blue&label=Latest%20Release)](https://github.com/Ahmedbecett/Chort/releases/tag/v2.2.0)
+[![Release](https://img.shields.io/github/v/release/Ahmedbecett/Chort?color=blue&label=Latest%20Release)](https://github.com/Ahmedbecett/Chort/releases/tag/v2.3.0)
 [![Android](https://img.shields.io/badge/Platform-Android-3DDC84.svg?logo=android&logoColor=white)](https://android.com)
 [![Backend](https://img.shields.io/badge/Backend-Node.js%20%7C%20Express%20%7C%20Prisma-green.svg)](backend/)
 [![Database](https://img.shields.io/badge/Database-PostgreSQL%20%7C%20Redis%207-blue.svg)](backend/prisma/)
@@ -13,8 +13,9 @@
 
 ## 📥 Direct APK Download & Production Releases
 
-- 🚀 **[Download Latest Production APK: Chort-v2.2.0-release.apk (22 MB)](https://github.com/Ahmedbecett/Chort/releases/download/v2.2.0/Chort-v2.2.0-release.apk)**
-- 🔗 **[Official GitHub Releases v2.2.0](https://github.com/Ahmedbecett/Chort/releases/tag/v2.2.0)**
+- 🚀 **[Download Latest Production APK: Chort-v2.3.0-release.apk](https://github.com/Ahmedbecett/Chort/releases/download/v2.3.0/Chort-v2.3.0-release.apk)**  (also built automatically by the [Android Release workflow](.github/workflows/android-release.yml) on every `v*` tag)
+- 🔗 **[Official GitHub Releases v2.3.0](https://github.com/Ahmedbecett/Chort/releases/tag/v2.3.0)**
+- ✅ **Every APK is verified against the source commit before release** - see [RELEASE.md](RELEASE.md) and `scripts/verify_apk.py`.
 
 ---
 
@@ -98,8 +99,10 @@ Services will be accessible at:
 - **Vertical Video Feed:** Smooth full-screen TikTok-style swipe gestures with seamless looping and pre-caching.
 - **Real-Time Byte Progress Upload:** Direct upload with progress percentage bar from camera or gallery.
 - **Interactions:** Live comments, likes, shares, user profiles, and follow system.
+- **Bottom Audio Control:** The mute/unmute speaker control lives in the lower audio bar (`feed_mute_button`); the old top-end speaker icon was removed.
 - **Admin Moderation Portal:** Dedicated dashboard for reviewing user reports, account status management, and policy compliance.
-- **Signed Release:** Signed with official 30-year production certificate (`CN=Ahmed Becetti`) supporting APK Signature Schemes v2/v3.
+- **Signed Release:** Signed with a 30-year production certificate (`CN=Ahmed Becetti`, `chort-release.jks`) supporting APK Signature Schemes v1/v2/v3.
+- **Verifiable Builds:** `versionCode`/`versionName` are bumped on every release, the source commit is stamped into `BuildConfig.GIT_COMMIT` and displayed in Profile, and `scripts/verify_apk.py` proves the APK matches the source tree.
 
 ---
 

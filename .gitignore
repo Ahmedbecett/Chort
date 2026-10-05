@@ -23,3 +23,16 @@ node_modules/
 dist/
 *.log
 .vercel
+
+# Release artifacts are produced by scripts/build_release.sh or CI and attached
+# to GitHub Releases - never committed again (a committed APK is exactly how the
+# stale-build problem happened before).
+release/*.apk
+release/*.aab
+release/*.bundle
+release/*.patch
+
+# Generated verification output (produced per build by scripts/verify_apk.py)
+release/VERIFICATION_REPORT.md
+__pycache__/
+*.pyc
