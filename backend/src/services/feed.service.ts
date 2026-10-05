@@ -21,6 +21,23 @@ export class FeedService {
     const cacheKey = `feed:fyp:${options.userId || 'guest'}:${options.cursor || 'top'}:${limit}`;
 
     if (!isDbConfigured()) {
+      try {
+        const upstreamResp = await fetch(
+          `${config.primaryUpstreamUrl}/api/v1/feed?limit=${limit}${options.cursor ? `&cursor=${encodeURIComponent(options.cursor)}` : ''}`
+        );
+        if (upstreamResp.ok) {
+          const upstreamData = (await upstreamResp.json()) as any;
+          if (upstreamData && Array.isArray(upstreamData.videos) && upstreamData.videos.length > 0) {
+            return {
+              ...upstreamData,
+              source: 'PostgreSQL/Neon (Primary Cluster)',
+              databaseConnected: true,
+            };
+          }
+        }
+      } catch (err: any) {
+        console.warn('Upstream cluster fallback error:', err.message);
+      }
       if (PexelsService.isConfigured()) {
         const pexels = await PexelsService.getVideos({ perPage: limit });
         return {
@@ -181,6 +198,23 @@ export class FeedService {
       return payload;
     } catch (dbError: any) {
       console.warn('Database query error:', dbError.message);
+      try {
+        const upstreamResp = await fetch(
+          `${config.primaryUpstreamUrl}/api/v1/feed?limit=${limit}${options.cursor ? `&cursor=${encodeURIComponent(options.cursor)}` : ''}`
+        );
+        if (upstreamResp.ok) {
+          const upstreamData = (await upstreamResp.json()) as any;
+          if (upstreamData && Array.isArray(upstreamData.videos) && upstreamData.videos.length > 0) {
+            return {
+              ...upstreamData,
+              source: 'PostgreSQL/Neon (Primary Cluster)',
+              databaseConnected: true,
+            };
+          }
+        }
+      } catch (err: any) {
+        console.warn('Upstream cluster fallback error in catch block:', err.message);
+      }
       if (PexelsService.isConfigured()) {
         try {
           const pexels = await PexelsService.getVideos({ perPage: limit });

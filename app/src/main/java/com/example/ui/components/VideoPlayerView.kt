@@ -16,6 +16,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -79,16 +81,20 @@ fun VideoPlayerView(
     thumbnailUrl: String,
     isCurrentPage: Boolean,
     videoId: String? = null,
+    isMuted: Boolean = false,
+    onToggleMute: (() -> Unit)? = null,
+    onRetry: (() -> Unit)? = null,
+    onSkip: (() -> Unit)? = null,
     onDoubleTap: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
 
     var isPlaying by remember { mutableStateOf(true) }
-    var isMuted by remember { mutableStateOf(false) }
     var isBuffering by remember { mutableStateOf(true) }
     var isPrepared by remember { mutableStateOf(false) }
     var hasError by remember { mutableStateOf(false) }
+    var lastTechnicalError by remember { mutableStateOf<String?>(null) }
     var retryTrigger by remember { mutableIntStateOf(0) }
     var refreshAttempted by remember(videoUrl, retryTrigger) { mutableStateOf(false) }
 
@@ -111,17 +117,18 @@ fun VideoPlayerView(
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
                 /* minBufferMs = */ 1500,
-                /* maxBufferMs = */ 8000,
+                /* maxBufferMs = */ 10000,
                 /* bufferForPlaybackMs = */ 500,
                 /* bufferForPlaybackAfterRebufferMs = */ 1000
             )
             .build()
 
         val httpDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
-            .setConnectTimeoutMs(8000)
-            .setReadTimeoutMs(15000)
+            .setConnectTimeoutMs(15000)
+            .setReadTimeoutMs(25000)
             .setAllowCrossProtocolRedirects(true)
             .setKeepPostFor302Redirects(true)
+            .setUserAgent("Chort-Android/2.2.0 (Linux; Android)")
 
         val dataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(context, httpDataSourceFactory)
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
@@ -134,7 +141,7 @@ fun VideoPlayerView(
             .build().apply {
                 repeatMode = Player.REPEAT_MODE_ONE
                 videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
-                volume = 1.0f
+                volume = if (isMuted) 0f else 1.0f
 
                 addListener(object : Player.Listener {
                     override fun onPlaybackStateChanged(playbackState: Int) {
@@ -146,6 +153,7 @@ fun VideoPlayerView(
                                 isBuffering = false
                                 isPrepared = true
                                 hasError = false
+                                lastTechnicalError = null
                             }
                             Player.STATE_ENDED -> {
                                 isBuffering = false
@@ -157,8 +165,10 @@ fun VideoPlayerView(
                     }
 
                     override fun onPlayerError(error: PlaybackException) {
-                        Log.w(TAG, "Media3 ExoPlayer error (${error.errorCode}): ${error.message}")
-                        
+                        val detail = "Playback Error (${error.errorCodeName} / ${error.errorCode}): ${error.message ?: "Failed to decode/stream media"}"
+                        Log.e(TAG, detail, error)
+                        lastTechnicalError = detail
+
                         // If signed URL expired (403, 404, 416 or HTTP status error), auto-request refreshed signed stream URL
                         val isHttpStatusOrExpired = error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS
                             || error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
@@ -170,10 +180,13 @@ fun VideoPlayerView(
                             refreshAttempted = true
                             isBuffering = true
                             hasError = false
-                            val refreshedStreamUrl = "${TokPulseApiClient.BASE_URL}api/v1/videos/$effectiveVideoId/stream"
-                            Log.i(TAG, "Refreshing expired signed URL via $refreshedStreamUrl")
+                            val refreshedStreamUrl = TokPulseApiClient.getCanonicalStreamUrl(effectiveVideoId)
+                            Log.i(TAG, "Refreshing stream URL via $refreshedStreamUrl")
                             try {
-                                val mediaItem = MediaItem.fromUri(Uri.parse(refreshedStreamUrl))
+                                val mediaItem = MediaItem.Builder()
+                                    .setUri(Uri.parse(refreshedStreamUrl))
+                                    .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MP4)
+                                    .build()
                                 setMediaItem(mediaItem)
                                 prepare()
                                 play()
@@ -193,20 +206,35 @@ fun VideoPlayerView(
                 val isInvalidDummyHost = trimmedUrl.contains("test.com") || trimmedUrl.contains("example.com")
                 if (trimmedUrl.isNotBlank() && !isInvalidDummyHost && (trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://"))) {
                     try {
-                        val mediaItem = MediaItem.fromUri(Uri.parse(trimmedUrl))
+                        val isHls = trimmedUrl.contains(".m3u8") || trimmedUrl.contains("hls")
+                        val mediaItem = MediaItem.Builder()
+                            .setUri(Uri.parse(trimmedUrl))
+                            .apply {
+                                if (isHls) {
+                                    setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+                                } else {
+                                    setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MP4)
+                                }
+                            }
+                            .build()
                         setMediaItem(mediaItem)
                         prepare()
                     } catch (e: Exception) {
-                        Log.w(TAG, "Failed to setMediaItem: ${e.message}")
+                        Log.e(TAG, "Failed to setMediaItem: ${e.message}", e)
+                        lastTechnicalError = "Setup error: ${e.message}"
                         hasError = true
                         isBuffering = false
                     }
                 } else if (effectiveVideoId != null) {
-                    val canonicalStream = "${TokPulseApiClient.BASE_URL}api/v1/videos/$effectiveVideoId/stream"
-                    val mediaItem = MediaItem.fromUri(Uri.parse(canonicalStream))
+                    val canonicalStream = TokPulseApiClient.getCanonicalStreamUrl(effectiveVideoId)
+                    val mediaItem = MediaItem.Builder()
+                        .setUri(Uri.parse(canonicalStream))
+                        .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MP4)
+                        .build()
                     setMediaItem(mediaItem)
                     prepare()
                 } else {
+                    lastTechnicalError = "Invalid or empty video URL"
                     hasError = true
                     isBuffering = false
                 }
@@ -291,25 +319,6 @@ fun VideoPlayerView(
             )
         }
 
-        // Sound Mute/Unmute Indicator Button at top-end
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 64.dp, end = 16.dp)
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.55f))
-                .clickable { isMuted = !isMuted },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                contentDescription = if (isMuted) "Unmute Audio" else "Mute Audio",
-                tint = if (isMuted) TokRed else Color.White,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
         // Buffering loader
         if (isBuffering && isCurrentPage && !hasError) {
             CircularProgressIndicator(
@@ -319,12 +328,13 @@ fun VideoPlayerView(
             )
         }
 
-        // Error with Retry button
+        // Error with Real Technical Diagnostics and Real Retry / Skip
         if (hasError && isCurrentPage) {
             Column(
                 modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
-                    .padding(24.dp),
+                    .padding(horizontal = 28.dp)
+                    .background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(16.dp))
+                    .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -332,33 +342,63 @@ fun VideoPlayerView(
                     imageVector = Icons.Default.Warning,
                     contentDescription = "Playback Error",
                     tint = TokRed,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(36.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "تعذر تحميل الفيديو أو لا يوجد اتصال",
+                    text = "تعذر تشغيل الفيديو",
                     color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = lastTechnicalError ?: "Playback could not connect to video stream",
+                    color = Color.White.copy(alpha = 0.75f),
+                    fontSize = 11.5.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    maxLines = 3,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(14.dp))
-                Button(
-                    onClick = {
-                        hasError = false
-                        isBuffering = true
-                        retryTrigger++
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = TokCyan),
-                    shape = RoundedCornerShape(20.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Retry",
-                        tint = Color.Black,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.size(6.dp))
-                    Text(text = "Retry", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = {
+                            hasError = false
+                            isBuffering = true
+                            refreshAttempted = false
+                            onRetry?.invoke()
+                            retryTrigger++
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = TokCyan),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.testTag("player_retry_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Retry",
+                            tint = Color.Black,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.size(6.dp))
+                        Text(text = "Retry", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+
+                    if (onSkip != null) {
+                        androidx.compose.material3.OutlinedButton(
+                            onClick = {
+                                hasError = false
+                                onSkip.invoke()
+                            },
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.testTag("player_skip_button")
+                        ) {
+                            Text(text = "Skip", color = Color.White, fontSize = 13.sp)
+                        }
+                    }
                 }
             }
         }

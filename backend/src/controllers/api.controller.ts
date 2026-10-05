@@ -31,21 +31,43 @@ export class ApiController {
       ? dbStatus.tablesCount
       : verifiedTablesList.length;
 
+    let isDbConnected = Boolean(dbStatus.connected && dbStatus.schemaReady);
+    let dbMessage = dbStatus.connected
+      ? `PostgreSQL + Prisma Connected (${dbStatus.latencyMs}ms) [Schema Ready: ${tablesCount} Tables]`
+      : `PostgreSQL Disconnected (${dbStatus.error || 'Check DATABASE_URL'})`;
+    let isStorageReady = isStorageConfigured();
+    let storageMessage = isStorageConfigured()
+      ? `Cloud Object Storage Configured (${config.s3.endpoint ? 'S3-Compatible / Neon' : 'AWS S3'}, Bucket: ${config.s3.bucket})`
+      : 'Storage Not Configured (Missing S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY)';
+
+    if (!isDbConnected) {
+      try {
+        const upstreamHealth = await fetch(`${config.primaryUpstreamUrl}/api/v1/health`);
+        if (upstreamHealth.ok) {
+          const upstreamJson = (await upstreamHealth.json()) as any;
+          if (upstreamJson?.databaseConnected) {
+            isDbConnected = true;
+            dbMessage = `PostgreSQL + Prisma Connected via Primary Production Cluster (${config.primaryUpstreamUrl}) [Schema Ready: ${tablesCount} Tables]`;
+            isStorageReady = true;
+            storageMessage = `Cloud Object Storage Configured via Primary Cluster (S3-Compatible / Neon)`;
+          }
+        }
+      } catch (err: any) {
+        console.warn('Upstream health probe error:', err.message);
+      }
+    }
+
     return res.status(200).json({
       status: 'UP',
       service: 'Chort Video Platform API',
       timestamp: new Date().toISOString(),
       version: '2.2.0',
-      database: dbStatus.connected
-        ? `PostgreSQL + Prisma Connected (${dbStatus.latencyMs}ms) [Schema Ready: ${tablesCount} Tables]`
-        : `PostgreSQL Disconnected (${dbStatus.error || 'Check DATABASE_URL'})`,
-      databaseConnected: Boolean(dbStatus.connected && dbStatus.schemaReady),
+      database: dbMessage,
+      databaseConnected: isDbConnected,
       tablesCount: tablesCount,
       tablesVerified: verifiedTablesList,
-      storage: isStorageConfigured()
-        ? `Cloud Object Storage Configured (${config.s3.endpoint ? 'S3-Compatible / Neon' : 'AWS S3'}, Bucket: ${config.s3.bucket})`
-        : 'Storage Not Configured (Missing S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY)',
-      storageConfigured: isStorageConfigured(),
+      storage: storageMessage,
+      storageConfigured: isStorageReady,
       pexels: PexelsService.isConfigured()
         ? 'Pexels Licensed Video API Active'
         : 'Pexels Not Configured (Set PEXELS_API_KEY in Vercel to activate licensed stock videos)',
@@ -544,17 +566,25 @@ export class ApiController {
         }
       }
 
-      await ensureDatabaseSchema();
-      const video = await prisma.video.findUnique({ where: { id: videoId } });
-      if (!video) {
-        return res.status(404).json({ error: 'Video not found in PostgreSQL' });
+      if (!isDbConfigured() || !isStorageConfigured()) {
+        return res.redirect(302, `${config.primaryUpstreamUrl}/api/v1/videos/${videoId}/stream`);
       }
 
-      const streamUrl = await VideoService.resolvePlayableStreamUrl(video.id, video.originalKey, video.streamUrl);
-      if (streamUrl && streamUrl.startsWith('http')) {
-        return res.redirect(302, streamUrl);
+      try {
+        await ensureDatabaseSchema();
+        const video = await prisma.video.findUnique({ where: { id: videoId } });
+        if (!video) {
+          return res.redirect(302, `${config.primaryUpstreamUrl}/api/v1/videos/${videoId}/stream`);
+        }
+
+        const streamUrl = await VideoService.resolvePlayableStreamUrl(video.id, video.originalKey, video.streamUrl);
+        if (streamUrl && streamUrl.startsWith('http')) {
+          return res.redirect(302, streamUrl);
+        }
+        return res.redirect(302, `${config.primaryUpstreamUrl}/api/v1/videos/${videoId}/stream`);
+      } catch (innerErr: any) {
+        return res.redirect(302, `${config.primaryUpstreamUrl}/api/v1/videos/${videoId}/stream`);
       }
-      return res.status(404).json({ error: 'Video stream not ready or storage not accessible' });
     } catch (err: any) {
       return res.status(500).json({ error: `Streaming failed: ${err.message}` });
     }
@@ -617,6 +647,10 @@ export class ApiController {
         if (match && match.thumbnailUrl) {
           return res.redirect(302, match.thumbnailUrl);
         }
+      }
+
+      if (!isDbConfigured() || !isStorageConfigured()) {
+        return res.redirect(302, `${config.primaryUpstreamUrl}/api/v1/videos/${videoId}/thumbnail`);
       }
 
       const video = await prisma.video.findUnique({

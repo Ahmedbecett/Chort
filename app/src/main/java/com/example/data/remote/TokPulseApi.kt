@@ -336,8 +336,9 @@ interface TokPulseApiService {
 // -------------------------------------------------------------
 
 object TokPulseApiClient {
-    // Production Vercel Base URL - Never localhost or empty!
-    const val BASE_URL = "https://chort-nine.vercel.app/"
+    // Production Vercel Base URL - Points to deployed backend
+    const val BASE_URL = "https://chort-nmk4.vercel.app/"
+    const val FALLBACK_BASE_URL = "https://chort-nine.vercel.app/"
 
     private var authToken: String? = null
 
@@ -350,9 +351,11 @@ object TokPulseApiClient {
         .build()
 
     private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
+        .followRedirects(true)
+        .followSslRedirects(true)
         .addInterceptor { chain ->
             val requestBuilder = chain.request().newBuilder()
             authToken?.let { token ->
@@ -361,7 +364,7 @@ object TokPulseApiClient {
             chain.proceed(requestBuilder.build())
         }
         .addInterceptor(HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = HttpLoggingInterceptor.Level.HEADERS
         })
         .build()
 
@@ -373,4 +376,16 @@ object TokPulseApiClient {
             .build()
             .create(TokPulseApiService::class.java)
     }
+
+    val fallbackApi: TokPulseApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl(FALLBACK_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(TokPulseApiService::class.java)
+    }
+
+    fun getCanonicalStreamUrl(videoId: String): String = "${BASE_URL}api/v1/videos/$videoId/stream"
+    fun getFallbackStreamUrl(videoId: String): String = "${FALLBACK_BASE_URL}api/v1/videos/$videoId/stream"
 }
