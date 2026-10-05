@@ -1,6 +1,8 @@
 package com.example.data.repository
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
 import com.example.data.local.AppDatabase
@@ -19,8 +21,10 @@ import com.example.data.remote.FirebaseService
 import com.example.data.remote.LikeRequest
 import com.example.data.remote.LoginRequest
 import com.example.data.remote.RegisterRequest
+import com.example.data.remote.ShareRequest
 import com.example.data.remote.TokPulseApiClient
 import com.example.data.remote.UploadTicketRequest
+import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -128,11 +132,12 @@ class TokPulseRepository(private val context: Context) {
     }
 
     suspend fun syncWithCloud() = withContext(Dispatchers.IO) {
-        // Clean any invalid/dummy test videos that cannot be resolved
+        // Clean any invalid/dummy test videos that cannot be resolved and stale external cached videos
         try {
             dao.cleanInvalidVideos()
+            dao.cleanExternalCachedVideos()
         } catch (e: Exception) {
-            Log.w(TAG, "cleanInvalidVideos notice: ${e.message}")
+            Log.w(TAG, "cleanup notice: ${e.message}")
         }
 
         // 1. Fetch real feed from Vercel API
@@ -151,20 +156,30 @@ class TokPulseRepository(private val context: Context) {
                     }
                     val entities = validVideos.map { apiVid ->
                         val url = (apiVid.videoUrl ?: apiVid.streamUrl ?: "").trim()
+                        val thumb = apiVid.thumbnailUrl?.takeIf { it.isNotBlank() && !it.contains("#t=") }
+                            ?: "${TokPulseApiClient.BASE_URL}api/v1/videos/${apiVid.id}/thumbnail"
+                        val isExt = apiVid.id.startsWith("pex_") ||
+                            apiVid.source?.lowercase() == "pexels" ||
+                            apiVid.provider?.lowercase() == "pexels"
                         VideoEntity(
                             id = apiVid.id,
                             creatorId = apiVid.creatorId,
                             creatorUsername = apiVid.creatorUsername,
                             creatorAvatar = apiVid.creatorAvatar ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
                             videoUrl = url,
-                            thumbnailUrl = apiVid.thumbnailUrl?.ifBlank { null } ?: "$url#t=0.1",
+                            thumbnailUrl = thumb,
                             caption = apiVid.caption,
                             musicTitle = apiVid.musicTitle ?: "Original Audio",
-                            tags = "#tokpulse,#fyp,#viral",
+                            tags = if (isExt) "#pexels,#licensed,#stock" else "#chort,#fyp,#viral",
                             likesCount = apiVid.likesCount,
                             commentsCount = apiVid.commentsCount,
                             sharesCount = apiVid.sharesCount,
                             viewsCount = apiVid.viewsCount,
+                            source = apiVid.source ?: if (isExt) "pexels" else "chort",
+                            provider = apiVid.provider ?: if (isExt) "pexels" else "chort",
+                            isExternal = isExt,
+                            attributionUrl = apiVid.attributionUrl ?: "",
+                            photographerUrl = apiVid.photographerUrl ?: "",
                             createdAt = if (apiVid.createdAt > 0) apiVid.createdAt else System.currentTimeMillis()
                         )
                     }
@@ -470,6 +485,11 @@ class TokPulseRepository(private val context: Context) {
 
     suspend fun recordVideoView(videoId: String) = withContext(Dispatchers.IO) {
         dao.incrementViews(videoId)
+        try {
+            TokPulseApiClient.api.recordView(videoId)
+        } catch (e: Exception) {
+            Log.w(TAG, "Vercel recordView notice: ${e.message}")
+        }
         if (firebaseService.isFirebaseAvailable) {
             firebaseService.recordVideoView(videoId)
         }
@@ -477,6 +497,12 @@ class TokPulseRepository(private val context: Context) {
 
     suspend fun recordVideoShare(videoId: String) = withContext(Dispatchers.IO) {
         dao.incrementShares(videoId)
+        val user = _currentUser.value
+        try {
+            TokPulseApiClient.api.recordShare(videoId, ShareRequest(userId = user?.id))
+        } catch (e: Exception) {
+            Log.w(TAG, "Vercel recordShare notice: ${e.message}")
+        }
     }
 
     // --- COMMENTS ---
@@ -528,6 +554,11 @@ class TokPulseRepository(private val context: Context) {
     suspend fun deleteComment(commentId: String, videoId: String) = withContext(Dispatchers.IO) {
         dao.deleteComment(commentId)
         dao.updateCommentsCount(videoId, -1)
+        try {
+            TokPulseApiClient.api.deleteComment(videoId, commentId)
+        } catch (e: Exception) {
+            Log.w(TAG, "Vercel deleteComment notice: ${e.message}")
+        }
         if (firebaseService.isFirebaseAvailable) {
             firebaseService.deleteCommentInFirestore(commentId, videoId)
         }
@@ -603,6 +634,7 @@ class TokPulseRepository(private val context: Context) {
 
         var finalVideoUrl = videoUrl
         var videoId = "vid_${UUID.randomUUID().toString().take(8)}"
+        var realThumbUrl: String? = null
 
         // 1. Request upload ticket from Vercel API
         try {
@@ -618,16 +650,38 @@ class TokPulseRepository(private val context: Context) {
                 val ticket = ticketResp.body()!!
                 videoId = ticket.videoId
                 finalVideoUrl = ticket.streamUrl
+                realThumbUrl = ticket.thumbnailUrl
 
                 // 2. Direct binary upload to S3/Cloud Storage presigned URL if device video selected
                 if (videoUri != null) {
-                    onProgress?.invoke(0.15f)
+                    onProgress?.invoke(0.10f)
                     val uploadSuccess = uploadBinaryToUrl(ticket.uploadUrl, videoUri, onProgress)
                     if (!uploadSuccess && firebaseService.isFirebaseAvailable) {
                         val fbRes = firebaseService.uploadVideoToStorage(videoUri, videoId, onProgress)
                         if (fbRes.isSuccess) {
                             finalVideoUrl = fbRes.getOrThrow()
                         }
+                    }
+
+                    // Extract REAL video thumbnail frame using MediaMetadataRetriever
+                    try {
+                        val retriever = MediaMetadataRetriever()
+                        retriever.setDataSource(context, videoUri)
+                        val frameBitmap = retriever.getFrameAtTime(1000000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                            ?: retriever.frameAtTime
+                        if (frameBitmap != null) {
+                            val stream = ByteArrayOutputStream()
+                            frameBitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+                            val thumbBytes = stream.toByteArray()
+                            stream.close()
+
+                            if (!ticket.thumbnailUploadUrl.isNullOrBlank() && thumbBytes.isNotEmpty()) {
+                                uploadByteArrayToUrl(ticket.thumbnailUploadUrl, thumbBytes, "image/jpeg")
+                            }
+                        }
+                        retriever.release()
+                    } catch (thumbEx: Exception) {
+                        Log.w(TAG, "Frame extraction notice: ${thumbEx.message}")
                     }
                 }
 
@@ -638,9 +692,10 @@ class TokPulseRepository(private val context: Context) {
                         userId = creatorId,
                         caption = caption,
                         videoUrl = finalVideoUrl,
-                        thumbnailUrl = ticket.thumbnailUrl,
+                        thumbnailUrl = realThumbUrl ?: "${TokPulseApiClient.BASE_URL}api/v1/videos/$videoId/thumbnail",
                         musicTitle = musicTitle,
-                        aspectRatio = "9:16"
+                        aspectRatio = "9:16",
+                        objectKey = ticket.objectKey
                     )
                 )
             }
@@ -654,13 +709,16 @@ class TokPulseRepository(private val context: Context) {
             }
         }
 
+        val effectiveThumbnail = realThumbUrl?.takeIf { it.isNotBlank() && !it.contains("#t=") }
+            ?: "${TokPulseApiClient.BASE_URL}api/v1/videos/$videoId/thumbnail"
+
         val newVideo = VideoEntity(
             id = videoId,
             creatorId = creatorId,
             creatorUsername = creatorName,
             creatorAvatar = creatorAvatar,
             videoUrl = finalVideoUrl,
-            thumbnailUrl = if (finalVideoUrl.isNotBlank()) "$finalVideoUrl#t=0.1" else "",
+            thumbnailUrl = effectiveThumbnail,
             caption = caption,
             musicTitle = musicTitle.ifBlank { "Original Sound - $creatorName" },
             tags = tags,
@@ -676,6 +734,28 @@ class TokPulseRepository(private val context: Context) {
             try { firebaseService.publishVideoToFirestore(newVideo) } catch (e: Exception) {}
         }
         newVideo
+    }
+
+    private fun uploadByteArrayToUrl(uploadUrl: String, bytes: ByteArray, contentType: String): Boolean {
+        return try {
+            val client = OkHttpClient()
+            val requestBody = object : RequestBody() {
+                override fun contentType() = contentType.toMediaTypeOrNull()
+                override fun contentLength() = bytes.size.toLong()
+                override fun writeTo(sink: BufferedSink) {
+                    sink.write(bytes)
+                }
+            }
+            val request = Request.Builder()
+                .url(uploadUrl)
+                .put(requestBody)
+                .build()
+            val response = client.newCall(request).execute()
+            response.isSuccessful
+        } catch (e: Exception) {
+            Log.w(TAG, "uploadByteArrayToUrl error: ${e.message}")
+            false
+        }
     }
 
     private fun uploadBinaryToUrl(uploadUrl: String, videoUri: Uri, onProgress: ((Float) -> Unit)?): Boolean {
@@ -864,11 +944,20 @@ class TokPulseRepository(private val context: Context) {
         }
     }
 
-    suspend fun deleteVideo(videoId: String) = withContext(Dispatchers.IO) {
+    suspend fun deleteVideo(videoId: String): Boolean = withContext(Dispatchers.IO) {
+        dao.deleteVideo(videoId)
         dao.setVideoDeleted(videoId, true)
+        val apiSuccess = try {
+            val resp = TokPulseApiClient.api.deleteVideo(videoId)
+            resp.isSuccessful
+        } catch (e: Exception) {
+            Log.w(TAG, "Vercel deleteVideo notice: ${e.message}")
+            false
+        }
         if (firebaseService.isFirebaseAvailable) {
             firebaseService.deleteVideoAdminFirestore(videoId)
         }
+        apiSuccess
     }
 
     suspend fun updateReport(reportId: String, newStatus: String, notes: String) = withContext(Dispatchers.IO) {

@@ -81,6 +81,9 @@ interface AppDao {
     @Query("UPDATE videos SET isDeleted = :isDeleted WHERE id = :id")
     suspend fun setVideoDeleted(id: String, isDeleted: Boolean)
 
+    @Query("DELETE FROM videos WHERE id = :id")
+    suspend fun deleteVideo(id: String)
+
     @Query("UPDATE videos SET likesCount = MAX(0, likesCount + :delta) WHERE id = :id")
     suspend fun updateLikesCount(id: String, delta: Int)
 
@@ -98,6 +101,9 @@ interface AppDao {
 
     @Query("DELETE FROM videos WHERE videoUrl LIKE '%test.com%' OR videoUrl LIKE '%example.com%' OR videoUrl = '' OR videoUrl LIKE 'http://localhost%'")
     suspend fun cleanInvalidVideos()
+
+    @Query("DELETE FROM videos WHERE isExternal = 1 OR source = 'pexels' OR provider = 'pexels'")
+    suspend fun cleanExternalCachedVideos()
 
     @Query("SELECT * FROM videos WHERE isHidden = 0 AND isDeleted = 0 ORDER BY createdAt DESC")
     suspend fun getAllActiveVideosSync(): List<VideoEntity>

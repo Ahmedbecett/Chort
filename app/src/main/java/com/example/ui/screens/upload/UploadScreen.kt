@@ -139,7 +139,7 @@ fun UploadScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Share short-form stories with millions on TokPulse",
+                    text = "Share short-form stories with millions on Chort",
                     color = TextMuted,
                     fontSize = 12.sp
                 )
@@ -465,8 +465,19 @@ fun UploadScreen(
                     return@Button
                 }
 
+                // Validate video file size: Max 100MB
+                val pfd = try {
+                    context.contentResolver.openFileDescriptor(selectedDeviceUri!!, "r")
+                } catch (e: Exception) { null }
+                val byteSize = pfd?.statSize ?: 0L
+                pfd?.close()
+                if (byteSize > 100 * 1024 * 1024) {
+                    Toast.makeText(context, "File size exceeds 100MB limit", Toast.LENGTH_LONG).show()
+                    return@Button
+                }
+
                 if (captionText.isBlank()) {
-                    captionText = "Check out this energetic moment! ✨ #tokpulse #viral"
+                    captionText = "Check out this energetic moment! ✨ #chort #viral"
                 }
 
                 isUploading = true
@@ -478,7 +489,7 @@ fun UploadScreen(
                         .findAll(captionText)
                         .map { it.value }
                         .joinToString(",")
-                    val finalTags = if (extractedTags.isNotBlank()) extractedTags else "#tokpulse,#fyp,#viral"
+                    val finalTags = if (extractedTags.isNotBlank()) extractedTags else "#chort,#fyp,#viral"
                     val finalMusic = if (musicTitle.isNotBlank()) musicTitle.trim() else ("Original Sound - " + (currentUser?.displayName ?: "Creator"))
 
                     val result = repository.uploadVideo(
@@ -498,7 +509,7 @@ fun UploadScreen(
                     delay(200)
 
                     isUploading = false
-                    Toast.makeText(context, "Video published to TokPulse!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Video published to Chort!", Toast.LENGTH_SHORT).show()
                     onUploadSuccess()
                 }
             },

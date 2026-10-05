@@ -10,6 +10,7 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -92,7 +93,22 @@ data class ApiVideo(
     val sharesCount: Int = 0,
     val viewsCount: Int = 0,
     val aspectRatio: String? = "9:16",
+    val source: String? = "chort",
+    val provider: String? = null,
+    val attributionUrl: String? = null,
+    val photographerUrl: String? = null,
     val createdAt: Long = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class ExternalVideosResponse(
+    val configured: Boolean = false,
+    val provider: String? = "pexels",
+    val page: Int = 1,
+    val perPage: Int = 15,
+    val total: Int = 0,
+    val videos: List<ApiVideo> = emptyList(),
+    val error: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -107,6 +123,8 @@ data class UploadTicketResponse(
     val videoId: String,
     val objectKey: String,
     val uploadUrl: String,
+    val thumbnailKey: String? = null,
+    val thumbnailUploadUrl: String? = null,
     val directUpload: Boolean = false,
     val streamUrl: String,
     val thumbnailUrl: String? = null
@@ -120,7 +138,32 @@ data class CompleteUploadRequest(
     val videoUrl: String,
     val thumbnailUrl: String? = null,
     val musicTitle: String? = null,
-    val aspectRatio: String? = "9:16"
+    val aspectRatio: String? = "9:16",
+    val objectKey: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class ViewResponse(
+    val counted: Boolean = false,
+    val viewsCount: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class ShareRequest(
+    val userId: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class ShareResponse(
+    val shared: Boolean = false,
+    val sharesCount: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class GenericActionResponse(
+    val success: Boolean = false,
+    val message: String? = null,
+    val deleted: Boolean = false
 )
 
 @JsonClass(generateAdapter = true)
@@ -235,6 +278,13 @@ interface TokPulseApiService {
         @Query("limit") limit: Int = 20
     ): Response<FeedResponse>
 
+    @GET("api/v1/external/videos")
+    suspend fun getExternalVideos(
+        @Query("page") page: Int = 1,
+        @Query("per_page") perPage: Int = 15,
+        @Query("query") query: String? = null
+    ): Response<ExternalVideosResponse>
+
     @POST("api/v1/videos/upload-url")
     suspend fun requestUploadUrl(@Body req: UploadTicketRequest): Response<UploadTicketResponse>
 
@@ -255,6 +305,24 @@ interface TokPulseApiService {
         @Path("videoId") videoId: String,
         @Body req: AddCommentRequest
     ): Response<CommentItemResponse>
+
+    @DELETE("api/v1/videos/{videoId}/comments/{commentId}")
+    suspend fun deleteComment(
+        @Path("videoId") videoId: String,
+        @Path("commentId") commentId: String
+    ): Response<GenericActionResponse>
+
+    @POST("api/v1/videos/{videoId}/view")
+    suspend fun recordView(@Path("videoId") videoId: String): Response<ViewResponse>
+
+    @POST("api/v1/videos/{videoId}/share")
+    suspend fun recordShare(
+        @Path("videoId") videoId: String,
+        @Body req: ShareRequest
+    ): Response<ShareResponse>
+
+    @DELETE("api/v1/videos/{videoId}")
+    suspend fun deleteVideo(@Path("videoId") videoId: String): Response<GenericActionResponse>
 
     @GET("api/v1/search")
     suspend fun search(@Query("q") query: String): Response<SearchResponse>

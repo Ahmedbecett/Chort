@@ -125,6 +125,7 @@ export class VideoService {
     thumbnailUrl?: string;
     musicTitle?: string;
     aspectRatio?: string;
+    objectKey?: string;
   }) {
     const { videoId, userId, caption, videoUrl, thumbnailUrl, musicTitle, aspectRatio } = params;
 
@@ -151,12 +152,14 @@ export class VideoService {
       ? thumbnailUrl
       : `${config.cdn.baseUrl}/api/v1/videos/${videoId}/thumbnail`;
 
+    const storedKey = params.objectKey || `videos/${videoId}.mp4`;
+
     const video = await prisma.video.create({
       data: {
         id: videoId,
         userId,
         caption: caption || 'New Chort Video',
-        originalKey: videoId,
+        originalKey: storedKey,
         streamUrl: videoUrl,
         thumbnailUrl: realThumbnail,
         status: 'READY',
@@ -197,6 +200,11 @@ export class VideoService {
       },
     });
 
+    const video = await prisma.video.findUnique({
+      where: { id: videoId },
+      select: { userId: true },
+    });
+
     if (existing) {
       await prisma.like.delete({
         where: { id: existing.id },
@@ -204,7 +212,14 @@ export class VideoService {
       const updated = await prisma.video.update({
         where: { id: videoId },
         data: { likesCount: { decrement: 1 } },
+        select: { likesCount: true },
       });
+      if (video?.userId) {
+        await prisma.profile.updateMany({
+          where: { userId: video.userId },
+          data: { likesReceived: { decrement: 1 } },
+        });
+      }
       return { liked: false, likesCount: Math.max(0, updated.likesCount) };
     } else {
       await prisma.like.create({
@@ -213,7 +228,14 @@ export class VideoService {
       const updated = await prisma.video.update({
         where: { id: videoId },
         data: { likesCount: { increment: 1 } },
+        select: { likesCount: true },
       });
+      if (video?.userId) {
+        await prisma.profile.updateMany({
+          where: { userId: video.userId },
+          data: { likesReceived: { increment: 1 } },
+        });
+      }
       return { liked: true, likesCount: updated.likesCount };
     }
   }
@@ -237,12 +259,41 @@ export class VideoService {
       },
     });
 
-    await prisma.video.update({
+    const updated = await prisma.video.update({
       where: { id: videoId },
       data: { commentsCount: { increment: 1 } },
+      select: { commentsCount: true },
     });
 
-    return comment;
+    return { comment, commentsCount: updated.commentsCount };
+  }
+
+  /**
+   * Delete comment from video in PostgreSQL
+   */
+  static async deleteComment(commentId: string, videoId: string, requestingUserId: string, userRole?: string) {
+    const comment = await prisma.comment.findUnique({
+      where: { id: commentId },
+    });
+    if (!comment) {
+      const err = new Error('Comment not found');
+      (err as any).statusCode = 404;
+      throw err;
+    }
+    const isAuthor = comment.userId === requestingUserId;
+    const isAdmin = userRole === 'ADMIN' || requestingUserId === 'ahmed_admin' || requestingUserId === 'user_admin';
+    if (!isAuthor && !isAdmin) {
+      const err = new Error('Unauthorized to delete this comment');
+      (err as any).statusCode = 403;
+      throw err;
+    }
+    await prisma.comment.delete({ where: { id: commentId } });
+    const updated = await prisma.video.update({
+      where: { id: videoId },
+      data: { commentsCount: { decrement: 1 } },
+      select: { commentsCount: true },
+    });
+    return { deleted: true, commentsCount: Math.max(0, updated.commentsCount) };
   }
 
   /**
@@ -348,17 +399,22 @@ export class VideoService {
     if (!alreadyViewed) {
       await redis.set(dedupeKey, '1', 'EX', 60);
       try {
-        await prisma.video.update({
+        const updated = await prisma.video.update({
           where: { id: videoId },
           data: { viewsCount: { increment: 1 } },
+          select: { viewsCount: true },
         });
+        return { counted: true, viewsCount: updated.viewsCount };
       } catch (e) {
-        // Continue even if DB update fails
+        // Fallback if DB error
       }
-      return { counted: true };
     }
 
-    return { counted: false };
+    const current = await prisma.video.findUnique({
+      where: { id: videoId },
+      select: { viewsCount: true },
+    });
+    return { counted: false, viewsCount: current?.viewsCount || 0 };
   }
 
   /**
@@ -368,6 +424,7 @@ export class VideoService {
     const updated = await prisma.video.update({
       where: { id: videoId },
       data: { sharesCount: { increment: 1 } },
+      select: { sharesCount: true },
     });
     if (userId && !userId.startsWith('user_guest')) {
       try {
@@ -387,7 +444,7 @@ export class VideoService {
   static async toggleSave(videoId: string, userId: string) {
     const existing = await prisma.savedVideo.findUnique({
       where: {
-        userId_videoId: { userId, videoId },
+        videoId_userId: { videoId, userId },
       },
     });
 

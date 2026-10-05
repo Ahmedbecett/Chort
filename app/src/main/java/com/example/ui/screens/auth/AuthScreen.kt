@@ -126,7 +126,7 @@ fun AuthScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "TokPulse",
+            text = "Chort",
             color = TextPrimary,
             fontSize = 30.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -542,7 +542,7 @@ fun AuthScreen(
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "TokPulse Platform • Cloud Firestore Rules Active",
+            text = "Chort Platform • Production Infrastructure Active",
             color = TextMuted,
             fontSize = 11.sp
         )

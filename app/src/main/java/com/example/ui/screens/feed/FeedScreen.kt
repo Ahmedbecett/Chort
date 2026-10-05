@@ -484,7 +484,7 @@ private fun VideoFeedItem(
     val isLongCaption = remember(video.caption) { video.caption.length > 55 || video.caption.contains("\n") }
     val displayMusicTitle = remember(video.musicTitle, video.creatorUsername) {
         val raw = video.musicTitle.trim()
-        if (raw.isBlank() || raw.contains("TokPulse", ignoreCase = true) || raw.contains("Original", ignoreCase = true)) {
+        if (raw.isBlank() || raw.contains("Chort", ignoreCase = true) || raw.contains("TokPulse", ignoreCase = true) || raw.contains("Original", ignoreCase = true)) {
             "Original sound - @${video.creatorUsername}"
         } else {
             raw
@@ -556,7 +556,7 @@ private fun VideoFeedItem(
                 .align(Alignment.BottomStart)
                 .padding(start = 14.dp, end = 76.dp, bottom = bottomSafeMargin)
         ) {
-            // Creator Handle with verified check
+            // Creator Handle with verified check or Pexels attribution badge
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -570,13 +570,30 @@ private fun VideoFeedItem(
                     fontSize = 15.5.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    imageVector = Icons.Default.Verified,
-                    contentDescription = "Verified",
-                    tint = TokCyan,
-                    modifier = Modifier.size(15.dp)
-                )
+                if (video.isExternal || video.source.equals("pexels", true) || video.provider.equals("pexels", true)) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFF05A081).copy(alpha = 0.9f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "Pexels Licensed",
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.Verified,
+                        contentDescription = "Verified",
+                        tint = TokCyan,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -667,7 +684,7 @@ private fun VideoFeedItem(
                         .clickable { onOpenProfile() }
                 )
 
-                if (!isFollowing) {
+                if (!isFollowing && !video.isExternal && !video.source.equals("pexels", true)) {
                     Box(
                         modifier = Modifier
                             .size(18.dp)

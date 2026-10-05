@@ -5,6 +5,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { VideoService } from '../services/video.service';
 import { FeedService } from '../services/feed.service';
+import { PexelsService } from '../services/pexels.service';
 import { prisma, checkDatabaseConnection, isDbConfigured, ensureDatabaseSchema } from '../lib/prisma';
 import { config, isStorageConfigured, s3Client } from '../config';
 
@@ -45,9 +46,37 @@ export class ApiController {
         ? `Cloud Object Storage Configured (${config.s3.endpoint ? 'S3-Compatible / Neon' : 'AWS S3'}, Bucket: ${config.s3.bucket})`
         : 'Storage Not Configured (Missing S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY)',
       storageConfigured: isStorageConfigured(),
+      pexels: PexelsService.isConfigured()
+        ? 'Pexels Licensed Video API Active'
+        : 'Pexels Not Configured (Set PEXELS_API_KEY in Vercel to activate licensed stock videos)',
+      pexelsConfigured: PexelsService.isConfigured(),
       cdn: config.cdn.baseUrl,
       vercelProduction: true,
     });
+  }
+
+  // --- EXTERNAL LICENSED VIDEOS (PEXELS API) ---
+  static async getExternalVideos(req: Request, res: Response) {
+    try {
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const perPage = req.query.per_page ? parseInt(req.query.per_page as string, 10) : 15;
+      const query = (req.query.query as string) || (req.query.q as string);
+
+      const result = await PexelsService.getVideos({
+        page,
+        perPage,
+        query,
+      });
+
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(500).json({
+        configured: PexelsService.isConfigured(),
+        provider: 'pexels',
+        error: `Failed to fetch external videos: ${err.message}`,
+        videos: [],
+      });
+    }
   }
 
   // --- STORAGE HEALTH & UPLOAD TICKET TEST ---
@@ -293,16 +322,32 @@ export class ApiController {
       ];
       if (contentType && !ALLOWED_MIME_TYPES.includes(contentType.toLowerCase())) {
         return res.status(400).json({
-          error: `Invalid video format: '${contentType}'. Allowed formats: MP4, MOV, WebM.`,
+          error: `Invalid video format: '${contentType}'. Allowed formats: MP4, MOV, WebM, M4V, 3GP.`,
         });
       }
 
-      // 2. Validate file size (max 100MB)
-      const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
-      if (fileSize && fileSize > MAX_FILE_SIZE_BYTES) {
-        return res.status(413).json({
-          error: `File size exceeds maximum allowed limit of 100MB (${fileSize} bytes provided).`,
+      // 2. Validate file extension
+      const ALLOWED_EXTENSIONS = ['mp4', 'mov', 'webm', 'm4v', '3gp'];
+      const ext = (filename || '').split('.').pop()?.toLowerCase();
+      if (ext && !ALLOWED_EXTENSIONS.includes(ext)) {
+        return res.status(400).json({
+          error: `Invalid file extension: '.${ext}'. Allowed extensions: .mp4, .mov, .webm, .m4v, .3gp.`,
         });
+      }
+
+      // 3. Validate file size (positive and max 100MB)
+      const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+      if (fileSize !== undefined) {
+        if (typeof fileSize !== 'number' || fileSize <= 0) {
+          return res.status(400).json({
+            error: 'File size must be a positive number of bytes.',
+          });
+        }
+        if (fileSize > MAX_FILE_SIZE_BYTES) {
+          return res.status(413).json({
+            error: `File size exceeds maximum allowed limit of 100MB (${fileSize} bytes provided).`,
+          });
+        }
       }
 
       const uploadTicket = await VideoService.createSignedUploadUrl({
@@ -324,7 +369,7 @@ export class ApiController {
 
   static async completeUpload(req: Request, res: Response) {
     try {
-      const { videoId, userId, caption, videoUrl, thumbnailUrl, musicTitle, aspectRatio } = req.body;
+      const { videoId, userId, caption, videoUrl, thumbnailUrl, musicTitle, aspectRatio, objectKey } = req.body;
       const activeUserId = userId || (req as any).user?.userId || 'user_guest';
 
       if (!videoId || !videoUrl) {
@@ -333,6 +378,7 @@ export class ApiController {
 
       await ensureDatabaseSchema();
 
+      // Protected: Any client-provided stats are intentionally ignored and sanitized!
       const video = await VideoService.completeUpload({
         videoId,
         userId: activeUserId,
@@ -341,6 +387,7 @@ export class ApiController {
         thumbnailUrl,
         musicTitle,
         aspectRatio,
+        objectKey,
       });
 
       return res.status(201).json({
@@ -393,10 +440,29 @@ export class ApiController {
 
       await ensureDatabaseSchema();
 
-      const comment = await VideoService.addComment(videoId, activeUserId, content.trim());
-      return res.status(201).json({ comment });
+      const result = await VideoService.addComment(videoId, activeUserId, content.trim());
+      return res.status(201).json(result);
     } catch (err: any) {
       return res.status(500).json({ error: `Failed to add comment: ${err.message}` });
+    }
+  }
+
+  static async deleteComment(req: Request, res: Response) {
+    try {
+      const { videoId, commentId } = req.params;
+      const requestingUserId = (req as any).user?.userId || (req.headers['x-user-id'] as string) || req.body?.userId || req.query?.userId;
+      const userRole = (req as any).user?.role || (req.headers['x-user-role'] as string);
+
+      if (!requestingUserId) {
+        return res.status(401).json({ error: 'Authentication or userId required to delete comment' });
+      }
+
+      await ensureDatabaseSchema();
+      const result = await VideoService.deleteComment(commentId, videoId, requestingUserId, userRole);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      const status = err.statusCode || 500;
+      return res.status(status).json({ error: err.message });
     }
   }
 
@@ -468,6 +534,16 @@ export class ApiController {
   static async streamVideo(req: Request, res: Response) {
     try {
       const { videoId } = req.params;
+
+      // Handle external Pexels video stream
+      if (videoId.startsWith('pex_') && PexelsService.isConfigured()) {
+        const pexelsData = await PexelsService.getVideos({ perPage: 30 });
+        const match = pexelsData.videos.find((v) => v.id === videoId);
+        if (match && match.streamUrl) {
+          return res.redirect(302, match.streamUrl);
+        }
+      }
+
       await ensureDatabaseSchema();
       const video = await prisma.video.findUnique({ where: { id: videoId } });
       if (!video) {
@@ -534,6 +610,15 @@ export class ApiController {
   static async getVideoThumbnail(req: Request, res: Response) {
     try {
       const { videoId } = req.params;
+
+      if (videoId.startsWith('pex_') && PexelsService.isConfigured()) {
+        const pexelsData = await PexelsService.getVideos({ perPage: 30 });
+        const match = pexelsData.videos.find((v) => v.id === videoId);
+        if (match && match.thumbnailUrl) {
+          return res.redirect(302, match.thumbnailUrl);
+        }
+      }
+
       const video = await prisma.video.findUnique({
         where: { id: videoId },
         include: { user: { include: { profile: true } } },

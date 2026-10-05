@@ -20,6 +20,7 @@ apiRouter.post('/videos/complete-upload', ApiController.completeUpload);
 apiRouter.get('/feed', ApiController.getFeed);
 apiRouter.get('/feed/fyp', ApiController.getFeed);
 apiRouter.get('/videos', ApiController.getFeed);
+apiRouter.get('/external/videos', ApiController.getExternalVideos);
 apiRouter.get('/videos/:videoId/stream', ApiController.streamVideo);
 apiRouter.get('/videos/:videoId/thumbnail', ApiController.getVideoThumbnail);
 apiRouter.post('/videos/:videoId/view', ApiController.recordView);
@@ -31,6 +32,7 @@ apiRouter.post('/videos/:videoId/share', ApiController.recordShare);
 apiRouter.post('/videos/:videoId/save', ApiController.toggleSave);
 apiRouter.get('/videos/:videoId/comments', ApiController.getComments);
 apiRouter.post('/videos/:videoId/comments', ApiController.addComment);
+apiRouter.delete('/videos/:videoId/comments/:commentId', ApiController.deleteComment);
 
 // Search
 apiRouter.get('/search', ApiController.search);

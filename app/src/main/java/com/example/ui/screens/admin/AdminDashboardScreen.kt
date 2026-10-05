@@ -174,7 +174,7 @@ fun AdminDashboardScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
-                        text = "TokPulse Admin Center",
+                        text = "Chort Admin Center",
                         color = TextPrimary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold

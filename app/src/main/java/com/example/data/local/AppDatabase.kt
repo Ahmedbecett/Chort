@@ -27,7 +27,7 @@ import com.example.data.local.entities.ViolationEntity
         ViolationEntity::class,
         PrivacyRequestEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -43,7 +43,7 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "tokpulse_social.db"
+                    "chort_social.db"
                 ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance

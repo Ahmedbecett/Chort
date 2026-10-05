@@ -1,4 +1,4 @@
-# 📱 TokPulse - Scalable Real-Time Short-Video Social Platform
+# 📱 Chort - Scalable Real-Time Short-Video Social Platform
 
 [![Release](https://img.shields.io/github/v/release/Ahmedbecett/Chort?color=blue&label=Latest%20Release)](https://github.com/Ahmedbecett/Chort/releases/tag/v2.2.0)
 [![Android](https://img.shields.io/badge/Platform-Android-3DDC84.svg?logo=android&logoColor=white)](https://android.com)
@@ -7,7 +7,7 @@
 [![Video Pipeline](https://img.shields.io/badge/Streaming-FFmpeg%20%7C%20HLS%20Multi--Bitrate-red.svg)](backend/src/workers/)
 [![Object Storage](https://img.shields.io/badge/Storage-S3%20%7C%20Cloud%20Storage%20%7C%20MinIO-orange.svg)](backend/src/config/)
 
-**TokPulse** is a complete, scalable, real-world short-video platform built on a decoupled cloud infrastructure modeled after modern enterprise video platforms (such as TikTok and YouTube).
+**Chort** is a complete, scalable, real-world short-video platform built on a decoupled cloud infrastructure modeled after modern enterprise video platforms (such as TikTok and YouTube).
 
 ---
 
@@ -22,7 +22,7 @@
 
 ```
                           ┌───────────────────────────┐
-                          │   TokPulse Mobile App     │
+                          │     Chort Mobile App      │
                           │   (Kotlin / Compose M3)   │
                           └─────────────┬─────────────┘
                                         │
@@ -112,4 +112,4 @@ Services will be accessible at:
 
 ---
 
-© 2026 TokPulse Social. All rights reserved. Developed by Ahmed Becetti.
+© 2026 Chort Video Social Platform. All rights reserved. Developed by Ahmed Becetti.

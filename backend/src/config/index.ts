@@ -23,6 +23,9 @@ export const config = {
   cdn: {
     baseUrl: process.env.CDN_BASE_URL || 'https://chort-nine.vercel.app',
   },
+  pexels: {
+    apiKey: process.env.PEXELS_API_KEY || '',
+  },
 };
 
 // S3 Client configuration
