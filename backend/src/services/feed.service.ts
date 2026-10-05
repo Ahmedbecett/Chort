@@ -18,7 +18,7 @@ export class FeedService {
    */
   static async getForYouFeed(options: FeedQueryOptions) {
     const limit = options.limit || 20;
-    const cacheKey = `feed:fyp:${options.userId || 'guest'}:${options.cursor || 'top'}`;
+    const cacheKey = `feed:fyp:${options.userId || 'guest'}:${options.cursor || 'top'}:${limit}`;
 
     if (!isDbConfigured()) {
       if (PexelsService.isConfigured()) {
@@ -173,7 +173,7 @@ export class FeedService {
       };
 
       try {
-        await redis.set(cacheKey, JSON.stringify(payload), 'EX', 30);
+        await redis.set(cacheKey, JSON.stringify(payload), 'EX', 10);
       } catch (e) {
         // Cache write ignore
       }

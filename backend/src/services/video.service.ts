@@ -147,12 +147,17 @@ export class VideoService {
       });
     }
 
-    // Secure, tamper-proof: metrics ALWAYS start strictly at 0!
-    const realThumbnail = thumbnailUrl && !thumbnailUrl.includes('#t=')
+    // Clean and validate real thumbnail
+    let realThumbnail = thumbnailUrl && !thumbnailUrl.includes('#t=')
       ? thumbnailUrl
       : `${config.cdn.baseUrl}/api/v1/videos/${videoId}/thumbnail`;
 
+    if (realThumbnail.includes('.mp4')) {
+      realThumbnail = `${config.cdn.baseUrl}/api/v1/videos/${videoId}/thumbnail`;
+    }
+
     const storedKey = params.objectKey || `videos/${videoId}.mp4`;
+    const canonicalStreamUrl = `${config.cdn.baseUrl}/api/v1/videos/${videoId}/stream`;
 
     const video = await prisma.video.create({
       data: {
@@ -160,7 +165,7 @@ export class VideoService {
         userId,
         caption: caption || 'New Chort Video',
         originalKey: storedKey,
-        streamUrl: videoUrl,
+        streamUrl: canonicalStreamUrl,
         thumbnailUrl: realThumbnail,
         status: 'READY',
         visibility: 'PUBLIC',
@@ -182,6 +187,10 @@ export class VideoService {
 
     try {
       await redis.del('feed:fyp:guest:top');
+      await redis.del('feed:fyp:guest:top:20');
+      await redis.del('feed:fyp:guest:top:15');
+      await redis.del('feed:fyp:guest:top:10');
+      await redis.del('feed:fyp:guest:top:2');
       await redis.del(`feed:fyp:${userId}:top`);
     } catch {
       // Invalidation ignore
@@ -194,6 +203,20 @@ export class VideoService {
    * Toggle Like on video in PostgreSQL
    */
   static async toggleLike(videoId: string, userId: string) {
+    // Ensure user exists before creating or toggling like
+    let user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          id: userId,
+          email: `${userId.replace(/[^a-zA-Z0-9_]/g, '') || 'user'}@chort.app`,
+          username: (userId.replace(/[^a-zA-Z0-9_]/g, '_') || 'user').toLowerCase(),
+          passwordHash: 'OAUTH_OR_SESSION',
+          profile: { create: { displayName: userId } },
+        },
+      });
+    }
+
     const existing = await prisma.like.findUnique({
       where: {
         videoId_userId: { videoId, userId },
@@ -244,6 +267,20 @@ export class VideoService {
    * Add comment to video in PostgreSQL
    */
   static async addComment(videoId: string, userId: string, content: string) {
+    // Ensure user exists before creating comment
+    let user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          id: userId,
+          email: `${userId.replace(/[^a-zA-Z0-9_]/g, '') || 'user'}@chort.app`,
+          username: (userId.replace(/[^a-zA-Z0-9_]/g, '_') || 'user').toLowerCase(),
+          passwordHash: 'OAUTH_OR_SESSION',
+          profile: { create: { displayName: userId } },
+        },
+      });
+    }
+
     const comment = await prisma.comment.create({
       data: {
         videoId,

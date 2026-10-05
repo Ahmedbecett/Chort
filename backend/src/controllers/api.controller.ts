@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { VideoService } from '../services/video.service';
 import { FeedService } from '../services/feed.service';
@@ -624,16 +624,22 @@ export class ApiController {
         include: { user: { include: { profile: true } } },
       });
 
-      // 1. If S3 storage has a real thumbnail, redirect to presigned GET
+      // 1. If S3 storage has a real thumbnail, verify existence before redirecting
       if (isStorageConfigured()) {
         try {
+          await s3Client.send(new HeadObjectCommand({
+            Bucket: config.s3.bucket,
+            Key: `thumbnails/${videoId}.jpg`,
+          }));
           const command = new GetObjectCommand({
             Bucket: config.s3.bucket,
             Key: `thumbnails/${videoId}.jpg`,
           });
           const signedThumb = await getSignedUrl(s3Client, command, { expiresIn: 86400 });
           return res.redirect(302, signedThumb);
-        } catch {}
+        } catch {
+          // File does not exist in S3 storage - gracefully fall back to SVG poster
+        }
       }
 
       // 2. High-res dynamic SVG poster
