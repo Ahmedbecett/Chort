@@ -4,7 +4,9 @@
   "description": "Production Scalable Video Platform Backend for TokPulse (TikTok-style Video Streaming, Processing, Transcoding & CDN)",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "prisma generate && tsc",
+    "vercel-build": "prisma generate && tsc",
+    "postinstall": "prisma generate",
     "start": "node dist/server.js",
     "dev": "ts-node src/server.ts",
     "worker": "ts-node src/workers/video-processor.worker.ts",
