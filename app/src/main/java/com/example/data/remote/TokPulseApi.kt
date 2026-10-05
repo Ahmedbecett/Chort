@@ -268,7 +268,7 @@ interface TokPulseApiService {
 
 object TokPulseApiClient {
     // Production Vercel Base URL - Never localhost or empty!
-    const val BASE_URL = "https://chort-nmk4.vercel.app/"
+    const val BASE_URL = "https://chort-nine.vercel.app/"
 
     private var authToken: String? = null
 

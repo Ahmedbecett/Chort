@@ -5,6 +5,7 @@ export const apiRouter = Router();
 
 // Health & Infrastructure Status
 apiRouter.get('/health', ApiController.healthCheck);
+apiRouter.all('/system/migrate', ApiController.runMigration);
 
 // Authentication
 apiRouter.post('/auth/register', ApiController.register);

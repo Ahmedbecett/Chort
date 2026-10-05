@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "TokPulse Video Social Platform Backend and Monorepo",
   "scripts": {
-    "build": "cd backend && npm install && npx prisma generate && npm run build",
+    "build": "cd backend && npm install && npx prisma generate && (npx prisma db push --skip-generate || true) && npm run build",
+    "vercel-build": "cd backend && npm install && npx prisma generate && (npx prisma db push --skip-generate || true) && npm run build",
     "start": "cd backend && npm start"
   },
   "dependencies": {}

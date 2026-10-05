@@ -676,6 +676,60 @@ class TokPulseRepository(private val context: Context) {
 
     fun searchUsers(query: String): Flow<List<UserEntity>> = dao.searchUsers(query)
 
+    suspend fun searchRemote(query: String) = withContext(Dispatchers.IO) {
+        val clean = query.trim()
+        if (clean.isBlank()) return@withContext
+        try {
+            val response = TokPulseApiClient.api.search(clean)
+            if (response.isSuccessful && response.body() != null) {
+                val body = response.body()!!
+                if (body.videos.isNotEmpty()) {
+                    val entities = body.videos.map { apiVid ->
+                        VideoEntity(
+                            id = apiVid.id,
+                            creatorId = apiVid.creatorId,
+                            creatorUsername = apiVid.creatorUsername,
+                            creatorAvatar = apiVid.creatorAvatar ?: "",
+                            videoUrl = apiVid.streamUrl ?: "",
+                            thumbnailUrl = apiVid.thumbnailUrl ?: "",
+                            caption = apiVid.caption,
+                            musicTitle = apiVid.musicTitle ?: "Original Audio",
+                            tags = "#tokpulse,#fyp",
+                            likesCount = apiVid.likesCount,
+                            commentsCount = apiVid.commentsCount,
+                            sharesCount = apiVid.sharesCount,
+                            viewsCount = apiVid.viewsCount,
+                            createdAt = if (apiVid.createdAt > 0) apiVid.createdAt else System.currentTimeMillis()
+                        )
+                    }
+                    dao.insertVideos(entities)
+                }
+                if (body.users.isNotEmpty()) {
+                    val userEntities = body.users.map { u ->
+                        UserEntity(
+                            id = u.id,
+                            username = u.username,
+                            displayName = u.displayName ?: u.username,
+                            email = "${u.username}@tokpulse.social",
+                            passwordHash = "EXTERNAL",
+                            avatarUrl = u.avatarUrl ?: "",
+                            bio = u.bio ?: "",
+                            followersCount = u.followersCount,
+                            followingCount = 0,
+                            totalLikes = 0,
+                            role = "user",
+                            status = "active",
+                            createdAt = System.currentTimeMillis()
+                        )
+                    }
+                    dao.insertUsers(userEntities)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "searchRemote error: ${e.message}")
+        }
+    }
+
     fun getUserById(userId: String): Flow<UserEntity?> = dao.getUserById(userId)
 
     suspend fun updateProfile(

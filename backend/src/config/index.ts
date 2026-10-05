@@ -13,13 +13,13 @@ export const config = {
   s3: {
     endpoint: process.env.S3_ENDPOINT || undefined,
     region: process.env.S3_REGION || 'us-east-1',
-    bucket: process.env.S3_BUCKET || 'tokpulse-videos',
+    bucket: process.env.S3_BUCKET || '',
     accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
     forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
   },
   cdn: {
-    baseUrl: process.env.CDN_BASE_URL || 'https://chort-nmk4.vercel.app',
+    baseUrl: process.env.CDN_BASE_URL || 'https://chort-nine.vercel.app',
   },
 };
 

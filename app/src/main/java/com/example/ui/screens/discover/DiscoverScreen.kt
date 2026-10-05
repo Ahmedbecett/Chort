@@ -43,6 +43,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -90,6 +91,12 @@ fun DiscoverScreen(
     val allUsers by repository.getAllUsersAdmin().collectAsState(initial = emptyList())
     val currentUser by repository.currentUser.collectAsState()
     val followingIds by repository.getFollowingIds(currentUser?.id ?: "").collectAsState(initial = emptyList())
+
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isNotBlank() && searchQuery.trim().length >= 2) {
+            repository.searchRemote(searchQuery.trim())
+        }
+    }
 
     val searchResultsVideos = remember(searchQuery, allVideos) {
         if (searchQuery.isBlank()) allVideos else {

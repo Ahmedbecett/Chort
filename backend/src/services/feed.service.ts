@@ -58,7 +58,7 @@ export class FeedService {
         id: v.id,
         creatorId: v.userId,
         creatorUsername: v.user.username,
-        creatorAvatar: v.user.profile?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300',
+        creatorAvatar: v.user.profile?.avatarUrl || '',
         caption: v.caption,
         streamUrl: v.streamUrl,
         thumbnailUrl: v.thumbnailUrl || '',

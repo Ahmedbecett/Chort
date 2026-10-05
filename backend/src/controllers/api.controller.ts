@@ -3,11 +3,11 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { VideoService } from '../services/video.service';
 import { FeedService } from '../services/feed.service';
-import { prisma, checkDatabaseConnection, isDbConfigured } from '../lib/prisma';
+import { prisma, checkDatabaseConnection, isDbConfigured, ensureDatabaseSchema } from '../lib/prisma';
 import { config, isStorageConfigured } from '../config';
 
 export class ApiController {
-  // --- HEALTH CHECK ---
+  // --- HEALTH CHECK & SCHEMA VERIFICATION ---
   static async healthCheck(req: Request, res: Response) {
     const dbStatus = await checkDatabaseConnection();
 
@@ -17,13 +17,28 @@ export class ApiController {
       timestamp: new Date().toISOString(),
       version: '1.2.0',
       database: dbStatus.connected
-        ? `PostgreSQL + Prisma Connected (${dbStatus.latencyMs}ms)`
-        : `PostgreSQL Initializing (${dbStatus.error || 'Check DATABASE_URL'})`,
-      databaseConnected: dbStatus.connected,
-      storage: isStorageConfigured() ? 'Cloud Object Storage (S3/R2/GCS)' : 'Direct Storage Pipeline Ready',
+        ? `PostgreSQL + Prisma Connected (${dbStatus.latencyMs}ms)${dbStatus.schemaReady ? ' [Schema Ready]' : ' [Schema Initializing]'}`
+        : `PostgreSQL Disconnected (${dbStatus.error || 'Check DATABASE_URL'})`,
+      databaseConnected: dbStatus.connected && Boolean(dbStatus.schemaReady),
+      storage: isStorageConfigured()
+        ? 'Cloud Object Storage Configured (S3/R2)'
+        : 'Storage Not Configured (Missing S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY)',
       cdn: config.cdn.baseUrl,
       vercelProduction: true,
     });
+  }
+
+  // --- MANUAL SCHEMA MIGRATION / INITIALIZATION ---
+  static async runMigration(req: Request, res: Response) {
+    try {
+      const result = await ensureDatabaseSchema(true);
+      return res.status(result.success ? 200 : 500).json(result);
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        error: err.message,
+      });
+    }
   }
 
   // --- AUTHENTICATION ---
@@ -37,110 +52,76 @@ export class ApiController {
         });
       }
 
+      if (!isDbConfigured()) {
+        return res.status(503).json({
+          error: 'DATABASE_URL is not configured in Vercel environment variables.',
+        });
+      }
+
       const cleanEmail = email.trim().toLowerCase();
       const cleanUsername = username.trim().toLowerCase();
 
-      if (!isDbConfigured()) {
-        const fallbackId = `user_${Date.now()}`;
-        const token = jwt.sign(
-          { userId: fallbackId, email: cleanEmail, username: cleanUsername, role: 'USER' },
-          config.jwtSecret,
-          { expiresIn: '30d' }
-        );
+      // Ensure schema is ready
+      await ensureDatabaseSchema();
 
-        return res.status(201).json({
-          message: 'Account registered successfully',
-          token,
-          user: {
-            id: fallbackId,
-            email: cleanEmail,
-            username: cleanUsername,
-            displayName: displayName || cleanUsername,
-            avatarUrl: `https://api.dicebear.com/7.x/avataaars/png?seed=${cleanUsername}`,
-            role: 'USER',
-          },
-        });
+      // Check existing user in PostgreSQL
+      const existing = await prisma.user.findFirst({
+        where: {
+          OR: [{ email: cleanEmail }, { username: cleanUsername }],
+        },
+      });
+
+      if (existing) {
+        if (existing.email === cleanEmail) {
+          return res.status(409).json({ error: 'Email is already registered' });
+        }
+        if (existing.username === cleanUsername) {
+          return res.status(409).json({ error: 'Username is already taken' });
+        }
       }
 
-      // Check existing user in Prisma
-      try {
-        const existing = await prisma.user.findFirst({
-          where: {
-            OR: [{ email: cleanEmail }, { username: cleanUsername }],
-          },
-        });
-
-        if (existing) {
-          if (existing.email === cleanEmail) {
-            return res.status(409).json({ error: 'Email is already registered' });
-          }
-          if (existing.username === cleanUsername) {
-            return res.status(409).json({ error: 'Username is already taken' });
-          }
-        }
-
-        const passwordHash = await bcrypt.hash(password, 10);
-        const user = await prisma.user.create({
-          data: {
-            email: cleanEmail,
-            username: cleanUsername,
-            passwordHash,
-            role: 'USER',
-            profile: {
-              create: {
-                displayName: displayName || cleanUsername,
-                avatarUrl: `https://api.dicebear.com/7.x/avataaars/png?seed=${cleanUsername}`,
-              },
+      const passwordHash = await bcrypt.hash(password, 10);
+      const user = await prisma.user.create({
+        data: {
+          email: cleanEmail,
+          username: cleanUsername,
+          passwordHash,
+          role: 'USER',
+          profile: {
+            create: {
+              displayName: displayName || cleanUsername,
+              avatarUrl: `https://api.dicebear.com/7.x/avataaars/png?seed=${cleanUsername}`,
             },
           },
-          include: {
-            profile: true,
-          },
-        });
+        },
+        include: {
+          profile: true,
+        },
+      });
 
-        const token = jwt.sign(
-          { userId: user.id, email: user.email, username: user.username, role: user.role },
-          config.jwtSecret,
-          { expiresIn: '30d' }
-        );
+      const token = jwt.sign(
+        { userId: user.id, email: user.email, username: user.username, role: user.role },
+        config.jwtSecret,
+        { expiresIn: '30d' }
+      );
 
-        return res.status(201).json({
-          message: 'Account created successfully',
-          token,
-          user: {
-            id: user.id,
-            email: user.email,
-            username: user.username,
-            displayName: user.profile?.displayName || user.username,
-            avatarUrl: user.profile?.avatarUrl,
-            role: user.role,
-          },
-        });
-      } catch (dbErr: any) {
-        // Fallback for resilient startup if DATABASE_URL is not yet applied
-        console.warn('DB register error, generating resilient token:', dbErr.message);
-        const fallbackId = `user_${Date.now()}`;
-        const token = jwt.sign(
-          { userId: fallbackId, email: cleanEmail, username: cleanUsername, role: 'USER' },
-          config.jwtSecret,
-          { expiresIn: '30d' }
-        );
-
-        return res.status(201).json({
-          message: 'Account registered successfully',
-          token,
-          user: {
-            id: fallbackId,
-            email: cleanEmail,
-            username: cleanUsername,
-            displayName: displayName || cleanUsername,
-            avatarUrl: `https://api.dicebear.com/7.x/avataaars/png?seed=${cleanUsername}`,
-            role: 'USER',
-          },
-        });
-      }
+      return res.status(201).json({
+        message: 'Account created successfully in PostgreSQL',
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          displayName: user.profile?.displayName || user.username,
+          avatarUrl: user.profile?.avatarUrl,
+          role: user.role,
+        },
+      });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      console.error('Registration error:', err.message);
+      return res.status(500).json({
+        error: `Database registration error: ${err.message}`,
+      });
     }
   }
 
@@ -154,90 +135,58 @@ export class ApiController {
       }
 
       if (!isDbConfigured()) {
-        const token = jwt.sign(
-          { userId: `user_${loginId}`, email: `${loginId}@tokpulse.social`, username: loginId, role: 'USER' },
-          config.jwtSecret,
-          { expiresIn: '30d' }
-        );
-
-        return res.status(200).json({
-          message: 'Login successful',
-          token,
-          user: {
-            id: `user_${loginId}`,
-            email: `${loginId}@tokpulse.social`,
-            username: loginId,
-            displayName: loginId,
-            avatarUrl: `https://api.dicebear.com/7.x/avataaars/png?seed=${loginId}`,
-            role: 'USER',
-          },
+        return res.status(503).json({
+          error: 'DATABASE_URL is not configured in Vercel environment variables.',
         });
       }
 
-      try {
-        const user = await prisma.user.findFirst({
-          where: {
-            OR: [{ email: loginId }, { username: loginId }],
-          },
-          include: {
-            profile: true,
-          },
-        });
+      // Ensure schema is ready
+      await ensureDatabaseSchema();
 
-        if (!user) {
-          return res.status(401).json({ error: 'Account not found with this email or username' });
-        }
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: [{ email: loginId }, { username: loginId }],
+        },
+        include: {
+          profile: true,
+        },
+      });
 
-        const isValid = await bcrypt.compare(password, user.passwordHash);
-        if (!isValid && user.passwordHash !== 'OAUTH_OR_SESSION' && user.passwordHash !== 'INITIAL_ACTIVE') {
-          return res.status(401).json({ error: 'Incorrect password' });
-        }
-
-        const token = jwt.sign(
-          { userId: user.id, email: user.email, username: user.username, role: user.role },
-          config.jwtSecret,
-          { expiresIn: '30d' }
-        );
-
-        return res.status(200).json({
-          message: 'Login successful',
-          token,
-          user: {
-            id: user.id,
-            email: user.email,
-            username: user.username,
-            displayName: user.profile?.displayName || user.username,
-            avatarUrl: user.profile?.avatarUrl,
-            bio: user.profile?.bio,
-            followersCount: user.profile?.followersCount || 0,
-            followingCount: user.profile?.followingCount || 0,
-            role: user.role,
-          },
-        });
-      } catch (dbErr: any) {
-        console.warn('DB login error, checking fallback:', dbErr.message);
-        // Resilient fallback authentication for admin / test accounts
-        const token = jwt.sign(
-          { userId: `user_${loginId}`, email: `${loginId}@tokpulse.social`, username: loginId, role: 'USER' },
-          config.jwtSecret,
-          { expiresIn: '30d' }
-        );
-
-        return res.status(200).json({
-          message: 'Login successful',
-          token,
-          user: {
-            id: `user_${loginId}`,
-            email: `${loginId}@tokpulse.social`,
-            username: loginId,
-            displayName: loginId,
-            avatarUrl: `https://api.dicebear.com/7.x/avataaars/png?seed=${loginId}`,
-            role: 'USER',
-          },
-        });
+      if (!user) {
+        return res.status(401).json({ error: 'Account not found with this email or username' });
       }
+
+      const isValid = await bcrypt.compare(password, user.passwordHash);
+      if (!isValid && user.passwordHash !== 'OAUTH_OR_SESSION' && user.passwordHash !== 'INITIAL_ACTIVE') {
+        return res.status(401).json({ error: 'Incorrect password' });
+      }
+
+      const token = jwt.sign(
+        { userId: user.id, email: user.email, username: user.username, role: user.role },
+        config.jwtSecret,
+        { expiresIn: '30d' }
+      );
+
+      return res.status(200).json({
+        message: 'Login successful',
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          displayName: user.profile?.displayName || user.username,
+          avatarUrl: user.profile?.avatarUrl,
+          bio: user.profile?.bio,
+          followersCount: user.profile?.followersCount || 0,
+          followingCount: user.profile?.followingCount || 0,
+          role: user.role,
+        },
+      });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      console.error('Login error:', err.message);
+      return res.status(500).json({
+        error: `Database login error: ${err.message}`,
+      });
     }
   }
 
@@ -246,6 +195,9 @@ export class ApiController {
     try {
       const userId = (req as any).user?.userId;
       const { cursor, limit } = req.query;
+
+      // Ensure schema is ready before querying
+      await ensureDatabaseSchema();
 
       const feed = await FeedService.getForYouFeed({
         userId,
@@ -273,7 +225,11 @@ export class ApiController {
 
       return res.status(200).json(uploadTicket);
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      const statusCode = err.statusCode || 500;
+      return res.status(statusCode).json({
+        error: err.message,
+        missingVars: err.missingVars || undefined,
+      });
     }
   }
 
@@ -286,6 +242,8 @@ export class ApiController {
         return res.status(400).json({ error: 'videoId and videoUrl are required' });
       }
 
+      await ensureDatabaseSchema();
+
       const video = await VideoService.completeUpload({
         videoId,
         userId: activeUserId,
@@ -297,11 +255,13 @@ export class ApiController {
       });
 
       return res.status(201).json({
-        message: 'Video published successfully',
+        message: 'Video published successfully to PostgreSQL',
         video,
       });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({
+        error: `Failed to complete video upload: ${err.message}`,
+      });
     }
   }
 
@@ -312,20 +272,23 @@ export class ApiController {
       const { userId } = req.body;
       const activeUserId = userId || (req as any).user?.userId || 'user_guest';
 
+      await ensureDatabaseSchema();
+
       const result = await VideoService.toggleLike(videoId, activeUserId);
       return res.status(200).json(result);
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: `Like operation failed: ${err.message}` });
     }
   }
 
   static async getComments(req: Request, res: Response) {
     try {
       const { videoId } = req.params;
+      await ensureDatabaseSchema();
       const comments = await VideoService.getComments(videoId);
       return res.status(200).json({ comments });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: `Failed to fetch comments: ${err.message}` });
     }
   }
 
@@ -339,10 +302,12 @@ export class ApiController {
         return res.status(400).json({ error: 'Comment content cannot be empty' });
       }
 
+      await ensureDatabaseSchema();
+
       const comment = await VideoService.addComment(videoId, activeUserId, content.trim());
       return res.status(201).json({ comment });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: `Failed to add comment: ${err.message}` });
     }
   }
 
@@ -350,10 +315,11 @@ export class ApiController {
   static async search(req: Request, res: Response) {
     try {
       const query = (req.query.q as string) || '';
+      await ensureDatabaseSchema();
       const results = await VideoService.search(query);
       return res.status(200).json(results);
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: `Search failed: ${err.message}` });
     }
   }
 
@@ -361,6 +327,7 @@ export class ApiController {
   static async getUserProfile(req: Request, res: Response) {
     try {
       const { userId } = req.params;
+      await ensureDatabaseSchema();
       const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
@@ -373,7 +340,7 @@ export class ApiController {
       });
 
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return res.status(404).json({ error: 'User not found in PostgreSQL' });
       }
 
       return res.status(200).json({
@@ -390,7 +357,7 @@ export class ApiController {
         },
       });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: `Profile fetch failed: ${err.message}` });
     }
   }
 
