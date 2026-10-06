@@ -337,8 +337,8 @@ interface TokPulseApiService {
 
 object TokPulseApiClient {
     // Production Vercel Base URL - Points to deployed backend
-    const val BASE_URL = "https://chort-nmk4.vercel.app/"
-    const val FALLBACK_BASE_URL = "https://chort-nine.vercel.app/"
+    const val BASE_URL = "https://chort-nine.vercel.app/"
+    const val FALLBACK_BASE_URL = "https://chort-nmk4.vercel.app/"
 
     private var authToken: String? = null
 

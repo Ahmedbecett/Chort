@@ -92,7 +92,7 @@ class ExampleRobolectricTest {
 
     @Test
     fun testMedia3MediaItemCreationFromProductionVideo() {
-        val testUrl = "https://chort-nmk4.vercel.app/api/v1/videos/vid_fda6bd47573f4bb4/stream"
+        val testUrl = "https://chort-nine.vercel.app/api/v1/videos/vid_fda6bd47573f4bb4/stream"
         val mediaItem = androidx.media3.common.MediaItem.Builder()
             .setUri(android.net.Uri.parse(testUrl))
             .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MP4)
