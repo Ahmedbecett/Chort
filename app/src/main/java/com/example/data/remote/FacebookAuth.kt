@@ -46,7 +46,7 @@ object FacebookAuth {
                     object : FacebookCallback<LoginResult> {
                         override fun onSuccess(result: LoginResult) {
                             if (!cont.isActive) return
-                            val token = result.accessToken?.tokenString
+                            val token = result.accessToken?.token
                             if (token.isNullOrBlank()) {
                                 cont.resume(Result.failure(Exception("Facebook returned an empty token.")))
                             } else {
