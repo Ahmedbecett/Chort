@@ -24,6 +24,8 @@ import {
  *     logged users, fast seen-list for guests, `seen` param for everyone).
  *  4. User content is primary: licensed Pexels/Coverr clips are seed content
  *     that backfills thin pages and shrinks to a discovery mix as users post.
+ *     Both licensed sources cooperate: the selected provider leads and the
+ *     other configured one backfills when slices come back silent/empty.
  *  5. Licensed clips must be reachable + valid video + https with an https
  *     thumbnail, and carry verified audio unless FEED_REQUIRE_EXTERNAL_AUDIO
  *     is explicitly disabled. User uploads are never audio-gated (silence is
@@ -176,10 +178,14 @@ export interface FeedCursorState {
   carry: string[];
   ep: number;
   served: number;
+  /** Recently served licensed-seed ids: providers overlap across slices, so
+   *  the cursor itself carries exclusion to guarantee no repeats. */
+  sx: string[];
 }
 
 const CURSOR_PREFIX = 'fe1.';
 const CURSOR_CARRY_CAP = 40;
+const CURSOR_SX_CAP = 100;
 
 export function encodeCursor(state: FeedCursorState): string {
   return CURSOR_PREFIX + Buffer.from(JSON.stringify(state), 'utf8').toString('base64url');
@@ -206,6 +212,9 @@ export function decodeCursor(raw?: string): FeedCursorState | { legacyDbId: stri
         : [],
       ep: Math.max(0, Math.min(100000, Number(parsed.ep) || 0)),
       served: Math.max(0, Number(parsed.served) || 0),
+      sx: Array.isArray(parsed.sx)
+        ? (parsed.sx as unknown[]).filter((x): x is string => typeof x === 'string').slice(0, CURSOR_SX_CAP)
+        : [],
     };
   } catch {
     return null;
@@ -229,6 +238,7 @@ export interface FeedPageInput {
 
 export interface FeedPageMeta {
   provider: string;
+  seedProviders: string[];
   dbCount: number;
   extCount: number;
   day: string;
@@ -266,6 +276,7 @@ export class FeedEngine {
     let carry: string[] = [];
     let ep = 0;
     let servedSoFar = 0;
+    let cursorSx: string[] = [];
     if (decoded) {
       if ('legacyDbId' in decoded) {
         try {
@@ -282,6 +293,7 @@ export class FeedEngine {
         carry = decoded.carry;
         ep = decoded.ep;
         servedSoFar = decoded.served;
+        cursorSx = decoded.sx || [];
       }
     }
 
@@ -290,7 +302,7 @@ export class FeedEngine {
     const guestSeen = await readGuestSeen(userKey);
     const dbSeen = new Set<string>();
     const extSeen = new Set<string>();
-    for (const id of [...paramSeen, ...guestSeen]) {
+    for (const id of [...cursorSx, ...paramSeen, ...guestSeen]) {
       if (isExternalId(id)) {
         if (extSeen.size < SEEN_CAP) extSeen.add(id);
       } else if (dbSeen.size < SEEN_CAP) {
@@ -392,34 +404,42 @@ export class FeedEngine {
     }
 
     const extRanked: Record<string, unknown>[] = [];
+    const seedProviders: string[] = [];
     let extSignal = false;
     if (extSlots > 0) {
-      let probes = 0;
-      while (extRanked.length < extSlots && probes < 4) {
-        const slice = externalSliceFor(provider, seed, ep);
-        let sliceVideos: Record<string, unknown>[] = [];
-        try {
-          const res = await ExternalVideoService.getVideos({
-            query: slice.topic,
-            page: slice.page,
-            perPage: Math.min(20, (extSlots - extRanked.length) * 2),
-            verifyAudio: config.feed.requireExternalAudio,
-          });
-          sliceVideos = (res.videos || []) as unknown as Record<string, unknown>[];
-        } catch {
-          sliceVideos = [];
+      const fallback = ExternalVideoService.fallbackProvider();
+      const providers = fallback && fallback !== provider ? [provider, fallback] : [provider];
+      for (const prov of providers) {
+        if (extRanked.length >= extSlots) break;
+        let probes = 0;
+        while (extRanked.length < extSlots && probes < 3) {
+          const slice = externalSliceFor(prov, seed, ep);
+          let sliceVideos: Record<string, unknown>[] = [];
+          try {
+            const res = await ExternalVideoService.getVideosFrom(prov, {
+              query: slice.topic,
+              page: slice.page,
+              perPage: Math.min(20, (extSlots - extRanked.length) * 2),
+              verifyAudio: config.feed.requireExternalAudio,
+            });
+            sliceVideos = (res.videos || []) as unknown as Record<string, unknown>[];
+          } catch {
+            sliceVideos = [];
+          }
+          if (sliceVideos.length > 0) extSignal = true;
+          const before = extRanked.length;
+          for (const ev of sliceVideos) {
+            if (extRanked.length >= extSlots) break;
+            const id = String(ev.id || '');
+            if (!id || extSeen.has(id)) continue;
+            if (!/^https:\/\//i.test(String(ev.streamUrl || ''))) continue;
+            if (!/^https:\/\//i.test(String(ev.thumbnailUrl || ''))) continue;
+            extRanked.push(ev);
+          }
+          if (extRanked.length > before && !seedProviders.includes(prov)) seedProviders.push(prov);
+          ep += 1;
+          probes += 1;
         }
-        if (sliceVideos.length > 0) extSignal = true;
-        for (const ev of sliceVideos) {
-          if (extRanked.length >= extSlots) break;
-          const id = String(ev.id || '');
-          if (!id || extSeen.has(id)) continue;
-          if (!/^https:\/\//i.test(String(ev.streamUrl || ''))) continue;
-          if (!/^https:\/\//i.test(String(ev.thumbnailUrl || ''))) continue;
-          extRanked.push(ev);
-        }
-        ep += 1;
-        probes += 1;
       }
       const shuffled = seededShuffle(extRanked, (seed ^ ep) >>> 0);
       extRanked.length = 0;
@@ -479,6 +499,9 @@ export class FeedEngine {
               ? 'Chort'
               : 'Unavailable';
 
+    const servedExtIds = videos.filter((v) => isExternalId(String(v.id))).map((v) => String(v.id));
+    const nextSx = [...cursorSx, ...servedExtIds].slice(-CURSOR_SX_CAP);
+
     return {
       videos,
       nextCursor: hasMore
@@ -490,10 +513,11 @@ export class FeedEngine {
             carry: nextCarry,
             ep,
             served: servedSoFar + videos.length,
+            sx: nextSx,
           })
         : null,
       hasMore,
-      meta: { provider, dbCount, extCount, day: today, source, databaseConnected },
+      meta: { provider, seedProviders, dbCount, extCount, day: today, source, databaseConnected },
     };
   }
 

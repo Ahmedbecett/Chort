@@ -87,7 +87,7 @@ export class ApiController {
   // --- EXTERNAL LICENSED VIDEOS (PEXELS / COVERR via VIDEO_PROVIDER) ---
   static async getExternalVideos(req: Request, res: Response) {
     try {
-      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
       const perPage = req.query.per_page ? parseInt(req.query.per_page as string, 10) : 15;
       const query = (req.query.query as string) || (req.query.q as string);
 

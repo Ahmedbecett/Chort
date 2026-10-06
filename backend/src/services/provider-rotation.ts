@@ -46,8 +46,11 @@ export function nextTopic(provider: RotationProvider, failedTopic: string): stri
   return topics[(idx + 1 + topics.length) % topics.length];
 }
 
-export function rotatedPage(provider: RotationProvider, requestedPage: number, whenMs = Date.now()): number {
-  if (requestedPage > 1) return requestedPage;
+export function rotatedPage(provider: RotationProvider, requestedPage: number | undefined, whenMs = Date.now()): number {
+  // Explicit pages (including 1) always win: callers paginating deliberately
+  // must get exactly the slice they asked for. Time rotation applies only
+  // when the caller omitted the page entirely.
+  if (requestedPage !== undefined) return Math.max(1, Math.floor(requestedPage));
   const topics = topicsFor(provider);
   const cycle = Math.floor(rotationBucket(whenMs) / topics.length);
   return 1 + (cycle % maxPageFor(provider));

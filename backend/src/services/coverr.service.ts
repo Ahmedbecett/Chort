@@ -49,8 +49,9 @@ export class CoverrService {
     videos: FormattedExternalVideo[];
     error?: string;
   }> {
-    const requestedPage = Math.max(1, options.page || 1);
-    const page = rotatedPage('coverr', requestedPage);
+    const explicitPage = options.page && options.page > 0 ? Math.floor(options.page) : undefined;
+    const requestedPage = explicitPage ?? 1;
+    const page = rotatedPage('coverr', explicitPage);
     const perPage = Math.min(20, Math.max(1, options.perPage || 15));
     const coverrPage = page - 1;
     const explicitQuery = options.query?.trim();

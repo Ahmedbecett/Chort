@@ -26,7 +26,27 @@ export class ExternalVideoService {
     perPage?: number;
     verifyAudio?: boolean;
   } = {}) {
-    if (this.selectedProvider() === 'coverr') return CoverrService.getVideos(options);
+    return this.getVideosFrom(this.selectedProvider(), options);
+  }
+
+  public static async getVideosFrom(
+    provider: ExternalProviderName,
+    options: { query?: string; page?: number; perPage?: number; verifyAudio?: boolean } = {}
+  ) {
+    if (provider === 'coverr') return CoverrService.getVideos(options);
     return PexelsService.getVideos(options);
+  }
+
+  /** The configured standby: when the selected catalog yields nothing usable,
+   *  the Feed Engine backfills from the other licensed source instead of
+   *  serving a thin page. Returns null when the other key is absent. */
+  public static fallbackProvider(): ExternalProviderName | null {
+    const other: ExternalProviderName = this.selectedProvider() === 'coverr' ? 'pexels' : 'coverr';
+    return this.isProviderConfigured(other) ? other : null;
+  }
+
+  public static isProviderConfigured(provider: ExternalProviderName): boolean {
+    if (provider === 'coverr') return CoverrService.isConfigured();
+    return PexelsService.isConfigured();
   }
 }

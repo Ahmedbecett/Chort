@@ -77,8 +77,9 @@ export class PexelsService {
     videos: FormattedExternalVideo[];
     error?: string;
   }> {
-    const requestedPage = Math.max(1, options.page || 1);
-    const page = rotatedPage('pexels', requestedPage);
+    const explicitPage = options.page && options.page > 0 ? Math.floor(options.page) : undefined;
+    const requestedPage = explicitPage ?? 1;
+    const page = rotatedPage('pexels', explicitPage);
     const perPage = Math.min(30, Math.max(1, options.perPage || 15));
     const explicitQuery = options.query?.trim();
     const query = rotatedTopic('pexels', options.query);

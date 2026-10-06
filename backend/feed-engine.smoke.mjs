@@ -13,7 +13,7 @@ import {
   decodeCursor,
 } from './dist/services/feed-engine.js';
 import { userKeyFor, isGuestUserId, parseSeenParam, isExternalId } from './dist/services/feed-history.js';
-import { topicsForProvider, maxPageForProvider } from './dist/services/provider-rotation.js';
+import { topicsForProvider, maxPageForProvider, rotatedPage } from './dist/services/provider-rotation.js';
 
 let pass = 0;
 function ok(cond, name) {
@@ -91,11 +91,17 @@ ok(pos.length === 5 && new Set(pos).size === 5 && pos.every((p) => p >= 0 && p <
 ok(JSON.stringify(spreadPositions(20, 5, 1)) !== JSON.stringify(spreadPositions(20, 5, 2)), 'spread differs per seed');
 
 // --- cursor round-trip + legacy + invalid ---
-const state = { v: 1, day: '2026-10-06', seed: 42, dbAfter: { t: 123, id: 'vid_x' }, carry: ['a', 'b'], ep: 3, served: 20 };
+const state = { v: 1, day: '2026-10-06', seed: 42, dbAfter: { t: 123, id: 'vid_x' }, carry: ['a', 'b'], ep: 3, served: 20, sx: ['pex_1', 'cov_2'] };
 const enc = encodeCursor(state);
 ok(enc.startsWith('fe1.'), 'cursor prefix');
 const dec = decodeCursor(enc);
 ok(dec && dec.v === 1 && dec.ep === 3 && dec.carry.length === 2 && dec.dbAfter.id === 'vid_x', 'cursor round-trip');
+ok(dec && dec.sx.length === 2 && dec.sx[0] === 'pex_1', 'cursor carries served seed ids');
+// explicit pages (incl. 1) win; rotation only when omitted
+ok(rotatedPage('pexels', 1) === 1 && rotatedPage('coverr', 2) === 2, 'explicit page respected');
+ok(rotatedPage('pexels', 0) === 1 && rotatedPage('pexels', -3) === 1, 'page clamped');
+const auto = rotatedPage('pexels', undefined);
+ok(auto >= 1 && auto <= maxPageForProvider('pexels'), 'omitted page rotates in bounds');
 const legacy = decodeCursor('vid_old123');
 ok(legacy && legacy.legacyDbId === 'vid_old123', 'legacy cursor supported');
 ok(decodeCursor('') === null && decodeCursor('fe1.!!!') === null, 'invalid cursor rejected');
