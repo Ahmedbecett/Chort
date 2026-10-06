@@ -12,6 +12,7 @@ export interface FeedQueryOptions {
   category?: string;
   includeExternal?: boolean;
   seen?: string | string[];
+  mode?: 'recommended' | 'trending' | 'new' | 'following';
 }
 
 export class FeedService {
@@ -77,6 +78,7 @@ export class FeedService {
         databaseConnected: page.meta.databaseConnected,
         source: page.meta.source,
         meta: page.meta,
+        ...(page.message ? { message: page.message } : {}),
       };
     } catch (dbError: any) {
       console.warn('Feed engine error:', dbError.message);

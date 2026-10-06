@@ -3,17 +3,67 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { GetObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { randomUUID } from 'crypto';
 import { VideoService } from '../services/video.service';
 import { FeedService } from '../services/feed.service';
+import { SocialService } from '../services/social.service';
+import { NotificationService } from '../services/notification.service';
+import { ReportService } from '../services/report.service';
+import { HashtagService } from '../services/hashtag.service';
+import { clampLimit, clampPage, parseFeedMode } from '../lib/validate';
 import { PexelsService } from '../services/pexels.service';
 import { CoverrService } from '../services/coverr.service';
 import { PixabayService } from '../services/pixabay.service';
 import { ExternalVideoService } from '../services/external-video.service';
 import { prisma, checkDatabaseConnection, isDbConfigured, ensureDatabaseSchema } from '../lib/prisma';
-import { config, isStorageConfigured, s3Client } from '../config';
+import { config, isStorageConfigured, s3Client, redis } from '../config';
 import { clientIpFrom } from '../services/feed-history';
 
 export class ApiController {
+  /** Actor identity: JWT first, explicit userId fallback (matches codebase trust model). */
+  private static actorId(req: Request): string | undefined {
+    const body = (req.body || {}) as Record<string, unknown>;
+    const q = (req.query || {}) as Record<string, unknown>;
+    return (
+      (req as any).user?.userId ||
+      (body.userId as string) ||
+      (q.userId as string) ||
+      (req.headers['x-user-id'] as string) ||
+      undefined
+    );
+  }
+
+  private static requireSelf(req: Request, res: Response, userId: string): boolean {
+    const me = (req as any).user?.userId;
+    if (!me || me !== userId) {
+      res.status(403).json({ error: 'Forbidden: this resource belongs to another user' });
+      return false;
+    }
+    return true;
+  }
+
+  private static requireAdmin(req: Request, res: Response): boolean {
+    if ((req as any).user?.role !== 'ADMIN') {
+      res.status(403).json({ error: 'Forbidden: admin role required' });
+      return false;
+    }
+    return true;
+  }
+
+  private static async createSession(userId: string, req: Request, jti: string): Promise<void> {
+    try {
+      await prisma.session.create({
+        data: {
+          userId,
+          token: jti,
+          userAgent: String(req.headers['user-agent'] || '').slice(0, 300) || null,
+          ipAddress: clientIpFrom(req) || null,
+          expiresAt: new Date(Date.now() + 30 * 24 * 3600 * 1000),
+        },
+      });
+    } catch {}
+  }
+
   // --- HEALTH CHECK & SCHEMA VERIFICATION ---
   static async healthCheck(req: Request, res: Response) {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
@@ -232,11 +282,13 @@ export class ApiController {
         },
       });
 
+      const jti = randomUUID();
       const token = jwt.sign(
-        { userId: user.id, email: user.email, username: user.username, role: user.role },
+        { userId: user.id, email: user.email, username: user.username, role: user.role, jti },
         config.jwtSecret,
         { expiresIn: '30d' }
       );
+      await ApiController.createSession(user.id, req, jti);
 
       return res.status(201).json({
         message: 'Account created successfully in PostgreSQL',
@@ -294,11 +346,13 @@ export class ApiController {
         return res.status(401).json({ error: 'Incorrect password' });
       }
 
+      const jti = randomUUID();
       const token = jwt.sign(
-        { userId: user.id, email: user.email, username: user.username, role: user.role },
+        { userId: user.id, email: user.email, username: user.username, role: user.role, jti },
         config.jwtSecret,
         { expiresIn: '30d' }
       );
+      await ApiController.createSession(user.id, req, jti);
 
       return res.status(200).json({
         message: 'Login successful',
@@ -354,6 +408,7 @@ export class ApiController {
         category: q.category as string,
         includeExternal,
         seen: q.seen as string,
+        mode: parseFeedMode(q.mode),
       });
 
       return res.status(200).json(feed);
@@ -538,6 +593,9 @@ export class ApiController {
   static async getUserProfile(req: Request, res: Response) {
     try {
       const { userId } = req.params;
+      const q = (req.query || {}) as Record<string, unknown>;
+      const limit = clampLimit(q.limit, 20, 50);
+      const page = clampPage(q.page);
       await ensureDatabaseSchema();
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -546,6 +604,8 @@ export class ApiController {
           videos: {
             where: { status: 'READY' },
             orderBy: { createdAt: 'desc' },
+            skip: (page - 1) * limit,
+            take: limit + 1,
           },
         },
       });
@@ -553,6 +613,10 @@ export class ApiController {
       if (!user) {
         return res.status(404).json({ error: 'User not found in PostgreSQL' });
       }
+
+      const hasMore = user.videos.length > limit;
+      if (hasMore) user.videos.pop();
+      const videos = await VideoService.formatVideoRows(user.videos as unknown as Array<Record<string, any>>);
 
       return res.status(200).json({
         user: {
@@ -564,7 +628,9 @@ export class ApiController {
           followersCount: user.profile?.followersCount || 0,
           followingCount: user.profile?.followingCount || 0,
           likesReceived: user.profile?.likesReceived || 0,
-          videos: user.videos,
+          videos,
+          videosPage: page,
+          videosHasMore: hasMore,
         },
       });
     } catch (err: any) {
@@ -741,6 +807,237 @@ export class ApiController {
       return res.status(200).send(svg.trim());
     } catch (err: any) {
       return res.status(500).json({ error: `Thumbnail generation error: ${err.message}` });
+    }
+  }
+
+  // --- SESSIONS ---
+  static async logout(req: Request, res: Response) {
+    try {
+      const me = (req as any).user;
+      if (!me?.jti) return res.status(200).json({ loggedOut: true, tracked: false });
+      // Deleting the Session row globally invalidates the token (middleware
+      // requires the row to exist). Redis write is hygiene only.
+      const ttl = Math.max(60, (me.exp || 0) - Math.floor(Date.now() / 1000));
+      try {
+        await redis.set(`revoked:${me.jti}`, '1', 'EX', Math.min(ttl, 30 * 24 * 3600));
+      } catch {}
+      try {
+        await prisma.session.deleteMany({ where: { token: me.jti, userId: me.userId } });
+      } catch {}
+      return res.status(200).json({ loggedOut: true, tracked: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  static async listSessions(req: Request, res: Response) {
+    try {
+      const me = (req as any).user;
+      if (!me?.userId) return res.status(401).json({ error: 'Authentication required' });
+      await ensureDatabaseSchema();
+      const rows = await prisma.session.findMany({
+        where: { userId: me.userId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      });
+      return res.status(200).json({
+        sessions: rows.map((s) => ({
+          id: s.id,
+          userAgent: s.userAgent,
+          ipAddress: s.ipAddress,
+          expiresAt: s.expiresAt instanceof Date ? s.expiresAt.getTime() : new Date(s.expiresAt).getTime(),
+          createdAt: s.createdAt instanceof Date ? s.createdAt.getTime() : new Date(s.createdAt).getTime(),
+          current: s.token === me.jti,
+        })),
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  static async revokeSession(req: Request, res: Response) {
+    try {
+      const me = (req as any).user;
+      if (!me?.userId) return res.status(401).json({ error: 'Authentication required' });
+      const { sessionId } = req.params;
+      const row = await prisma.session.findUnique({ where: { id: sessionId } });
+      if (!row || row.userId !== me.userId) {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+      const ttl = Math.max(60, Math.floor((new Date(row.expiresAt).getTime() - Date.now()) / 1000));
+      try {
+        await redis.set(`revoked:${row.token}`, '1', 'EX', Math.min(ttl, 30 * 24 * 3600));
+      } catch {}
+      await prisma.session.delete({ where: { id: sessionId } });
+      return res.status(200).json({ revoked: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // --- SOCIAL GRAPH ---
+  static async followUser(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      const followerId = ApiController.actorId(req);
+      if (!followerId) return res.status(401).json({ error: 'Authentication or userId required' });
+      await ensureDatabaseSchema();
+      const result = await SocialService.follow(followerId, userId);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  static async unfollowUser(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      const followerId = ApiController.actorId(req);
+      if (!followerId) return res.status(401).json({ error: 'Authentication or userId required' });
+      await ensureDatabaseSchema();
+      const result = await SocialService.unfollow(followerId, userId);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  static async followState(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      const viewerId = ApiController.actorId(req);
+      await ensureDatabaseSchema();
+      const result = await SocialService.followState(viewerId, userId);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  static async getFollowers(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      const q = (req.query || {}) as Record<string, unknown>;
+      await ensureDatabaseSchema();
+      const result = await SocialService.getFollowers(userId, clampPage(q.page), clampLimit(q.limit, 20, 50));
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  static async getFollowing(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      const q = (req.query || {}) as Record<string, unknown>;
+      await ensureDatabaseSchema();
+      const result = await SocialService.getFollowing(userId, clampPage(q.page), clampLimit(q.limit, 20, 50));
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  static async getSavedVideos(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      if (!ApiController.requireSelf(req, res, userId)) return;
+      const q = (req.query || {}) as Record<string, unknown>;
+      await ensureDatabaseSchema();
+      const result = await SocialService.getSavedVideos(userId, clampPage(q.page), clampLimit(q.limit, 20, 50));
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  static async getLikedVideos(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      const q = (req.query || {}) as Record<string, unknown>;
+      await ensureDatabaseSchema();
+      const result = await SocialService.getLikedVideos(userId, clampPage(q.page), clampLimit(q.limit, 20, 50));
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // --- NOTIFICATIONS ---
+  static async getNotifications(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      if (!ApiController.requireSelf(req, res, userId)) return;
+      const q = (req.query || {}) as Record<string, unknown>;
+      await ensureDatabaseSchema();
+      const result = await NotificationService.list(userId, clampPage(q.page), clampLimit(q.limit, 20, 50));
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  static async readNotifications(req: Request, res: Response) {
+    try {
+      const { userId } = req.params;
+      if (!ApiController.requireSelf(req, res, userId)) return;
+      await ensureDatabaseSchema();
+      const ids = ((req.body || {}) as Record<string, unknown>).ids as string[] | undefined;
+      const result = await NotificationService.markRead(userId, ids);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // --- REPORTS & MODERATION ---
+  static async submitReport(req: Request, res: Response) {
+    try {
+      const reporterId = ApiController.actorId(req) || (req.body || {}).reporterId;
+      if (!reporterId) return res.status(401).json({ error: 'Authentication or reporterId required' });
+      const { videoId, targetUserId, reason } = req.body;
+      await ensureDatabaseSchema();
+      const result = await ReportService.submit({ reporterId, videoId, targetUserId, reason });
+      return res.status(201).json(result);
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  static async listReports(req: Request, res: Response) {
+    try {
+      if (!ApiController.requireAdmin(req, res)) return;
+      const q = (req.query || {}) as Record<string, unknown>;
+      await ensureDatabaseSchema();
+      const result = await ReportService.list(q.status as string, clampPage(q.page), clampLimit(q.limit, 20, 50));
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  static async resolveReport(req: Request, res: Response) {
+    try {
+      if (!ApiController.requireAdmin(req, res)) return;
+      const { reportId } = req.params;
+      await ensureDatabaseSchema();
+      const result = await ReportService.resolve(reportId, (req.body || {}).action);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  // --- HASHTAGS ---
+  static async getHashtagVideos(req: Request, res: Response) {
+    try {
+      const { tag } = req.params;
+      const q = (req.query || {}) as Record<string, unknown>;
+      await ensureDatabaseSchema();
+      const result = await HashtagService.getTagVideos(tag, clampPage(q.page), clampLimit(q.limit, 20, 50));
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
     }
   }
 }

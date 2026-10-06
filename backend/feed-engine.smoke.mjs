@@ -6,6 +6,7 @@ import {
   seededShuffle,
   mulberry32,
   scoreVideo,
+  trendingScore,
   orderWithDiversity,
   externalSliceFor,
   spreadPositions,
@@ -13,6 +14,7 @@ import {
   decodeCursor,
 } from './dist/services/feed-engine.js';
 import { userKeyFor, isGuestUserId, parseSeenParam, isExternalId } from './dist/services/feed-history.js';
+import { extractHashtags } from './dist/services/hashtag.service.js';
 import { topicsForProvider, maxPageForProvider, rotatedPage } from './dist/services/provider-rotation.js';
 
 let pass = 0;
@@ -91,12 +93,23 @@ ok(pos.length === 5 && new Set(pos).size === 5 && pos.every((p) => p >= 0 && p <
 ok(JSON.stringify(spreadPositions(20, 5, 1)) !== JSON.stringify(spreadPositions(20, 5, 2)), 'spread differs per seed');
 
 // --- cursor round-trip + legacy + invalid ---
-const state = { v: 1, day: '2026-10-06', seed: 42, dbAfter: { t: 123, id: 'vid_x' }, carry: ['a', 'b'], ep: 3, served: 20, sx: ['pex_1', 'cov_2'] };
+const state = { v: 1, day: '2026-10-06', seed: 42, dbAfter: { t: 123, id: 'vid_x' }, carry: ['a', 'b'], ep: 3, served: 20, sx: ['pex_1', 'cov_2'], sd: ['vid_a'] };
 const enc = encodeCursor(state);
 ok(enc.startsWith('fe1.'), 'cursor prefix');
 const dec = decodeCursor(enc);
 ok(dec && dec.v === 1 && dec.ep === 3 && dec.carry.length === 2 && dec.dbAfter.id === 'vid_x', 'cursor round-trip');
 ok(dec && dec.sx.length === 2 && dec.sx[0] === 'pex_1', 'cursor carries served seed ids');
+ok(dec && dec.sd.length === 1 && dec.sd[0] === 'vid_a', 'cursor carries served chort ids');
+// trending velocity: fast engagement wins, old totals decay
+const tNow = Date.now();
+const viralFast = trendingScore({ createdAtMs: tNow - 3600000, views: 1000, likes: 100, comments: 10, shares: 5, nowMs: tNow });
+const viralOld = trendingScore({ createdAtMs: tNow - 30 * 86400000, views: 100000, likes: 5000, comments: 500, shares: 200, nowMs: tNow });
+const staleZero = trendingScore({ createdAtMs: tNow - 3600000, views: 0, likes: 0, comments: 0, shares: 0, nowMs: tNow });
+ok(viralFast > staleZero, 'trending rewards engagement');
+ok(viralFast > viralOld, 'trending velocity beats old totals');
+// hashtag extractor
+ok(JSON.stringify(extractHashtags('Fun day #Travel #travel #a #OK_123 end')) === '["travel","ok_123"]', 'hashtag extract');
+ok(extractHashtags(null).length === 0 && extractHashtags('no tags').length === 0, 'hashtag empty');
 // explicit pages (incl. 1) win; rotation only when omitted
 ok(rotatedPage('pexels', 1) === 1 && rotatedPage('coverr', 2) === 2, 'explicit page respected');
 ok(rotatedPage('pexels', 0) === 1 && rotatedPage('pexels', -3) === 1, 'page clamped');

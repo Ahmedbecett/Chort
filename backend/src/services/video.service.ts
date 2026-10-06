@@ -1,4 +1,4 @@
-import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client, config, redis, isStorageConfigured } from '../config';
 import { prisma } from '../lib/prisma';
@@ -13,6 +13,44 @@ export interface CreateUploadUrlInput {
 }
 
 export class VideoService {
+  /**
+   * Shared DB-row -> API-shape formatter (feed, hashtag, saved, liked, search).
+   * Accepts Prisma rows with user{profile} included; tolerates plain objects.
+   */
+  static async formatVideoRows(rows: Array<Record<string, any>>): Promise<Record<string, unknown>[]> {
+    return Promise.all(
+      rows.map(async (v: Record<string, any>) => {
+        const directStreamUrl = `${config.cdn.baseUrl}/api/v1/videos/${v.id}/stream`;
+        const playableUrl = await VideoService.resolvePlayableStreamUrl(v.id, v.originalKey, v.streamUrl);
+        const realThumb =
+          v.thumbnailUrl && !String(v.thumbnailUrl).includes('#t=')
+            ? v.thumbnailUrl
+            : `${config.cdn.baseUrl}/api/v1/videos/${v.id}/thumbnail`;
+        const createdAt = v.createdAt instanceof Date ? v.createdAt.getTime() : new Date(v.createdAt).getTime();
+        return {
+          id: v.id,
+          creatorId: v.userId,
+          creatorUsername: v.user?.username || 'creator',
+          creatorAvatar: v.user?.profile?.avatarUrl || '',
+          caption: v.caption,
+          streamUrl: directStreamUrl,
+          videoUrl: playableUrl || directStreamUrl,
+          thumbnailUrl: realThumb,
+          musicTitle: v.musicTitle || 'Original Audio',
+          likesCount: v.likesCount,
+          commentsCount: v.commentsCount,
+          sharesCount: v.sharesCount,
+          viewsCount: v.viewsCount,
+          aspectRatio: v.aspectRatio,
+          source: 'chort',
+          provider: 'chort',
+          isExternal: false,
+          createdAt,
+        };
+      })
+    );
+  }
+
   /**
    * Generates a playable streaming URL (presigned if S3/Neon bucket requires it)
    */
@@ -35,6 +73,8 @@ export class VideoService {
         const command = new GetObjectCommand({
           Bucket: config.s3.bucket,
           Key: key,
+          ResponseCacheControl: 'public, max-age=86400',
+          ResponseContentType: 'video/mp4',
         });
         return await getSignedUrl(s3Client, command, { expiresIn: 86400 });
       } catch (err: any) {
@@ -160,6 +200,23 @@ export class VideoService {
     const storedKey = params.objectKey || `videos/${videoId}.mp4`;
     const canonicalStreamUrl = `${config.cdn.baseUrl}/api/v1/videos/${videoId}/stream`;
 
+    // Real upload verification: never mark READY bytes that do not exist.
+    if (isStorageConfigured()) {
+      try {
+        const head = await s3Client.send(
+          new HeadObjectCommand({ Bucket: config.s3.bucket, Key: storedKey })
+        );
+        const size = Number((head as { ContentLength?: number }).ContentLength || 0);
+        if (!size || size <= 0) throw new Error('empty object');
+      } catch (err: any) {
+        const error = new Error(
+          `Upload bytes not found in storage for ${storedKey}. Finish the PUT upload before completing. (${err.message || 'missing'})`
+        );
+        (error as any).statusCode = 422;
+        throw error;
+      }
+    }
+
     const video = await prisma.video.create({
       data: {
         id: videoId,
@@ -189,6 +246,12 @@ export class VideoService {
     // No page-cache invalidation needed: the Feed Engine serves personalized,
     // uncached pages, so a new READY/PUBLIC row enters rotation immediately.
     // (Provider slices + media verdicts stay cached deeper down.)
+
+    // Hashtags are best-effort and never fail the publish (dynamic import: no cycle).
+    try {
+      const { HashtagService } = await import('./hashtag.service');
+      await HashtagService.linkVideoTags(video.id, video.caption);
+    } catch {}
 
     return video;
   }
@@ -222,6 +285,11 @@ export class VideoService {
       select: { userId: true },
     });
 
+    const likerName = await prisma.user
+      .findUnique({ where: { id: userId }, select: { username: true } })
+      .then((u) => u?.username || 'Someone')
+      .catch(() => 'Someone');
+
     if (existing) {
       await prisma.like.delete({
         where: { id: existing.id },
@@ -253,6 +321,16 @@ export class VideoService {
           data: { likesReceived: { increment: 1 } },
         });
       }
+      try {
+        const { NotificationService } = await import('./notification.service');
+        await NotificationService.notify({
+          recipientId: video?.userId || '',
+          actorId: userId,
+          type: 'like',
+          message: `@${likerName} liked your video`,
+          referenceId: videoId,
+        });
+      } catch {}
       return { liked: true, likesCount: updated.likesCount };
     }
   }
@@ -290,11 +368,25 @@ export class VideoService {
       },
     });
 
-    const updated = await prisma.video.update({
-      where: { id: videoId },
-      data: { commentsCount: { increment: 1 } },
-      select: { commentsCount: true },
-    });
+    const [updated, owner] = await Promise.all([
+      prisma.video.update({
+        where: { id: videoId },
+        data: { commentsCount: { increment: 1 } },
+        select: { commentsCount: true },
+      }),
+      prisma.video.findUnique({ where: { id: videoId }, select: { userId: true } }).catch(() => null),
+    ]);
+    try {
+      const { NotificationService } = await import('./notification.service');
+      const commenter = (comment as { user?: { username?: string } }).user?.username || 'Someone';
+      await NotificationService.notify({
+        recipientId: owner?.userId || '',
+        actorId: userId,
+        type: 'comment',
+        message: `@${commenter} commented: ${content.slice(0, 80)}`,
+        referenceId: videoId,
+      });
+    } catch {}
 
     return { comment, commentsCount: updated.commentsCount };
   }
@@ -384,31 +476,16 @@ export class VideoService {
       }),
     ]);
 
+    const [formatted, hashtags] = await Promise.all([
+      VideoService.formatVideoRows(videos as unknown as Array<Record<string, any>>),
+      import('./hashtag.service')
+        .then((m) => m.HashtagService.searchTags(clean, 10))
+        .catch(() => [] as Array<{ tag: string; videosCount: number }>),
+    ]);
+
     return {
-      videos: await Promise.all(
-        videos.map(async (v) => {
-          const playableUrl = await VideoService.resolvePlayableStreamUrl(v.id, v.originalKey, v.streamUrl);
-          const realThumb = v.thumbnailUrl && !v.thumbnailUrl.includes('#t=')
-            ? v.thumbnailUrl
-            : `${config.cdn.baseUrl}/api/v1/videos/${v.id}/thumbnail`;
-          return {
-            id: v.id,
-            creatorId: v.userId,
-            creatorUsername: v.user.username,
-            creatorAvatar: v.user.profile?.avatarUrl || '',
-            caption: v.caption,
-            streamUrl: playableUrl,
-            videoUrl: playableUrl,
-            thumbnailUrl: realThumb,
-            musicTitle: v.musicTitle || 'Original Audio',
-            likesCount: v.likesCount,
-            commentsCount: v.commentsCount,
-            sharesCount: v.sharesCount,
-            viewsCount: v.viewsCount,
-            createdAt: v.createdAt.getTime(),
-          };
-        })
-      ),
+      videos: formatted,
+      hashtags,
       users: users.map((u) => ({
         id: u.id,
         username: u.username,

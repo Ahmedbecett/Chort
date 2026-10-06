@@ -1,6 +1,8 @@
 import { prisma } from '../lib/prisma';
 import { redis, config } from '../config';
 import { VideoService } from './video.service';
+import { SocialService } from './social.service';
+import { FeedMode } from '../lib/validate';
 import { ExternalVideoService } from './external-video.service';
 import { checkMediaBatch } from './media-verify';
 import { maxPageForProvider, topicsForProvider, RotationProvider } from './provider-rotation';
@@ -75,6 +77,24 @@ export function seededShuffle<T>(items: T[], seed: number): T[] {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+/**
+ * Trending velocity: engagement per age. Rewards clips that earn views,
+ * likes, comments and shares FAST, not just old viral totals. Pure.
+ */
+export function trendingScore(input: {
+  createdAtMs: number;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  nowMs?: number;
+}): number {
+  const now = input.nowMs ?? Date.now();
+  const ageHours = Math.max(0, (now - input.createdAtMs) / 3600000);
+  const engagement = input.views + 3 * input.likes + 2 * input.comments + 4 * input.shares;
+  return engagement / Math.pow(ageHours + 2, 1.2);
 }
 
 /** Single place to tune ranking. Phase 1: recency + diversity first. */
@@ -181,11 +201,15 @@ export interface FeedCursorState {
   /** Recently served licensed-seed ids: providers overlap across slices, so
    *  the cursor itself carries exclusion to guarantee no repeats. */
   sx: string[];
+  /** Recently served chort ids: the dedup mechanism for score-ordered
+   *  (trending) pages, safety net for keyset modes. */
+  sd: string[];
 }
 
 const CURSOR_PREFIX = 'fe1.';
 const CURSOR_CARRY_CAP = 40;
 const CURSOR_SX_CAP = 100;
+const CURSOR_SD_CAP = 100;
 
 export function encodeCursor(state: FeedCursorState): string {
   return CURSOR_PREFIX + Buffer.from(JSON.stringify(state), 'utf8').toString('base64url');
@@ -215,6 +239,9 @@ export function decodeCursor(raw?: string): FeedCursorState | { legacyDbId: stri
       sx: Array.isArray(parsed.sx)
         ? (parsed.sx as unknown[]).filter((x): x is string => typeof x === 'string').slice(0, CURSOR_SX_CAP)
         : [],
+      sd: Array.isArray(parsed.sd)
+        ? (parsed.sd as unknown[]).filter((x): x is string => typeof x === 'string').slice(0, CURSOR_SD_CAP)
+        : [],
     };
   } catch {
     return null;
@@ -234,9 +261,11 @@ export interface FeedPageInput {
   category?: string;
   includeExternal?: boolean;
   seen?: string | string[];
+  mode?: FeedMode;
 }
 
 export interface FeedPageMeta {
+  mode: FeedMode;
   provider: string;
   seedProviders: string[];
   dbCount: number;
@@ -261,9 +290,11 @@ export class FeedEngine {
     nextCursor: string | null;
     hasMore: boolean;
     meta: FeedPageMeta;
+    message?: string;
   }> {
     const limit = Math.min(30, Math.max(1, input.limit || 20));
     const includeExternal = input.includeExternal !== false;
+    const mode: FeedMode = input.mode || 'recommended';
     const userId = input.userId?.trim() || undefined;
     const userKey = userKeyFor({ userId, deviceId: input.deviceId, ip: input.ip });
     const today = dayString();
@@ -277,6 +308,7 @@ export class FeedEngine {
     let ep = 0;
     let servedSoFar = 0;
     let cursorSx: string[] = [];
+    let cursorSd: string[] = [];
     if (decoded) {
       if ('legacyDbId' in decoded) {
         try {
@@ -294,6 +326,7 @@ export class FeedEngine {
         ep = decoded.ep;
         servedSoFar = decoded.served;
         cursorSx = decoded.sx || [];
+        cursorSd = decoded.sd || [];
       }
     }
 
@@ -302,6 +335,9 @@ export class FeedEngine {
     const guestSeen = await readGuestSeen(userKey);
     const dbSeen = new Set<string>();
     const extSeen = new Set<string>();
+    for (const id of [...cursorSd, ...paramSeen, ...guestSeen]) {
+      if (!isExternalId(id) && dbSeen.size < SEEN_CAP) dbSeen.add(id);
+    }
     for (const id of [...cursorSx, ...paramSeen, ...guestSeen]) {
       if (isExternalId(id)) {
         if (extSeen.size < SEEN_CAP) extSeen.add(id);
@@ -315,6 +351,34 @@ export class FeedEngine {
       for (const id of durable.external) if (extSeen.size < SEEN_CAP) extSeen.add(id);
     }
     const followingIds = new Set(await readFollowingIds(userId));
+    const savedCreatorIds = new Set(
+      mode === 'recommended' || mode === 'trending' ? await SocialService.getSavedCreatorIds(userId) : []
+    );
+
+    if (mode === 'following') {
+      if (isGuestUserId(userId)) {
+        return {
+          videos: [],
+          nextCursor: null,
+          hasMore: false,
+          meta: { mode, provider, seedProviders: [], dbCount: 0, extCount: 0, day: today, source: 'Chort', databaseConnected: true },
+          message: 'Sign in and follow creators to fill your Following feed.',
+        };
+      }
+      if (followingIds.size === 0) {
+        return {
+          videos: [],
+          nextCursor: null,
+          hasMore: false,
+          meta: { mode, provider, seedProviders: [], dbCount: 0, extCount: 0, day: today, source: 'Chort', databaseConnected: true },
+          message: 'You are not following anyone yet.',
+        };
+      }
+    }
+
+    if (mode === 'trending') {
+      return this.getTrendingPage({ limit, userId, dbSeen, cursorSd, servedSoFar, today, provider });
+    }
 
     // ---- chort candidates: keyset pagination, unseen only ------------------
     let databaseConnected = true;
@@ -349,6 +413,7 @@ export class FeedEngine {
       });
     }
     if (dbSeen.size > 0) keysetAnd.push({ id: { notIn: [...dbSeen].slice(0, SEEN_CAP) } });
+    if (mode === 'following') keysetAnd.push({ userId: { in: [...followingIds] } });
 
     try {
       const rows = (await prisma.video.findMany({
@@ -377,27 +442,37 @@ export class FeedEngine {
     const mask = await checkMediaBatch(checkUrls, redis, false);
     const playable = formatted.filter((_, i) => mask[i] || !checkUrls[i]);
 
-    // ---- rank + creator diversity ------------------------------------------
-    const rand = mulberry32((seed ^ 0x9e3779b9) >>> 0);
-    const scored = playable.map((v) => ({
-      v,
-      s: scoreVideo({
-        createdAtMs: Number(v.createdAt) || 0,
-        views: Number(v.viewsCount) || 0,
-        likes: Number(v.likesCount) || 0,
-        comments: Number(v.commentsCount) || 0,
-        shares: Number(v.sharesCount) || 0,
-        isFollowed: followingIds.has(String(v.creatorId || '')),
-        jitter01: rand(),
-      }),
-    }));
-    scored.sort((a, b) => b.s - a.s);
-    const dbRanked = orderWithDiversity(scored, (x) => String(x.v.creatorId || x.v.id)).map((x) => x.v);
+    // ---- rank + creator diversity (recommended only; new/following = pure recency)
+    let dbRanked: Record<string, unknown>[];
+    if (mode === 'recommended') {
+      const rand = mulberry32((seed ^ 0x9e3779b9) >>> 0);
+      const scored = playable.map((v) => ({
+        v,
+        s:
+          scoreVideo({
+            createdAtMs: Number(v.createdAt) || 0,
+            views: Number(v.viewsCount) || 0,
+            likes: Number(v.likesCount) || 0,
+            comments: Number(v.commentsCount) || 0,
+            shares: Number(v.sharesCount) || 0,
+            isFollowed: followingIds.has(String(v.creatorId || '')),
+            jitter01: rand(),
+          }) + (savedCreatorIds.has(String(v.creatorId || '')) ? 0.3 : 0),
+      }));
+      scored.sort((a, b) => b.s - a.s);
+      dbRanked = orderWithDiversity(scored, (x) => String(x.v.creatorId || x.v.id)).map((x) => x.v);
+    } else {
+      dbRanked = [...playable].sort((a, b) => {
+        const dt = Number(b.createdAt) - Number(a.createdAt);
+        if (dt !== 0) return dt;
+        return String(b.id).localeCompare(String(a.id));
+      });
+    }
 
     // ---- licensed discovery: per-viewer rotation, auto-advance past seen ---
     const extConfigured = includeExternal && ExternalVideoService.isConfigured();
     let extSlots = 0;
-    if (extConfigured) {
+    if (mode === 'recommended' && extConfigured) {
       if (dbRanked.length === 0) extSlots = limit;
       else if (dbRanked.length >= limit) extSlots = Math.min(6, Math.floor(limit * 0.25));
       else extSlots = Math.min(limit, limit - dbRanked.length + Math.min(3, Math.floor(limit * 0.2)));
@@ -501,6 +576,9 @@ export class FeedEngine {
 
     const servedExtIds = videos.filter((v) => isExternalId(String(v.id))).map((v) => String(v.id));
     const nextSx = [...cursorSx, ...servedExtIds].slice(-CURSOR_SX_CAP);
+    const nextSd = [...cursorSd, ...[...servedDbIds]].slice(-CURSOR_SD_CAP);
+
+    await this.attachInteractionFlags(videos, userId);
 
     return {
       videos,
@@ -514,45 +592,125 @@ export class FeedEngine {
             ep,
             served: servedSoFar + videos.length,
             sx: nextSx,
+            sd: nextSd,
           })
         : null,
       hasMore,
-      meta: { provider, seedProviders, dbCount, extCount, day: today, source, databaseConnected },
+      meta: { mode, provider, seedProviders, dbCount, extCount, day: today, source, databaseConnected },
     };
   }
 
-  private static async formatDbVideos(rows: Array<Record<string, any>>): Promise<Record<string, unknown>[]> {
-    return Promise.all(
-      rows.map(async (v) => {
-        const directStreamUrl = `${config.cdn.baseUrl}/api/v1/videos/${v.id}/stream`;
-        const playableUrl = await VideoService.resolvePlayableStreamUrl(v.id, v.originalKey, v.streamUrl);
-        const realThumb =
-          v.thumbnailUrl && !v.thumbnailUrl.includes('#t=')
-            ? v.thumbnailUrl
-            : `${config.cdn.baseUrl}/api/v1/videos/${v.id}/thumbnail`;
-        const createdAt = v.createdAt instanceof Date ? v.createdAt.getTime() : new Date(v.createdAt).getTime();
+  /**
+   * Trending leaderboard: top-200 by likes rescored by engagement velocity.
+   * Global order (same for everyone, by definition), paginated via the
+   * cursor's served-db ids so watched + served clips never resurface.
+   * Pure user content: no licensed seed in trending.
+   */
+  private static async getTrendingPage(input: {
+    limit: number;
+    userId?: string;
+    dbSeen: Set<string>;
+    cursorSd: string[];
+    servedSoFar: number;
+    today: string;
+    provider: string;
+  }): Promise<{
+    videos: Record<string, unknown>[];
+    nextCursor: string | null;
+    hasMore: boolean;
+    meta: FeedPageMeta;
+  }> {
+    const { limit, userId, dbSeen, cursorSd, servedSoFar, today, provider } = input;
+    let databaseConnected = true;
+    let rows: Array<Record<string, any>> = [];
+    try {
+      rows = (await prisma.video.findMany({
+        where: {
+          status: 'READY',
+          visibility: 'PUBLIC',
+          AND: [{ id: { not: 'vid_test_123' } }, { streamUrl: { not: { contains: 'test.com' } } }],
+        },
+        include: { user: { include: { profile: true } } },
+        orderBy: [{ likesCount: 'desc' }, { viewsCount: 'desc' }, { id: 'desc' }],
+        take: 200,
+      })) as Array<Record<string, any>>;
+    } catch {
+      databaseConnected = false;
+    }
 
-        return {
-          id: v.id,
-          creatorId: v.userId,
-          creatorUsername: v.user?.username || 'creator',
-          creatorAvatar: v.user?.profile?.avatarUrl || '',
-          caption: v.caption,
-          streamUrl: directStreamUrl,
-          videoUrl: playableUrl || directStreamUrl,
-          thumbnailUrl: realThumb,
-          musicTitle: v.musicTitle || 'Original Audio',
-          likesCount: v.likesCount,
-          commentsCount: v.commentsCount,
-          sharesCount: v.sharesCount,
-          viewsCount: v.viewsCount,
-          aspectRatio: v.aspectRatio,
-          source: 'chort',
-          provider: 'chort',
-          isExternal: false,
-          createdAt,
-        };
-      })
-    );
+    const now = Date.now();
+    const ranked = rows
+      .map((r) => ({
+        r,
+        s: trendingScore({
+          createdAtMs: new Date(r.createdAt).getTime(),
+          views: Number(r.viewsCount) || 0,
+          likes: Number(r.likesCount) || 0,
+          comments: Number(r.commentsCount) || 0,
+          shares: Number(r.sharesCount) || 0,
+          nowMs: now,
+        }),
+      }))
+      .sort((a, b) => b.s - a.s)
+      .map((x) => x.r);
+
+    const exclude = new Set<string>([...dbSeen, ...cursorSd]);
+    const avail = ranked.filter((r) => !exclude.has(String(r.id)));
+    const candidates = avail.slice(0, Math.min(60, limit * 2 + 10));
+    const formatted = await this.formatDbVideos(candidates);
+    const checkUrls = formatted.map((v) => absolutizeMediaUrl((v.videoUrl || v.streamUrl) as string));
+    const mask = await checkMediaBatch(checkUrls, redis, false);
+    const videos = formatted.filter((_, i) => mask[i] || !checkUrls[i]).slice(0, limit);
+
+    const servedIds = videos.map((v) => String(v.id));
+    const nextSd = [...cursorSd, ...servedIds].slice(-CURSOR_SD_CAP);
+    const hasMore = videos.length > 0 && avail.length > servedIds.length;
+
+    await this.attachInteractionFlags(videos, userId);
+
+    return {
+      videos,
+      nextCursor: hasMore
+        ? encodeCursor({ v: 1, day: today, seed: 0, dbAfter: null, carry: [], ep: 0, served: servedSoFar + videos.length, sx: [], sd: nextSd })
+        : null,
+      hasMore,
+      meta: {
+        mode: 'trending',
+        provider,
+        seedProviders: [],
+        dbCount: videos.length,
+        extCount: 0,
+        day: today,
+        source: 'Chort Trending',
+        databaseConnected,
+      },
+    };
+  }
+
+  /** Attach likedByMe/savedByMe for authenticated viewers (new fields only). */
+  private static async attachInteractionFlags(videos: Record<string, unknown>[], userId?: string): Promise<void> {
+    const dbIds = videos.filter((v) => !isExternalId(String(v.id))).map((v) => String(v.id));
+    const liked = new Set<string>();
+    const saved = new Set<string>();
+    if (userId && !isGuestUserId(userId) && dbIds.length > 0) {
+      try {
+        const [likeRows, savedRows] = await Promise.all([
+          prisma.like.findMany({ where: { userId, videoId: { in: dbIds } }, select: { videoId: true } }),
+          prisma.savedVideo.findMany({ where: { userId, videoId: { in: dbIds } }, select: { videoId: true } }),
+        ]);
+        likeRows.forEach((r) => liked.add(r.videoId));
+        savedRows.forEach((r) => saved.add(r.videoId));
+      } catch {}
+    }
+    for (const v of videos) {
+      const id = String(v.id);
+      const external = isExternalId(id);
+      v.likedByMe = !external && liked.has(id);
+      v.savedByMe = !external && saved.has(id);
+    }
+  }
+
+  private static async formatDbVideos(rows: Array<Record<string, any>>): Promise<Record<string, unknown>[]> {
+    return VideoService.formatVideoRows(rows);
   }
 }
