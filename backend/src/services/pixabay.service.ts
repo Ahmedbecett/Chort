@@ -18,6 +18,8 @@ export interface PixabayVideoFile {
   width: number;
   height: number;
   size: number;
+  // Per https://pixabay.com/api/docs/ each rendition carries its own poster.
+  thumbnail?: string;
 }
 
 export interface PixabayVideoHit {
@@ -26,9 +28,6 @@ export interface PixabayVideoHit {
   type?: string;
   tags?: string;
   duration?: number;
-  previewURL?: string;
-  previewWidth?: number;
-  previewHeight?: number;
   videos?: {
     large?: PixabayVideoFile;
     medium?: PixabayVideoFile;
@@ -61,7 +60,7 @@ export class PixabayService {
     total: number;
     videos: FormattedExternalVideo[];
     error?: string;
-    debug?: { raw: number; portraitThumb: number; verified: number; verifyAudio: boolean };
+    debug?: { raw: number; portrait: number; portraitThumb: number; verified: number; verifyAudio: boolean };
   }> {
     const explicitPage = options.page && options.page > 0 ? Math.floor(options.page) : undefined;
     const requestedPage = explicitPage ?? 1;
@@ -130,6 +129,7 @@ export class PixabayService {
       const rawVideos: PixabayVideoHit[] = data.hits || [];
 
       const formattedVideos: FormattedExternalVideo[] = [];
+      let portraitCount = 0;
       for (const v of rawVideos) {
         if (!v || !v.id || !v.videos) continue;
         const files = [v.videos.medium, v.videos.large, v.videos.small, v.videos.tiny].filter(
@@ -137,8 +137,9 @@ export class PixabayService {
             Boolean(f && f.url && f.url.startsWith('https://') && f.height > 0 && f.width > 0 && f.height >= f.width)
         );
         if (files.length === 0) continue;
+        portraitCount += 1;
         const best = files.find((f) => f.height >= 640) || files[0];
-        const thumb = v.previewURL || '';
+        const thumb = best.thumbnail || '';
         if (!thumb.startsWith('https://')) continue;
 
         const creator = (v.user || '').trim() || 'Pixabay Creator';
@@ -193,6 +194,7 @@ export class PixabayService {
           ? {
               debug: {
                 raw: rawVideos.length,
+                portrait: portraitCount,
                 portraitThumb: formattedVideos.length,
                 verified: verified.length,
                 verifyAudio: options.verifyAudio ?? true,
@@ -201,9 +203,10 @@ export class PixabayService {
           : {}),
       };
 
-      // Cache for 15 minutes (900 seconds) to respect Pixabay rate limits
+      // Pixabay requires API responses to be cached for 24 hours
+      // (https://pixabay.com/api/docs/#api_rate_limit): 100 req/60s max.
       try {
-        await redis.set(cacheKey, JSON.stringify(result), 'EX', 900);
+        await redis.set(cacheKey, JSON.stringify(result), 'EX', 86400);
       } catch {}
 
       return result;
