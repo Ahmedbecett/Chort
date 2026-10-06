@@ -1,22 +1,24 @@
-# 📱 Chort - Scalable Real-Time Short-Video Social Platform
+# 📱 Chort (thileli dz) - Scalable Short-Video Social Platform
 
-[![Release](https://img.shields.io/github/v/release/Ahmedbecett/Chort?color=blue&label=Latest%20Release)](https://github.com/Ahmedbecett/Chort/releases/latest)
-[![Android](https://img.shields.io/badge/Platform-Android-3DDC84.svg?logo=android&logoColor=white)](https://android.com)
-[![Backend](https://img.shields.io/badge/Backend-Node.js%20%7C%20Express%20%7C%20Prisma-green.svg)](backend/)
-[![Database](https://img.shields.io/badge/Database-PostgreSQL%20%7C%20Redis%207-blue.svg)](backend/prisma/)
-[![Video Pipeline](https://img.shields.io/badge/Streaming-FFmpeg%20%7C%20HLS%20Multi--Bitrate-red.svg)](backend/src/workers/)
-[![Object Storage](https://img.shields.io/badge/Storage-S3%20%7C%20Cloud%20Storage%20%7C%20MinIO-orange.svg)](backend/src/config/)
-
-**Chort** is a complete, scalable, real-world short-video platform built on a decoupled cloud infrastructure modeled after modern enterprise video platforms (such as TikTok and YouTube).
+[![Latest Release](https://img.shields.io/badge/Latest%20Release-v2.4.4%20(Build%2020404)-brightgreen.svg?style=for-the-badge&logo=android)](https://github.com/Ahmedbecett/Chort/releases/tag/v2.4.4)
+[![Direct APK Download](https://img.shields.io/badge/Download%20APK-Chort--v2.4.4--release.apk-blue.svg?style=for-the-badge&logo=google-play)](https://github.com/Ahmedbecett/Chort/releases/download/v2.4.4/Chort-v2.4.4-release.apk)
+[![Android Build](https://img.shields.io/badge/Platform-Android%2014%2B%20%7C%20Compose-3DDC84.svg?style=for-the-badge&logo=android)](https://android.com)
 
 ---
 
-## 📥 Direct APK Download & Production Releases
+## 🚀 روابط التحميل المباشرة وإصدار التطبيق (Direct APK Downloads)
 
-- 🚀 **[Download Latest Production APK: Chort-v2.4.1-release.apk](https://github.com/Ahmedbecett/Chort/releases/download/v2.4.1/Chort-v2.4.1-release.apk)**  (also built automatically by the [Android Release workflow](.github/workflows/android-release.yml) on every `v*` tag)
-- 🔗 **[Stable direct link (always the newest APK): Chort-latest.apk](https://github.com/Ahmedbecett/Chort/releases/latest/download/Chort-latest.apk)**
-- 📦 **[All GitHub Releases](https://github.com/Ahmedbecett/Chort/releases)**
-- ✅ **Every APK is verified against the source commit before release** - see [RELEASE.md](RELEASE.md) and `scripts/verify_apk.py`.
+> **الإصدار الحالي:** `v2.4.4` | **رقم البناء (versionCode):** `20404` | **تاريخ التحديث:** أكتوبر 2026
+
+- 📥 **[تحميل مباشر للإصدار v2.4.4 (Chort-v2.4.4-release.apk)](https://github.com/Ahmedbecett/Chort/releases/download/v2.4.4/Chort-v2.4.4-release.apk)**
+- ⚡ **[رابط دائم لأحدث إصدار (Always Latest APK): Chort-latest.apk](https://github.com/Ahmedbecett/Chort/releases/latest/download/Chort-latest.apk)**
+- 📦 **[جميع الإصدارات وسجلات البناء (Releases Page)](https://github.com/Ahmedbecett/Chort/releases)**
+- ⚙️ **[متابعة بناء الـ APK عبر GitHub Actions](https://github.com/Ahmedbecett/Chort/actions)**
+
+### 🛠️ التحديثات المطبقة في الإصدار v2.4.4:
+1. **تشغيل ورفع الفيديو:** دعم كامل لتشغيل الفيديوهات المختارة من الهاتف محلياً (`content://` و `file://`) وإصلاح خطأ `تعذر تشغيل الفيديو - Invalid or empty video URL`.
+2. **رسائل التحقق للهاتف (SMS):** إرسال رمز التحقق كرسالة SMS حقيقية إلى رقم الهاتف عبر Firebase Phone Auth بدلاً من إظهاره على الشاشة.
+3. **تسجيل الدخول بجيميل (Google):** تحديث معرّف العميل ومطابقة مشروع Firebase (`shortvideoapp-6b870`) لمنع الرجوع للشاشة السابقة.
 
 ---
 

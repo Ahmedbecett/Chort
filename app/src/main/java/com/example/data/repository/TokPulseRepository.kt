@@ -58,6 +58,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -706,31 +707,13 @@ class TokPulseRepository(private val context: Context) {
             onVerificationCompleted = { credential ->
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        val auth = firebaseService.auth
-                        if (auth != null) {
-                            val res = auth.signInWithCredential(credential).await()
-                            val u = res.user
-                            if (u != null) {
-                                val userEntity = UserEntity(
-                                    id = u.uid,
-                                    username = "user_${u.phoneNumber?.filter { it.isDigit() }?.takeLast(6) ?: u.uid.take(6)}",
-                                    displayName = u.phoneNumber ?: "Creator",
-                                    email = "${u.uid.take(8)}@chort.app",
-                                    passwordHash = "PHONE_AUTH",
-                                    avatarUrl = "https://api.dicebear.com/7.x/avataaars/png?seed=${u.uid}",
-                                    bio = "thileli dz member",
-                                    followersCount = 0,
-                                    followingCount = 0,
-                                    totalLikes = 0,
-                                    role = "user",
-                                    status = "active",
-                                    createdAt = System.currentTimeMillis()
-                                )
-                                dao.insertUser(userEntity)
-                                _currentUserId.value = userEntity.id
-                                _currentUser.value = userEntity
-                                withContext(Dispatchers.Main) { onAutoVerified(userEntity) }
-                            }
+                        val res = firebaseService.signInWithCredential(credential)
+                        if (res.isSuccess) {
+                            val userEntity = res.getOrThrow()
+                            dao.insertUser(userEntity)
+                            _currentUserId.value = userEntity.id
+                            _currentUser.value = userEntity
+                            withContext(Dispatchers.Main) { onAutoVerified(userEntity) }
                         }
                     } catch (e: Exception) {
                         Log.w(TAG, "Auto-verification error: ${e.message}")

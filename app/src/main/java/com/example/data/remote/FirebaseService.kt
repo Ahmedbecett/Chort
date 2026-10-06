@@ -394,10 +394,21 @@ class FirebaseService(private val context: Context) {
         code: String,
         displayName: String? = null
     ): Result<UserEntity> {
+        return try {
+            val credential = PhoneAuthProvider.getCredential(verificationId, code)
+            signInWithCredential(credential, displayName)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun signInWithCredential(
+        credential: PhoneAuthCredential,
+        displayName: String? = null
+    ): Result<UserEntity> {
         val authInstance = auth ?: return Result.failure(Exception("Firebase Auth unavailable"))
         val db = firestore
         return try {
-            val credential = PhoneAuthProvider.getCredential(verificationId, code)
             val authResult = authInstance.signInWithCredential(credential).await()
             val firebaseUser = authResult.user ?: throw Exception("Empty user from phone sign-in")
             val uid = firebaseUser.uid
@@ -436,7 +447,7 @@ class FirebaseService(private val context: Context) {
             }
             Result.success(userEntity)
         } catch (e: Exception) {
-            Log.e(TAG, "verifyPhoneCredential error", e)
+            Log.e(TAG, "signInWithCredential error", e)
             Result.failure(e)
         }
     }
