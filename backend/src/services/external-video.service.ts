@@ -19,8 +19,7 @@ export class ExternalVideoService {
   }
 
   public static isConfigured(): boolean {
-    if (this.selectedProvider() === 'coverr') return CoverrService.isConfigured();
-    return PexelsService.isConfigured();
+    return this.isProviderConfigured('coverr') || this.isProviderConfigured('pixabay') || this.isProviderConfigured('pexels');
   }
 
   public static async getVideos(options: {
@@ -42,15 +41,21 @@ export class ExternalVideoService {
     return PexelsService.getVideos(options);
   }
 
-  /** Ordered licensed-seed chain: the selected provider leads, every other
-   *  configured provider backfills when slices come back silent/empty, so a
-   *  failing or thin catalog never yields a thin page on its own. */
+  /** Ordered licensed-seed chain: leads with configured providers so failing/unconfigured ones never stall the feed */
   public static seedProviderChain(): ExternalProviderName[] {
     const selected = this.selectedProvider();
-    const chain: ExternalProviderName[] = [selected];
-    const order: ExternalProviderName[] = ['pexels', 'coverr', 'pixabay'];
-    for (const p of order) {
-      if (p !== selected && this.isProviderConfigured(p)) chain.push(p);
+    const all: ExternalProviderName[] = ['coverr', 'pixabay', 'pexels'];
+    const chain: ExternalProviderName[] = [];
+    if (this.isProviderConfigured(selected)) {
+      chain.push(selected);
+    }
+    for (const p of all) {
+      if (p !== selected && this.isProviderConfigured(p)) {
+        chain.push(p);
+      }
+    }
+    if (chain.length === 0) {
+      chain.push(selected);
     }
     return chain;
   }

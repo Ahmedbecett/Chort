@@ -437,10 +437,9 @@ export class FeedEngine {
     for (const r of [...carryRows, ...batch]) {
       if (!rowById.has(r.id)) rowById.set(r.id, r);
     }
-    const formatted = await this.formatDbVideos([...rowById.values()]);
-    const checkUrls = formatted.map((v) => absolutizeMediaUrl((v.videoUrl || v.streamUrl) as string));
-    const mask = await checkMediaBatch(checkUrls, redis, false);
-    const playable = formatted.filter((_, i) => mask[i] || !checkUrls[i]);
+    // User DB videos are already strictly verified at upload time (completeUpload verifies S3 / storage bytes).
+    // They must never be dropped by a redundant network range gate.
+    const playable = formatted;
 
     // ---- rank + creator diversity (recommended only; new/following = pure recency)
     let dbRanked: Record<string, unknown>[];
@@ -483,18 +482,20 @@ export class FeedEngine {
     let extSignal = false;
     if (extSlots > 0) {
       const providers = ExternalVideoService.seedProviderChain();
-      const probesPerProvider = providers.length > 1 ? 2 : 3;
+      const maxTotalProbes = 10;
+      let totalProbes = 0;
       for (const prov of providers) {
-        if (extRanked.length >= extSlots) break;
-        let probes = 0;
-        while (extRanked.length < extSlots && probes < probesPerProvider) {
+        if (extRanked.length >= extSlots || totalProbes >= maxTotalProbes) break;
+        let provProbes = 0;
+        const maxProvProbes = 5;
+        while (extRanked.length < extSlots && provProbes < maxProvProbes && totalProbes < maxTotalProbes) {
           const slice = externalSliceFor(prov, seed, ep);
           let sliceVideos: Record<string, unknown>[] = [];
           try {
             const res = await ExternalVideoService.getVideosFrom(prov, {
               query: slice.topic,
               page: slice.page,
-              perPage: Math.min(20, (extSlots - extRanked.length) * 2),
+              perPage: Math.min(25, (extSlots - extRanked.length) * 2),
               verifyAudio: config.feed.requireExternalAudio,
             });
             sliceVideos = (res.videos || []) as unknown as Record<string, unknown>[];
@@ -513,7 +514,8 @@ export class FeedEngine {
           }
           if (extRanked.length > before && !seedProviders.includes(prov)) seedProviders.push(prov);
           ep += 1;
-          probes += 1;
+          provProbes += 1;
+          totalProbes += 1;
         }
       }
       const shuffled = seededShuffle(extRanked, (seed ^ ep) >>> 0);

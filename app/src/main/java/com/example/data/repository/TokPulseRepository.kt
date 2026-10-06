@@ -55,6 +55,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -133,9 +134,19 @@ class TokPulseRepository(private val context: Context) {
             // from a real login whose session restores above.
 
             // Sync video feed from Vercel API and Database
+            try {
+                val cached = dao.getAllActiveVideosSync()
+                if (cached.isNotEmpty()) {
+                    _feedVideos.value = cached
+                }
+            } catch (_: Exception) {}
             syncWithCloud()
         }
     }
+
+    // Dynamic feed stream: holds the exact ordered server feed without SQLite re-sorting
+    private val _feedVideos = MutableStateFlow<List<VideoEntity>>(emptyList())
+    val feedVideos: StateFlow<List<VideoEntity>> = _feedVideos.asStateFlow()
 
     // Feed pagination state: the server cursor + hasMore from the last page.
     private var feedCursor: String? = null
@@ -143,38 +154,26 @@ class TokPulseRepository(private val context: Context) {
     private var feedPaging: Boolean = false
 
     suspend fun syncWithCloud() = withContext(Dispatchers.IO) {
-        // Clean any invalid/dummy test videos that cannot be resolved and stale external cached videos
+        // Clean any invalid/dummy test videos that cannot be resolved
         try {
             dao.cleanInvalidVideos()
-            dao.cleanExternalCachedVideos()
         } catch (e: Exception) {
             Log.w(TAG, "cleanup notice: ${e.message}")
         }
 
-        // 1. Fetch real feed from Vercel API (with primary -> fallback failover)
+        // 1. Fetch real feed from production Vercel API
         var syncedCount = 0
         feedCursor = null
         feedHasMore = true
         try {
-            var feedResponse = try {
-                TokPulseApiClient.api.getFeed()
+            val feedResponse = try {
+                TokPulseApiClient.api.getFeed(limit = 20)
             } catch (e: Exception) {
-                Log.w(TAG, "Primary API error: ${e.message}, attempting fallback cluster")
+                Log.w(TAG, "Primary API error: ${e.message}")
                 null
             }
 
-            var feedBody = feedResponse?.takeIf { it.isSuccessful }?.body()
-            if (feedBody == null || feedBody.videos.isEmpty()) {
-                Log.i(TAG, "Primary feed empty or unavailable, querying fallback cluster at ${TokPulseApiClient.FALLBACK_BASE_URL}")
-                try {
-                    feedResponse = TokPulseApiClient.fallbackApi.getFeed()
-                    if (feedResponse.isSuccessful) {
-                        feedBody = feedResponse.body()
-                    }
-                } catch (fallbackEx: Exception) {
-                    Log.e(TAG, "Fallback API error: ${fallbackEx.message}", fallbackEx)
-                }
-            }
+            val feedBody = feedResponse?.takeIf { it.isSuccessful }?.body()
 
             if (feedBody != null && feedBody.videos.isNotEmpty()) {
                 val validVideos = feedBody.videos.filter { apiVid ->
@@ -185,45 +184,17 @@ class TokPulseRepository(private val context: Context) {
                         !url.startsWith("http://localhost") &&
                         (url.startsWith("http://") || url.startsWith("https://"))
                 }
-                val entities = validVideos.map { apiVid ->
-                    val directStream = TokPulseApiClient.getCanonicalStreamUrl(apiVid.id)
-                    val url = (apiVid.videoUrl ?: apiVid.streamUrl ?: directStream).trim()
-                    val thumb = apiVid.thumbnailUrl?.takeIf { it.isNotBlank() && !it.contains("#t=") }
-                        ?: "${TokPulseApiClient.BASE_URL}api/v1/videos/${apiVid.id}/thumbnail"
-                    val isExt = apiVid.id.startsWith("pex_") ||
-                        apiVid.source?.lowercase() == "pexels" ||
-                        apiVid.provider?.lowercase() == "pexels"
-                    VideoEntity(
-                        id = apiVid.id,
-                        creatorId = apiVid.creatorId,
-                        creatorUsername = apiVid.creatorUsername,
-                        creatorAvatar = apiVid.creatorAvatar ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
-                        videoUrl = url,
-                        thumbnailUrl = thumb,
-                        caption = apiVid.caption,
-                        musicTitle = apiVid.musicTitle ?: "Original Audio",
-                        tags = if (isExt) "#pexels,#licensed,#stock" else "#chort,#fyp,#viral",
-                        likesCount = apiVid.likesCount,
-                        commentsCount = apiVid.commentsCount,
-                        sharesCount = apiVid.sharesCount,
-                        viewsCount = apiVid.viewsCount,
-                        source = apiVid.source ?: if (isExt) "pexels" else "chort",
-                        provider = apiVid.provider ?: if (isExt) "pexels" else "chort",
-                        isExternal = isExt,
-                        attributionUrl = apiVid.attributionUrl ?: "",
-                        photographerUrl = apiVid.photographerUrl ?: "",
-                        createdAt = if (apiVid.createdAt > 0) apiVid.createdAt else System.currentTimeMillis()
-                    )
-                }
+                val entities = validVideos.map { apiVid -> apiVideoToEntity(apiVid) }
                 if (entities.isNotEmpty()) {
                     dao.insertVideos(entities)
+                    _feedVideos.value = entities
                     syncedCount = entities.size
                 }
                 feedCursor = feedBody.nextCursor
                 feedHasMore = feedBody.hasMore
                 Log.i(TAG, "Successfully synced ${entities.size} valid videos from Vercel API")
             } else {
-                Log.w(TAG, "Feed response empty or unsuccessful across clusters")
+                Log.w(TAG, "Feed response empty or unsuccessful")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Vercel API feed sync exception: ${e.message}", e)
@@ -312,11 +283,15 @@ class TokPulseRepository(private val context: Context) {
                     !url.startsWith("http://localhost") &&
                     (url.startsWith("http://") || url.startsWith("https://"))
             }
-            val existingIds = seenIds.toSet()
+            val currentFeed = _feedVideos.value
+            val existingIds = (seenIds + currentFeed.map { it.id }).toSet()
             val entities = fresh
                 .filter { !existingIds.contains(it.id) }
                 .map { apiVid -> apiVideoToEntity(apiVid) }
-            if (entities.isNotEmpty()) dao.insertVideos(entities)
+            if (entities.isNotEmpty()) {
+                dao.insertVideos(entities)
+                _feedVideos.value = currentFeed + entities
+            }
             feedCursor = body.nextCursor
             feedHasMore = body.hasMore
             Log.i(TAG, "loadMoreFeed appended ${entities.size} new videos (hasMore=$feedHasMore)")
@@ -1389,6 +1364,7 @@ class TokPulseRepository(private val context: Context) {
             )
 
             dao.insertVideo(newVideo)
+            _feedVideos.value = listOf(newVideo) + _feedVideos.value.filter { it.id != newVideo.id }
             if (firebaseService.isFirebaseAvailable) {
                 try { firebaseService.publishVideoToFirestore(newVideo) } catch (e: Exception) {}
             }

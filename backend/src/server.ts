@@ -78,7 +78,7 @@ app.use('/api/v1', apiRouter);
 app.get('/', (req, res) => {
   res.json({
     app: 'thileli dz High-Scale Video Platform Backend',
-    version: '2.2.0',
+    version: '2.4.3',
     documentation: '/api/v1/health',
     status: 'ONLINE',
   });

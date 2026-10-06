@@ -39,25 +39,24 @@ class ExampleRobolectricTest {
     @Test
     fun testFeedApiLiveConnectionAndVideoParsing() = runBlocking {
         // Query the live feed API
-        var feedResponse = try {
+        val feedResponse = try {
             TokPulseApiClient.api.getFeed()
         } catch (e: Exception) {
             null
         }
 
-        if (feedResponse == null || !feedResponse.isSuccessful || feedResponse.body()?.videos.isNullOrEmpty()) {
-            feedResponse = TokPulseApiClient.fallbackApi.getFeed()
-        }
-
-        assertTrue("Feed response must be successful", feedResponse.isSuccessful)
-        val body = feedResponse.body()
+        assertTrue("Feed response must be successful", feedResponse?.isSuccessful == true)
+        val body = feedResponse?.body()
         assertNotNull("Feed response body should not be null", body)
         val videos = body!!.videos
         assertTrue("Database must contain real production videos", videos.isNotEmpty())
 
         val firstVid = videos.first()
         assertNotNull("Video must have an ID", firstVid.id)
-        assertTrue("Video ID must start with vid_ or pex_", firstVid.id.startsWith("vid_") || firstVid.id.startsWith("pex_"))
+        assertTrue(
+            "Video ID must start with vid_, pex_, cov_, or pix_",
+            firstVid.id.startsWith("vid_") || firstVid.id.startsWith("pex_") || firstVid.id.startsWith("cov_") || firstVid.id.startsWith("pix_")
+        )
         assertNotNull("Video creatorUsername should not be empty", firstVid.creatorUsername)
 
         val streamUrl = firstVid.videoUrl ?: firstVid.streamUrl ?: TokPulseApiClient.getCanonicalStreamUrl(firstVid.id)

@@ -105,7 +105,9 @@ fun FeedScreen(
     onNavigateToTracking: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
+    val feedVideos by repository.feedVideos.collectAsState()
     val allVideos by repository.getActiveVideos().collectAsState(initial = emptyList())
+    val effectiveVideos = if (feedVideos.isNotEmpty()) feedVideos else allVideos
     val currentUser by repository.currentUser.collectAsState()
     val likedVideoIds by repository.getUserLikedVideoIds(currentUser?.id ?: "").collectAsState(initial = emptyList())
     val savedVideoIds by repository.savedVideoIds.collectAsState(initial = emptySet())
@@ -118,12 +120,12 @@ fun FeedScreen(
         repository.syncWithCloud()
     }
 
-    val displayedVideos = remember(allVideos, selectedTab, followingIds) {
+    val displayedVideos = remember(effectiveVideos, selectedTab, followingIds) {
         if (selectedTab == 0) {
-            val followed = allVideos.filter { it.creatorId in followingIds }
-            if (followed.isEmpty()) allVideos else followed
+            val followed = effectiveVideos.filter { it.creatorId in followingIds }
+            if (followed.isEmpty()) effectiveVideos else followed
         } else {
-            allVideos
+            effectiveVideos
         }
     }
 

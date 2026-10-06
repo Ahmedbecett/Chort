@@ -60,8 +60,7 @@ REQUIRED_DEX_STRINGS = [
     ("player_skip_button", "VideoPlayerView.kt - skip control testTag"),
     ("Failed to decode/stream media", "VideoPlayerView.kt - playback error path"),
     ("Primary API error", "TokPulseRepository.kt - primary cluster fallback"),
-    ("https://chort-nine.vercel.app/", "TokPulseApi.kt - fallback cluster"),
-    ("https://chort-nmk4.vercel.app/", "TokPulseApi.kt - primary cluster"),
+    ("https://chort-nine.vercel.app/", "TokPulseApi.kt - production cluster"),
     ("thileli dz-Android/", "VideoPlayerView.kt - version-stamped User-Agent"),
 ]
 

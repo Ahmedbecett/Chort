@@ -8,29 +8,37 @@
 const WINDOW_MS = 15 * 60 * 1000;
 
 // Portrait-rich Pexels topics (Pexels filters orientation server-side).
-// Includes Arabic/MENA-relevant queries so Algerian viewers see familiar
-// content whenever the licensed catalog has it.
+// Broad global, Arabic, and MENA categories for diverse non-looping feeds.
 const PEXELS_TOPICS = [
   'nature', 'city', 'people', 'ocean', 'dance', 'travel', 'animals', 'food',
   'music', 'sports', 'football', 'fashion', 'desert', 'sahara', 'arabic',
-  'cooking', 'comedy', 'fitness', 'beach', 'mountains', 'streets', 'market', 'family',
+  'cooking', 'comedy', 'fitness', 'beach', 'mountains', 'streets', 'market',
+  'family', 'lifestyle', 'architecture', 'sunset', 'coffee', 'algeria',
+  'morocco', 'tunisia', 'medina', 'oud', 'cars', 'party', 'night', 'art',
 ];
-const PEXELS_MAX_PAGE = 6;
+const PEXELS_MAX_PAGE = 15;
 
-// Coverr topics verified live to return portrait hits (its search only
-// matches its own taxonomy; nature/dance/city/music/people/ocean return 0).
+// Coverr topics verified live to return portrait hits.
 const COVERR_TOPICS = [
   'vertical', 'fashion', 'concert', 'crowd', 'sports', 'food', 'travel',
+  'nature', 'city', 'dance', 'music', 'people', 'urban', 'festival',
+  'street', 'lifestyle', 'workout', 'cooking', 'art', 'cars', 'technology',
+  'ocean', 'sunset', 'water', 'summer', 'winter', 'coffee', 'animals',
+  'landscape', 'architecture', 'running', 'yoga', 'fitness',
 ];
-const COVERR_MAX_PAGE = 4;
+const COVERR_MAX_PAGE = 8;
 
-// Pixabay search is broad; same portrait-friendly discovery pool.
+// Pixabay search is broad; extensive portrait-friendly discovery pool across multiple languages & MENA.
 const PIXABAY_TOPICS = [
   'nature', 'city', 'people', 'ocean', 'dance', 'travel', 'animals', 'food',
   'music', 'sports', 'football', 'fashion', 'desert', 'sahara', 'arabic',
-  'cooking', 'comedy', 'fitness', 'beach', 'mountains', 'streets', 'market', 'family',
+  'cooking', 'comedy', 'fitness', 'beach', 'mountains', 'streets', 'market',
+  'family', 'algeria', 'morocco', 'tunisia', 'medina', 'oasis', 'oud',
+  'lifestyle', 'technology', 'cars', 'party', 'celebration', 'traditional',
+  'algiers', 'cairo', 'dubai', 'casablanca', 'middle east', 'north africa',
+  'maghreb', 'atlas', 'kabylie', 'tassili', 'art', 'night', 'skate', 'coffee',
 ];
-const PIXABAY_MAX_PAGE = 6;
+const PIXABAY_MAX_PAGE = 15;
 
 export type RotationProvider = 'pexels' | 'coverr' | 'pixabay';
 

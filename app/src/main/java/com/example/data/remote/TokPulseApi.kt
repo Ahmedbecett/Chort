@@ -643,9 +643,8 @@ interface TokPulseApiService {
 // -------------------------------------------------------------
 
 object TokPulseApiClient {
-    // Production Vercel Base URL - Points to deployed backend
+    // Single clear public production Vercel Base URL
     const val BASE_URL = "https://chort-nine.vercel.app/"
-    const val FALLBACK_BASE_URL = "https://chort-nmk4.vercel.app/"
 
     private var authToken: String? = null
 
@@ -700,15 +699,5 @@ object TokPulseApiClient {
             .create(TokPulseApiService::class.java)
     }
 
-    val fallbackApi: TokPulseApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl(FALLBACK_BASE_URL)
-            .client(okHttpClient)
-            .addConverterFactory(MoshiConverterFactory.create(moshi))
-            .build()
-            .create(TokPulseApiService::class.java)
-    }
-
     fun getCanonicalStreamUrl(videoId: String): String = "${BASE_URL}api/v1/videos/$videoId/stream"
-    fun getFallbackStreamUrl(videoId: String): String = "${FALLBACK_BASE_URL}api/v1/videos/$videoId/stream"
 }

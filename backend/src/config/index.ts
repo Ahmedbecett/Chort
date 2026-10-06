@@ -7,7 +7,9 @@ dotenv.config();
 export const config = {
   port: parseInt(process.env.PORT || '4000', 10),
   nodeEnv: process.env.NODE_ENV || 'production',
-  jwtSecret: process.env.JWT_SECRET || 'chort-super-secure-production-jwt-key-2026',
+  jwtSecret: process.env.JWT_SECRET || (process.env.NODE_ENV === 'production'
+    ? (() => { throw new Error('JWT_SECRET environment variable is strictly required in production'); })()
+    : 'dev-ephemeral-jwt-secret-local-testing-only'),
   databaseUrl: process.env.DATABASE_URL || '',
   redisUrl: process.env.REDIS_URL || '',
   s3: {
@@ -54,9 +56,8 @@ export const config = {
     cooldownSeconds: Math.max(10, parseInt(process.env.OTP_RESEND_COOLDOWN_SECONDS || '60', 10) || 60),
     maxPerHour: Math.max(1, parseInt(process.env.OTP_MAX_PER_HOUR || '5', 10) || 5),
     maxAttempts: Math.max(1, parseInt(process.env.OTP_MAX_ATTEMPTS || '5', 10) || 5),
-    // 'auto' (default): dev-echo ONLY while no SMS provider is configured.
-    // 'never' (OTP_DEV_ECHO=false): kill switch, never echo.
-    devEcho: (process.env.OTP_DEV_ECHO || 'auto').trim().toLowerCase() === 'false' ? 'never' : 'auto',
+    // devEcho is strictly disabled in production. Dev-echo is only allowed in local/test mode when no SMS provider is configured.
+    devEcho: (process.env.NODE_ENV === 'production' || (process.env.OTP_DEV_ECHO || 'auto').trim().toLowerCase() === 'false') ? 'never' : 'auto',
   },
   feed: {
     // When true (default), licensed seed videos must carry a verified audio

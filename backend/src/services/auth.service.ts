@@ -74,8 +74,9 @@ export function isSmsConfigured(): boolean {
   return Boolean(t.accountSid && t.authToken && (t.fromNumber || t.messagingServiceSid));
 }
 
-/** Dev echo fires ONLY in setup mode (no SMS configured), unless killed. */
+/** Dev echo fires ONLY in non-production local/test mode when no SMS is configured. NEVER in production. */
 export function devEchoAllowed(): boolean {
+  if (config.nodeEnv === 'production') return false;
   if (config.otp.devEcho === 'never') return false;
   return !isSmsConfigured();
 }
