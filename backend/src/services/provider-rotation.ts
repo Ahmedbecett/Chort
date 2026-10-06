@@ -15,14 +15,22 @@ const PEXELS_MAX_PAGE = 3;
 const COVERR_TOPICS = ['vertical', 'fashion', 'concert', 'crowd'];
 const COVERR_MAX_PAGE = 2;
 
-export type RotationProvider = 'pexels' | 'coverr';
+// Pixabay search is broad; same portrait-friendly discovery pool.
+const PIXABAY_TOPICS = ['nature', 'city', 'people', 'ocean', 'dance', 'travel', 'animals', 'food'];
+const PIXABAY_MAX_PAGE = 3;
+
+export type RotationProvider = 'pexels' | 'coverr' | 'pixabay';
 
 function topicsFor(provider: RotationProvider): string[] {
-  return provider === 'coverr' ? COVERR_TOPICS : PEXELS_TOPICS;
+  if (provider === 'coverr') return COVERR_TOPICS;
+  if (provider === 'pixabay') return PIXABAY_TOPICS;
+  return PEXELS_TOPICS;
 }
 
 function maxPageFor(provider: RotationProvider): number {
-  return provider === 'coverr' ? COVERR_MAX_PAGE : PEXELS_MAX_PAGE;
+  if (provider === 'coverr') return COVERR_MAX_PAGE;
+  if (provider === 'pixabay') return PIXABAY_MAX_PAGE;
+  return PEXELS_MAX_PAGE;
 }
 
 export function rotationBucket(whenMs = Date.now()): number {

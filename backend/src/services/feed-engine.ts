@@ -141,7 +141,7 @@ export function orderWithDiversity<T>(items: T[], creatorOf: (item: T) => string
  * across pages instead of looping the same global 20-30 clips.
  */
 export function externalSliceFor(provider: string, seed: number, extPage: number): { topic: string; page: number } {
-  const p = (provider === 'coverr' ? 'coverr' : 'pexels') as RotationProvider;
+  const p = (provider === 'coverr' ? 'coverr' : provider === 'pixabay' ? 'pixabay' : 'pexels') as RotationProvider;
   const topics = topicsForProvider(p);
   const maxPage = Math.max(1, maxPageForProvider(p));
   const topic = topics[(seed + extPage) % topics.length];
@@ -407,12 +407,12 @@ export class FeedEngine {
     const seedProviders: string[] = [];
     let extSignal = false;
     if (extSlots > 0) {
-      const fallback = ExternalVideoService.fallbackProvider();
-      const providers = fallback && fallback !== provider ? [provider, fallback] : [provider];
+      const providers = ExternalVideoService.seedProviderChain();
+      const probesPerProvider = providers.length > 1 ? 2 : 3;
       for (const prov of providers) {
         if (extRanked.length >= extSlots) break;
         let probes = 0;
-        while (extRanked.length < extSlots && probes < 3) {
+        while (extRanked.length < extSlots && probes < probesPerProvider) {
           const slice = externalSliceFor(prov, seed, ep);
           let sliceVideos: Record<string, unknown>[] = [];
           try {
@@ -487,7 +487,7 @@ export class FeedEngine {
 
     const dbCount = videos.filter((v) => !isExternalId(String(v.id))).length;
     const extCount = videos.length - dbCount;
-    const providerLabel = provider === 'coverr' ? 'Coverr' : 'Pexels';
+    const providerLabel = provider === 'coverr' ? 'Coverr' : provider === 'pixabay' ? 'Pixabay' : 'Pexels';
     const source =
       dbCount > 0 && extCount > 0
         ? `Chort & ${providerLabel}`

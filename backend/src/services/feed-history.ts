@@ -19,12 +19,13 @@ const GUEST_SEEN_TTL_SECONDS = 7 * 24 * 3600;
 const SEEN_CAP = 500;
 
 export function isExternalId(videoId: string): boolean {
-  return videoId.startsWith('pex_') || videoId.startsWith('cov_');
+  return videoId.startsWith('pex_') || videoId.startsWith('cov_') || videoId.startsWith('pix_');
 }
 
 export function providerOfExternalId(videoId: string): string {
   if (videoId.startsWith('pex_')) return 'pexels';
   if (videoId.startsWith('cov_')) return 'coverr';
+  if (videoId.startsWith('pix_')) return 'pixabay';
   return '';
 }
 

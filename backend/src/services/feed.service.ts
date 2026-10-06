@@ -100,7 +100,7 @@ export class FeedService {
       if (ExternalVideoService.isConfigured()) {
         try {
           const external = await ExternalVideoService.getVideos({ perPage: limit });
-          const providerLabel = external.provider === 'coverr' ? 'Coverr' : 'Pexels';
+          const providerLabel = external.provider === 'coverr' ? 'Coverr' : external.provider === 'pixabay' ? 'Pixabay' : 'Pexels';
           return {
             videos: external.videos,
             nextCursor: null,

@@ -30,6 +30,9 @@ export const config = {
   coverr: {
     apiKey: process.env.COVERR_API_KEY || '',
   },
+  pixabay: {
+    apiKey: process.env.PIXABAY_API_KEY || '',
+  },
   feed: {
     // When true (default), licensed seed videos must carry a verified audio
     // track before entering the feed. Set FEED_REQUIRE_EXTERNAL_AUDIO=false

@@ -1,7 +1,8 @@
 import { CoverrService } from './coverr.service';
 import { PexelsService } from './pexels.service';
+import { PixabayService } from './pixabay.service';
 
-export type ExternalProviderName = 'pexels' | 'coverr';
+export type ExternalProviderName = 'pexels' | 'coverr' | 'pixabay';
 
 /**
  * Selects the active licensed-video provider. VIDEO_PROVIDER=coverr activates
@@ -12,7 +13,9 @@ export type ExternalProviderName = 'pexels' | 'coverr';
 export class ExternalVideoService {
   public static selectedProvider(): ExternalProviderName {
     const requested = (process.env.VIDEO_PROVIDER || 'pexels').trim().toLowerCase();
-    return requested === 'coverr' ? 'coverr' : 'pexels';
+    if (requested === 'coverr') return 'coverr';
+    if (requested === 'pixabay') return 'pixabay';
+    return 'pexels';
   }
 
   public static isConfigured(): boolean {
@@ -34,19 +37,26 @@ export class ExternalVideoService {
     options: { query?: string; page?: number; perPage?: number; verifyAudio?: boolean } = {}
   ) {
     if (provider === 'coverr') return CoverrService.getVideos(options);
+    if (provider === 'pixabay') return PixabayService.getVideos(options);
     return PexelsService.getVideos(options);
   }
 
-  /** The configured standby: when the selected catalog yields nothing usable,
-   *  the Feed Engine backfills from the other licensed source instead of
-   *  serving a thin page. Returns null when the other key is absent. */
-  public static fallbackProvider(): ExternalProviderName | null {
-    const other: ExternalProviderName = this.selectedProvider() === 'coverr' ? 'pexels' : 'coverr';
-    return this.isProviderConfigured(other) ? other : null;
+  /** Ordered licensed-seed chain: the selected provider leads, every other
+   *  configured provider backfills when slices come back silent/empty, so a
+   *  failing or thin catalog never yields a thin page on its own. */
+  public static seedProviderChain(): ExternalProviderName[] {
+    const selected = this.selectedProvider();
+    const chain: ExternalProviderName[] = [selected];
+    const order: ExternalProviderName[] = ['pexels', 'coverr', 'pixabay'];
+    for (const p of order) {
+      if (p !== selected && this.isProviderConfigured(p)) chain.push(p);
+    }
+    return chain;
   }
 
   public static isProviderConfigured(provider: ExternalProviderName): boolean {
     if (provider === 'coverr') return CoverrService.isConfigured();
+    if (provider === 'pixabay') return PixabayService.isConfigured();
     return PexelsService.isConfigured();
   }
 }

@@ -32,7 +32,7 @@ ok(userKeyFor({ userId: 'user_guest', deviceId: 'dev9' }) === 'd:dev9', 'guest f
 ok(userKeyFor({ ip: '1.2.3.4' }).startsWith('ip:'), 'ip fallback keyed');
 ok(userKeyFor({ userId: 'alice' }) !== userKeyFor({ userId: 'bob' }), 'different users, different keys');
 ok(isGuestUserId(undefined) && isGuestUserId('user_guest') && !isGuestUserId('alice'), 'guest detection');
-ok(isExternalId('pex_1') && isExternalId('cov_x') && !isExternalId('vid_abc'), 'external id detection');
+ok(isExternalId('pex_1') && isExternalId('cov_x') && isExternalId('pix_7') && !isExternalId('vid_abc'), 'external id detection');
 ok(JSON.stringify(parseSeenParam('a,b,,c')) === '["a","b","c"]', 'seen param parsing');
 
 // --- seed & shuffle determinism + per-user variation ---
@@ -74,7 +74,7 @@ const ids = ordered.map((x) => x.id);
 ok(ids[0] === 'a1' && ids[1] === 'b1' && ids[2] === 'c1', `diversity interleave (${ids.join(',')})`);
 
 // --- external rotation: per-user sequences, bounded pages ---
-for (const p of ['pexels', 'coverr']) {
+for (const p of ['pexels', 'coverr', 'pixabay']) {
   const topics = topicsForProvider(p);
   const maxPage = maxPageForProvider(p);
   const s0 = externalSliceFor(p, 111, 0);
