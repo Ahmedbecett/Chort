@@ -1,5 +1,6 @@
 package com.example.ui.screens.auth
 
+import android.app.Activity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -45,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -236,6 +238,9 @@ fun PhoneAuthScreen(
             fontSize = 12.sp
         )
 
+        val context = LocalContext.current
+        val activity = context as? Activity
+
         Spacer(modifier = Modifier.height(28.dp))
 
         Button(
@@ -246,18 +251,45 @@ fun PhoneAuthScreen(
                 }
                 isLoading = true
                 errorMessage = null
-                scope.launch {
-                    val result = if (mode == "recovery") {
-                        repository.requestRecoveryOtp(fullPhone)
-                    } else {
-                        repository.requestPhoneOtp(fullPhone)
-                    }
-                    isLoading = false
-                    if (result.isSuccess) {
-                        val otp = result.getOrThrow()
-                        onCodeSent(fullPhone, otp.resendCooldownSeconds, otp.expiresInSeconds, otp.devOtp)
-                    } else {
-                        errorMessage = result.exceptionOrNull()?.message
+                if (mode != "recovery" && activity != null) {
+                    repository.sendFirebasePhoneOtp(
+                        activity = activity,
+                        phone = fullPhone,
+                        onCodeSent = { _ ->
+                            isLoading = false
+                            onCodeSent(fullPhone, 60, 600, null)
+                        },
+                        onAutoVerified = { _ ->
+                            isLoading = false
+                            onCodeSent(fullPhone, 60, 600, null)
+                        },
+                        onError = { fbErr ->
+                            scope.launch {
+                                val result = repository.requestPhoneOtp(fullPhone)
+                                isLoading = false
+                                if (result.isSuccess) {
+                                    val otp = result.getOrThrow()
+                                    onCodeSent(fullPhone, otp.resendCooldownSeconds, otp.expiresInSeconds, otp.devOtp)
+                                } else {
+                                    errorMessage = fbErr.ifBlank { result.exceptionOrNull()?.message }
+                                }
+                            }
+                        }
+                    )
+                } else {
+                    scope.launch {
+                        val result = if (mode == "recovery") {
+                            repository.requestRecoveryOtp(fullPhone)
+                        } else {
+                            repository.requestPhoneOtp(fullPhone)
+                        }
+                        isLoading = false
+                        if (result.isSuccess) {
+                            val otp = result.getOrThrow()
+                            onCodeSent(fullPhone, otp.resendCooldownSeconds, otp.expiresInSeconds, otp.devOtp)
+                        } else {
+                            errorMessage = result.exceptionOrNull()?.message
+                        }
                     }
                 }
             },

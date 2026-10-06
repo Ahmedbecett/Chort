@@ -119,18 +119,23 @@ fun OtpScreen(
         errorMessage = null
         successMessage = null
         scope.launch {
-            val result = if (mode == OtpMode.RECOVERY) {
-                repository.confirmRecovery(phone, code, newPassword)
-            } else {
-                repository.verifyPhoneOtp(phone, code, displayName)
-            }
-            isVerifying = false
-            if (result.isSuccess) {
-                successMessage = if (mode == OtpMode.RECOVERY) "Account recovered. Welcome back!" else "Phone verified. Welcome to thileli dz!"
-                delay(700)
-                onSuccess()
-            } else {
-                errorMessage = result.exceptionOrNull()?.message
+            try {
+                val result = if (mode == OtpMode.RECOVERY) {
+                    repository.confirmRecovery(phone, code, newPassword)
+                } else {
+                    repository.verifyPhoneOtp(phone, code, displayName)
+                }
+                if (result.isSuccess) {
+                    successMessage = if (mode == OtpMode.RECOVERY) "Account recovered. Welcome back!" else "Phone verified. Welcome to thileli dz!"
+                    delay(700)
+                    onSuccess()
+                } else {
+                    errorMessage = result.exceptionOrNull()?.message ?: "Verification failed. Please check the code."
+                }
+            } catch (e: Exception) {
+                errorMessage = e.message ?: "Verification error. Please try again."
+            } finally {
+                isVerifying = false
             }
         }
     }

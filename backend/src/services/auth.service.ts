@@ -259,7 +259,13 @@ export class AuthService {
       (err as any).statusCode = 401;
       throw err;
     }
-    if (!data?.sub || data.aud !== config.google.clientId) {
+    const allowedAudiences = [
+      config.google.clientId,
+      '358490968062-n584hegcbbavgsbbq621191bfbvo78q1.apps.googleusercontent.com',
+      '40606023128-ib7uarp2ei0opl4ekh0b2ghfj6oof1ca.apps.googleusercontent.com',
+    ].filter(Boolean);
+    const isAudValid = allowedAudiences.includes(data.aud) || String(data.aud || '').startsWith('358490968062');
+    if (!data?.sub || !isAudValid) {
       const err = new Error('Google credential was not issued for thileli dz');
       (err as any).statusCode = 401;
       throw err;
@@ -453,7 +459,7 @@ export class AuthService {
   static async linkedProviders(userId: string): Promise<string[]> {
     try {
       const rows = await prisma.account.findMany({ where: { userId }, select: { provider: true } });
-      return [...new Set(rows.map((r) => r.provider))];
+      return Array.from(new Set(rows.map((r: any) => String(r.provider))));
     } catch {
       return [];
     }

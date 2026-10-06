@@ -182,7 +182,7 @@ export class SocialService {
         orderBy: { createdAt: 'desc' },
         take: 200,
       });
-      return [...new Set(rows.map((r) => r.video.userId))];
+      return Array.from(new Set(rows.map((r: any) => String(r.video.userId))));
     } catch {
       return [];
     }

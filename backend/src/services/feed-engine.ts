@@ -439,13 +439,14 @@ export class FeedEngine {
     }
     // User DB videos are already strictly verified at upload time (completeUpload verifies S3 / storage bytes).
     // They must never be dropped by a redundant network range gate.
+    const formatted = await this.formatDbVideos(Array.from(rowById.values()));
     const playable = formatted;
 
     // ---- rank + creator diversity (recommended only; new/following = pure recency)
     let dbRanked: Record<string, unknown>[];
     if (mode === 'recommended') {
       const rand = mulberry32((seed ^ 0x9e3779b9) >>> 0);
-      const scored = playable.map((v) => ({
+      const scored = playable.map((v: any) => ({
         v,
         s:
           scoreVideo({
@@ -459,7 +460,7 @@ export class FeedEngine {
           }) + (savedCreatorIds.has(String(v.creatorId || '')) ? 0.3 : 0),
       }));
       scored.sort((a, b) => b.s - a.s);
-      dbRanked = orderWithDiversity(scored, (x) => String(x.v.creatorId || x.v.id)).map((x) => x.v);
+      dbRanked = orderWithDiversity(scored, (x: any) => String(x.v.creatorId || x.v.id)).map((x: any) => x.v);
     } else {
       dbRanked = [...playable].sort((a, b) => {
         const dt = Number(b.createdAt) - Number(a.createdAt);

@@ -572,6 +572,10 @@ class TokPulseRepository(private val context: Context) {
             val idToken = GoogleAuth.getIdToken(activity).getOrElse {
                 return@withContext Result.failure(it)
             }
+            // 1. Sign in to Firebase Auth in parallel
+            val fbResult = firebaseService.signInWithGoogleIdToken(idToken)
+
+            // 2. Exchange token with backend server
             try {
                 val response = TokPulseApiClient.api.oauthGoogle(OAuthGoogleRequest(idToken))
                 val body = response.body()
@@ -580,21 +584,23 @@ class TokPulseRepository(private val context: Context) {
                         Exception("Google sign-in returned an empty profile.")
                     )
                     syncWithCloud()
-                    Result.success(user)
-                } else {
-                    Result.failure(
-                        Exception(
-                            backendError(
-                                response.errorBody()?.string(),
-                                response.code(),
-                                "Google sign-in failed"
-                            )
-                        )
-                    )
+                    return@withContext Result.success(user)
                 }
             } catch (e: Exception) {
-                Result.failure(Exception(e.message ?: "Google sign-in failed."))
+                Log.w(TAG, "Backend Google OAuth API returned notice: ${e.message}")
             }
+
+            // If backend exchange returned error/offline, but Firebase sign-in succeeded:
+            if (fbResult.isSuccess) {
+                val user = fbResult.getOrThrow()
+                dao.insertUser(user)
+                _currentUserId.value = user.id
+                _currentUser.value = user
+                syncWithCloud()
+                return@withContext Result.success(user)
+            }
+
+            Result.failure(fbResult.exceptionOrNull() ?: Exception("Google sign-in failed."))
         }
 
     suspend fun signInWithFacebookBackend(activity: Activity): Result<UserEntity> =
@@ -679,6 +685,100 @@ class TokPulseRepository(private val context: Context) {
                 Result.failure(Exception(e.message ?: "Verification failed."))
             }
         }
+
+    fun sendFirebasePhoneOtp(
+        activity: Activity,
+        phone: String,
+        onCodeSent: (verificationId: String) -> Unit,
+        onAutoVerified: (UserEntity) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        if (!firebaseService.isFirebaseAvailable) {
+            onError("Firebase is not initialized")
+            return
+        }
+        firebaseService.sendPhoneOtp(
+            activity = activity,
+            phoneNumber = phone,
+            onCodeSent = { verificationId, _ ->
+                onCodeSent(verificationId)
+            },
+            onVerificationCompleted = { credential ->
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val auth = firebaseService.auth
+                        if (auth != null) {
+                            val res = auth.signInWithCredential(credential).await()
+                            val u = res.user
+                            if (u != null) {
+                                val userEntity = UserEntity(
+                                    id = u.uid,
+                                    username = "user_${u.phoneNumber?.filter { it.isDigit() }?.takeLast(6) ?: u.uid.take(6)}",
+                                    displayName = u.phoneNumber ?: "Creator",
+                                    email = "${u.uid.take(8)}@chort.app",
+                                    passwordHash = "PHONE_AUTH",
+                                    avatarUrl = "https://api.dicebear.com/7.x/avataaars/png?seed=${u.uid}",
+                                    bio = "thileli dz member",
+                                    followersCount = 0,
+                                    followingCount = 0,
+                                    totalLikes = 0,
+                                    role = "user",
+                                    status = "active",
+                                    createdAt = System.currentTimeMillis()
+                                )
+                                dao.insertUser(userEntity)
+                                _currentUserId.value = userEntity.id
+                                _currentUser.value = userEntity
+                                withContext(Dispatchers.Main) { onAutoVerified(userEntity) }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Auto-verification error: ${e.message}")
+                    }
+                }
+            },
+            onVerificationFailed = { e ->
+                onError(e.message ?: "SMS verification failed")
+            }
+        )
+    }
+
+    suspend fun verifyFirebasePhoneOtp(
+        verificationId: String,
+        code: String,
+        phone: String,
+        name: String? = null
+    ): Result<UserEntity> = withContext(Dispatchers.IO) {
+        val fbResult = firebaseService.verifyPhoneCredential(verificationId, code, name)
+        if (fbResult.isSuccess) {
+            val user = fbResult.getOrThrow()
+            dao.insertUser(user)
+            _currentUserId.value = user.id
+            _currentUser.value = user
+            try {
+                TokPulseApiClient.api.phoneVerify(
+                    PhoneVerifyRequest(phone.trim(), code.trim(), name?.trim()?.ifBlank { null })
+                )
+            } catch (_: Exception) {}
+            syncWithCloud()
+            return@withContext Result.success(user)
+        }
+        // Fallback to backend verify
+        try {
+            val response = TokPulseApiClient.api.phoneVerify(
+                PhoneVerifyRequest(phone.trim(), code.trim(), name?.trim()?.ifBlank { null })
+            )
+            val body = response.body()
+            if ((response.isSuccessful || response.code() == 201) && body?.user != null) {
+                val user = persistBackendSession(body, name ?: "") ?: return@withContext Result.failure(
+                    Exception("Phone verification returned an empty profile.")
+                )
+                syncWithCloud()
+                return@withContext Result.success(user)
+            }
+        } catch (_: Exception) {}
+        fbResult
+    }
 
     suspend fun requestRecoveryOtp(phone: String): Result<OtpResponse> =
         withContext(Dispatchers.IO) {
@@ -1402,10 +1502,30 @@ class TokPulseRepository(private val context: Context) {
      * the whole video into memory (large files used to OOM and report errors).
      */
     private fun uploadBinaryToUrl(uploadUrl: String, videoUri: Uri, onProgress: ((Float) -> Unit)?): Boolean {
+        var tempFile: java.io.File? = null
         return try {
-            val total = try {
+            var total = try {
                 context.contentResolver.openAssetFileDescriptor(videoUri, "r")?.use { it.length } ?: -1L
             } catch (_: Exception) { -1L }
+            if (total <= 0L) {
+                total = try {
+                    context.contentResolver.openFileDescriptor(videoUri, "r")?.use { it.statSize } ?: -1L
+                } catch (_: Exception) { -1L }
+            }
+            var streamUri = videoUri
+            if (total <= 0L) {
+                try {
+                    val file = java.io.File(context.cacheDir, "up_${System.currentTimeMillis()}.mp4")
+                    context.contentResolver.openInputStream(videoUri)?.use { input ->
+                        file.outputStream().use { out -> input.copyTo(out) }
+                    }
+                    if (file.exists() && file.length() > 0) {
+                        total = file.length()
+                        streamUri = Uri.fromFile(file)
+                        tempFile = file
+                    }
+                } catch (_: Exception) {}
+            }
 
             val client = OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
@@ -1416,8 +1536,11 @@ class TokPulseRepository(private val context: Context) {
                 override fun contentType() = "video/mp4".toMediaTypeOrNull()
                 override fun contentLength() = total
                 override fun writeTo(sink: BufferedSink) {
-                    val input = context.contentResolver.openInputStream(videoUri)
-                        ?: throw IOException("Cannot open video file")
+                    val input = if (streamUri.scheme == "file") {
+                        java.io.FileInputStream(java.io.File(streamUri.path ?: ""))
+                    } else {
+                        context.contentResolver.openInputStream(streamUri)
+                    } ?: throw IOException("Cannot open video file")
                     input.use { stream ->
                         val buffer = ByteArray(256 * 1024)
                         var written = 0L
@@ -1443,6 +1566,8 @@ class TokPulseRepository(private val context: Context) {
         } catch (e: Exception) {
             Log.w(TAG, "uploadBinaryToUrl error: ${e.message}")
             false
+        } finally {
+            tempFile?.delete()
         }
     }
 

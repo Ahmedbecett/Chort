@@ -205,15 +205,19 @@ fun VideoPlayerView(
 
                 val trimmedUrl = videoUrl.trim()
                 val isInvalidDummyHost = trimmedUrl.contains("test.com") || trimmedUrl.contains("example.com")
-                if (trimmedUrl.isNotBlank() && !isInvalidDummyHost && (trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://"))) {
+                val isHttp = trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://")
+                val isLocalMedia = trimmedUrl.startsWith("content://") || trimmedUrl.startsWith("file://") || trimmedUrl.startsWith("android.resource://")
+
+                if (trimmedUrl.isNotBlank() && !isInvalidDummyHost && (isHttp || isLocalMedia)) {
                     try {
+                        val uri = Uri.parse(trimmedUrl)
                         val isHls = trimmedUrl.contains(".m3u8") || trimmedUrl.contains("hls")
                         val mediaItem = MediaItem.Builder()
-                            .setUri(Uri.parse(trimmedUrl))
+                            .setUri(uri)
                             .apply {
                                 if (isHls) {
                                     setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
-                                } else {
+                                } else if (isHttp) {
                                     setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MP4)
                                 }
                             }

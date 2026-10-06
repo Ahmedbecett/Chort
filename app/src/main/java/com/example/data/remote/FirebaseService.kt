@@ -1,5 +1,6 @@
 package com.example.data.remote
 
+import android.app.Activity
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -18,8 +19,12 @@ import com.example.data.local.entities.ViolationEntity
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.PhoneAuthCredential
+import com.google.firebase.auth.PhoneAuthOptions
+import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -27,6 +32,7 @@ import com.google.firebase.firestore.SetOptions
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 /**
  * Production Firebase Service handling Cloud Firestore, Firebase Auth, and Firebase Storage.
@@ -51,8 +57,12 @@ class FirebaseService(private val context: Context) {
     val firestore: FirebaseFirestore?
         get() = if (isFirebaseAvailable) {
             try {
-                val dbId = context.getString(R.string.firestore_database_id)
-                FirebaseFirestore.getInstance(FirebaseApp.getInstance(), dbId)
+                val dbId = try { context.getString(R.string.firestore_database_id).trim() } catch (_: Exception) { "" }
+                if (dbId.isNotBlank() && dbId != "(default)" && !dbId.startsWith("ai-studio-android")) {
+                    FirebaseFirestore.getInstance(FirebaseApp.getInstance(), dbId)
+                } else {
+                    FirebaseFirestore.getInstance(FirebaseApp.getInstance())
+                }
             } catch (e: Exception) {
                 try {
                     FirebaseFirestore.getInstance(FirebaseApp.getInstance())
@@ -64,7 +74,11 @@ class FirebaseService(private val context: Context) {
 
     val storage: FirebaseStorage?
         get() = if (isFirebaseAvailable) {
-            try { FirebaseStorage.getInstance() } catch (e: Exception) { null }
+            try {
+                FirebaseStorage.getInstance("gs://shortvideoapp-6b870.firebasestorage.app")
+            } catch (e: Exception) {
+                try { FirebaseStorage.getInstance() } catch (e2: Exception) { null }
+            }
         } else null
 
     // --- AUTHENTICATION & USER SNAPSHOT CREATION ---
@@ -277,6 +291,152 @@ class FirebaseService(private val context: Context) {
             Result.failure(Exception("Google Sign-In was cancelled."))
         } catch (e: Exception) {
             Log.e(TAG, "Google Sign-In failed", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun signInWithGoogleIdToken(idToken: String): Result<UserEntity> {
+        val authInstance = auth ?: return Result.failure(Exception("Firebase Auth unavailable"))
+        val db = firestore
+        return try {
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val authResult = authInstance.signInWithCredential(credential).await()
+            val firebaseUser = authResult.user ?: throw Exception("Empty user from Google sign-in")
+            val uid = firebaseUser.uid
+            val email = firebaseUser.email ?: "user@chort.app"
+            val displayName = firebaseUser.displayName ?: "thileli dz Creator"
+            val photoUrl = firebaseUser.photoUrl?.toString()
+                ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
+            val username = email.substringBefore("@").lowercase().replace(".", "_")
+
+            val userEntity = UserEntity(
+                id = uid,
+                username = username,
+                displayName = displayName,
+                email = email,
+                passwordHash = "GOOGLE_OAUTH",
+                avatarUrl = photoUrl,
+                bio = "Content Creator on thileli dz",
+                followersCount = 0,
+                followingCount = 0,
+                totalLikes = 0,
+                role = if (isAdminEmail(email)) "admin" else "user",
+                status = "active",
+                createdAt = System.currentTimeMillis()
+            )
+
+            if (db != null) {
+                try {
+                    db.collection("users").document(uid).set(mapOf(
+                        "id" to uid,
+                        "username" to username,
+                        "displayName" to displayName,
+                        "email" to email,
+                        "avatarUrl" to photoUrl,
+                        "role" to userEntity.role,
+                        "status" to "active",
+                        "createdAt" to System.currentTimeMillis()
+                    ), SetOptions.merge()).await()
+                } catch (_: Exception) {}
+            }
+            Result.success(userEntity)
+        } catch (e: Exception) {
+            Log.e(TAG, "signInWithGoogleIdToken error", e)
+            Result.failure(e)
+        }
+    }
+
+    fun sendPhoneOtp(
+        activity: Activity,
+        phoneNumber: String,
+        onCodeSent: (verificationId: String, resendToken: PhoneAuthProvider.ForceResendingToken?) -> Unit,
+        onVerificationCompleted: (credential: PhoneAuthCredential) -> Unit,
+        onVerificationFailed: (Exception) -> Unit
+    ) {
+        val authInstance = auth
+        if (authInstance == null) {
+            onVerificationFailed(Exception("Firebase Authentication is not available"))
+            return
+        }
+
+        val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+            override fun onVerificationCompleted(credential: PhoneAuthCredential) {
+                Log.d(TAG, "Phone verification instant auto-completed")
+                onVerificationCompleted(credential)
+            }
+
+            override fun onVerificationFailed(e: FirebaseException) {
+                Log.e(TAG, "Phone verification failed: ${e.message}", e)
+                onVerificationFailed(e)
+            }
+
+            override fun onCodeSent(
+                verificationId: String,
+                token: PhoneAuthProvider.ForceResendingToken
+            ) {
+                Log.d(TAG, "SMS Code sent to $phoneNumber with verificationId=$verificationId")
+                onCodeSent(verificationId, token)
+            }
+        }
+
+        val options = PhoneAuthOptions.newBuilder(authInstance)
+            .setPhoneNumber(phoneNumber)
+            .setTimeout(60L, TimeUnit.SECONDS)
+            .setActivity(activity)
+            .setCallbacks(callbacks)
+            .build()
+
+        PhoneAuthProvider.verifyPhoneNumber(options)
+    }
+
+    suspend fun verifyPhoneCredential(
+        verificationId: String,
+        code: String,
+        displayName: String? = null
+    ): Result<UserEntity> {
+        val authInstance = auth ?: return Result.failure(Exception("Firebase Auth unavailable"))
+        val db = firestore
+        return try {
+            val credential = PhoneAuthProvider.getCredential(verificationId, code)
+            val authResult = authInstance.signInWithCredential(credential).await()
+            val firebaseUser = authResult.user ?: throw Exception("Empty user from phone sign-in")
+            val uid = firebaseUser.uid
+            val phone = firebaseUser.phoneNumber ?: ""
+            val cleanPhone = phone.filter { it.isDigit() }
+            val name = displayName?.takeIf { it.isNotBlank() } ?: "User_${cleanPhone.takeLast(4)}"
+            val username = "phone_${cleanPhone.takeLast(6).ifBlank { uid.take(6) }}"
+
+            val userEntity = UserEntity(
+                id = uid,
+                username = username,
+                displayName = name,
+                email = "${username}@chort.app",
+                passwordHash = "PHONE_AUTH",
+                avatarUrl = "https://api.dicebear.com/7.x/avataaars/png?seed=$username",
+                bio = "Content Creator on thileli dz",
+                followersCount = 0,
+                followingCount = 0,
+                totalLikes = 0,
+                role = "user",
+                status = "active",
+                createdAt = System.currentTimeMillis()
+            )
+
+            if (db != null) {
+                try {
+                    db.collection("users").document(uid).set(mapOf(
+                        "id" to uid,
+                        "phone" to phone,
+                        "username" to username,
+                        "displayName" to name,
+                        "status" to "active",
+                        "createdAt" to System.currentTimeMillis()
+                    ), SetOptions.merge()).await()
+                } catch (_: Exception) {}
+            }
+            Result.success(userEntity)
+        } catch (e: Exception) {
+            Log.e(TAG, "verifyPhoneCredential error", e)
             Result.failure(e)
         }
     }
