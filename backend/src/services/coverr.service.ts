@@ -69,7 +69,8 @@ export class CoverrService {
       };
     }
 
-    const cacheKey = `coverr:${query || 'popular'}:page_${page}:limit_${perPage}`;
+    const audioFlag = (options.verifyAudio ?? true) ? 'a1' : 'a0';
+    const cacheKey = `coverr:${audioFlag}:${query || 'popular'}:page_${page}:limit_${perPage}`;
 
     try {
       const cached = await redis.get(cacheKey);

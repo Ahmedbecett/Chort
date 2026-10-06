@@ -81,7 +81,8 @@ export class PixabayService {
       };
     }
 
-    const cacheKey = `pixabay:${query || 'popular'}:page_${page}:limit_${perPage}`;
+    const audioFlag = (options.verifyAudio ?? true) ? 'a1' : 'a0';
+    const cacheKey = `pixabay:${audioFlag}:${query || 'popular'}:page_${page}:limit_${perPage}`;
 
     try {
       const cached = await redis.get(cacheKey);
@@ -92,7 +93,7 @@ export class PixabayService {
 
     // Portrait clips are a small minority of Pixabay's catalog: fetch a wide
     // slice (1 API call either way) so portrait+audio filtering nets enough.
-    const fetchCount = Math.min(100, Math.max(40, perPage * 4));
+    const fetchCount = Math.min(200, Math.max(100, perPage * 5));
     const params = new URLSearchParams({
       key: config.pixabay.apiKey,
       q: query,
