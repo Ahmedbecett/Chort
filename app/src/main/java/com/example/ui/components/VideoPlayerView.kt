@@ -206,11 +206,11 @@ fun VideoPlayerView(
                 val trimmedUrl = videoUrl.trim()
                 val isInvalidDummyHost = trimmedUrl.contains("test.com") || trimmedUrl.contains("example.com")
                 val isHttp = trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://")
-                val isLocalMedia = trimmedUrl.startsWith("content://") || trimmedUrl.startsWith("file://") || trimmedUrl.startsWith("android.resource://")
+                val isLocalMedia = trimmedUrl.startsWith("content://") || trimmedUrl.startsWith("file://") || trimmedUrl.startsWith("android.resource://") || trimmedUrl.startsWith("/")
 
                 if (trimmedUrl.isNotBlank() && !isInvalidDummyHost && (isHttp || isLocalMedia)) {
                     try {
-                        val uri = Uri.parse(trimmedUrl)
+                        val uri = if (trimmedUrl.startsWith("/")) Uri.fromFile(java.io.File(trimmedUrl)) else Uri.parse(trimmedUrl)
                         val isHls = trimmedUrl.contains(".m3u8") || trimmedUrl.contains("hls")
                         val mediaItem = MediaItem.Builder()
                             .setUri(uri)

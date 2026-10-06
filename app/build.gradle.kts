@@ -46,8 +46,8 @@ android {
     // as the source, which made stale builds indistinguishable from new
     // ones on-device. Bump BOTH on every release.
     // ------------------------------------------------------------------
-    versionCode = 20405
-    versionName = "2.4.5"
+    versionCode = 20406
+    versionName = "2.4.6"
 
     // Commit stamp compiled into BuildConfig.GIT_COMMIT so any APK can be
     // traced back to the exact git revision it was built from.

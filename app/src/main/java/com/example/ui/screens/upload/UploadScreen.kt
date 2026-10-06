@@ -101,7 +101,37 @@ fun UploadScreen(
     var uploadProgress by remember { mutableFloatStateOf(0f) }
     var uploadStatusText by remember { mutableStateOf("") }
 
-    // Android 13+ zero-permission Photo & Video picker
+    fun handleUriSelected(uri: Uri) {
+        selectedDeviceUri = uri
+        selectedVideoUri = uri.toString()
+        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val cacheFile = java.io.File(context.cacheDir, "preview_video_${System.currentTimeMillis()}.mp4")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    cacheFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                if (cacheFile.exists() && cacheFile.length() > 0) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        selectedVideoUri = cacheFile.absolutePath
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("UploadScreen", "Could not cache preview: ${e.message}")
+            }
+        }
+        Toast.makeText(context, "Video loaded from storage", Toast.LENGTH_SHORT).show()
+    }
+
+    val documentPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            handleUriSelected(uri)
+        }
+    }
+
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
@@ -112,9 +142,21 @@ fun UploadScreen(
                     android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
             } catch (_: Exception) {}
-            selectedDeviceUri = uri
-            selectedVideoUri = uri.toString()
-            Toast.makeText(context, "Video loaded from storage", Toast.LENGTH_SHORT).show()
+            handleUriSelected(uri)
+        }
+    }
+
+    fun openAnyVideoPicker() {
+        try {
+            if (ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable(context)) {
+                videoPickerLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+                )
+            } else {
+                documentPickerLauncher.launch("video/*")
+            }
+        } catch (_: Exception) {
+            documentPickerLauncher.launch("video/*")
         }
     }
 
@@ -190,6 +232,7 @@ fun UploadScreen(
                             videoUrl = selectedVideoUri,
                             thumbnailUrl = "",
                             isCurrentPage = true,
+                            onRetry = { selectedDeviceUri?.let { handleUriSelected(it) } },
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -210,9 +253,7 @@ fun UploadScreen(
 
                         Button(
                             onClick = {
-                                videoPickerLauncher.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
-                                )
+                                openAnyVideoPicker()
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated),
                             shape = RoundedCornerShape(12.dp),
@@ -237,9 +278,7 @@ fun UploadScreen(
                             .background(TokDarkElevated)
                             .border(1.5.dp, TokBorder, RoundedCornerShape(12.dp))
                             .clickable {
-                                videoPickerLauncher.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
-                                )
+                                openAnyVideoPicker()
                             },
                         contentAlignment = Alignment.Center
                     ) {
