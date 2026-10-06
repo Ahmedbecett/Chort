@@ -62,7 +62,7 @@ REQUIRED_DEX_STRINGS = [
     ("Primary API error", "TokPulseRepository.kt - primary cluster fallback"),
     ("https://chort-nine.vercel.app/", "TokPulseApi.kt - fallback cluster"),
     ("https://chort-nmk4.vercel.app/", "TokPulseApi.kt - primary cluster"),
-    ("Chort-Android/", "VideoPlayerView.kt - version-stamped User-Agent"),
+    ("thileli dz-Android/", "VideoPlayerView.kt - version-stamped User-Agent"),
 ]
 
 # Markers that must be ABSENT from VideoPlayerViewKt: they belonged to the
