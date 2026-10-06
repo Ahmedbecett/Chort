@@ -114,7 +114,7 @@ fun AdminDashboardScreen(
     val scope = rememberCoroutineScope()
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Overview", "Reports", "Users", "Videos", "Violations", "Privacy")
+    val tabs = listOf("Overview", "Reports", "Users", "Videos", "Violations", "Privacy", "Live Reports", "Logins")
 
     val allUsers by repository.getAllUsersAdmin().collectAsState(initial = emptyList())
     val allVideos by repository.getAllVideosAdmin().collectAsState(initial = emptyList())
@@ -340,6 +340,8 @@ fun AdminDashboardScreen(
                     }
                 }
             )
+            6 -> LiveReportsTab(repository = repository)
+            7 -> LiveLoginsTab(repository = repository)
         }
     }
 }

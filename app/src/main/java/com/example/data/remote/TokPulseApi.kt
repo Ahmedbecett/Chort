@@ -53,6 +53,8 @@ data class AuthResponse(
     val message: String? = null,
     val token: String? = null,
     val user: ApiUser? = null,
+    val isNew: Boolean? = null,
+    val linked: Boolean? = null,
     val error: String? = null
 )
 
@@ -66,7 +68,10 @@ data class ApiUser(
     val bio: String? = null,
     val followersCount: Int? = 0,
     val followingCount: Int? = 0,
-    val role: String? = "USER"
+    val role: String? = "USER",
+    val phone: String? = null,
+    val phoneVerified: Boolean? = false,
+    val primaryProvider: String? = "email"
 )
 
 @JsonClass(generateAdapter = true)
@@ -257,6 +262,178 @@ data class ApiUserProfile(
     val videos: List<ApiVideo> = emptyList()
 )
 
+@JsonClass(generateAdapter = true)
+data class OAuthGoogleRequest(val idToken: String)
+
+@JsonClass(generateAdapter = true)
+data class OAuthFacebookRequest(val accessToken: String)
+
+@JsonClass(generateAdapter = true)
+data class PhoneRequestBody(val phone: String)
+
+@JsonClass(generateAdapter = true)
+data class PhoneVerifyRequest(
+    val phone: String,
+    val code: String,
+    val name: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class RecoverRequestBody(val phone: String)
+
+@JsonClass(generateAdapter = true)
+data class RecoverConfirmRequest(
+    val phone: String,
+    val code: String,
+    val newPassword: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class OtpResponse(
+    val sent: Boolean = false,
+    val via: String? = null,
+    val expiresInSeconds: Int = 600,
+    val resendCooldownSeconds: Int = 60,
+    val accountFound: Boolean? = null,
+    val error: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class LinkedProvider(
+    val provider: String,
+    val email: String? = null,
+    val linkedAt: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class ProvidersResponse(
+    val providers: List<LinkedProvider> = emptyList()
+)
+
+@JsonClass(generateAdapter = true)
+data class LinkProviderRequest(
+    val provider: String,
+    val idToken: String? = null,
+    val accessToken: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class LinkProviderResponse(
+    val linked: Boolean = false,
+    val provider: String? = null,
+    val error: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class ApiSession(
+    val id: String,
+    val userAgent: String? = null,
+    val ipAddress: String? = null,
+    val expiresAt: Long = 0,
+    val createdAt: Long = 0,
+    val current: Boolean = false
+)
+
+@JsonClass(generateAdapter = true)
+data class SessionsResponse(
+    val sessions: List<ApiSession> = emptyList()
+)
+
+@JsonClass(generateAdapter = true)
+data class RevokeResponse(
+    val revoked: Boolean = false,
+    val error: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class ApiNotification(
+    val id: String,
+    val actorId: String,
+    val type: String,
+    val message: String,
+    val referenceId: String? = null,
+    val isRead: Boolean = false,
+    val createdAt: Long = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class NotificationsResponse(
+    val notifications: List<ApiNotification> = emptyList(),
+    val unreadCount: Int = 0,
+    val page: Int = 1,
+    val hasMore: Boolean = false
+)
+
+@JsonClass(generateAdapter = true)
+data class NotificationsReadRequest(
+    val ids: List<String>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class NotificationsReadResponse(
+    val marked: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class ApiAdminReport(
+    val id: String,
+    val reporterId: String,
+    val targetUserId: String? = null,
+    val videoId: String? = null,
+    val reason: String,
+    val status: String = "PENDING",
+    val createdAt: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class AdminReportsResponse(
+    val reports: List<ApiAdminReport> = emptyList(),
+    val page: Int = 1,
+    val hasMore: Boolean = false
+)
+
+@JsonClass(generateAdapter = true)
+data class ResolveReportRequest(
+    val action: String // dismiss | hide_video | show_video
+)
+
+@JsonClass(generateAdapter = true)
+data class ResolveReportResponse(
+    val reportId: String? = null,
+    val status: String? = null,
+    val action: String? = null,
+    val error: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class ApiLoginUser(
+    val id: String,
+    val username: String,
+    val email: String,
+    val phone: String? = null,
+    val primaryProvider: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class ApiLoginRecord(
+    val id: String,
+    val user: ApiLoginUser? = null,
+    val userAgent: String? = null,
+    val ipAddress: String? = null,
+    val createdAt: String? = null,
+    val expiresAt: String? = null,
+    val active: Boolean = true
+)
+
+@JsonClass(generateAdapter = true)
+data class LoginRecordsResponse(
+    val items: List<ApiLoginRecord> = emptyList(),
+    val page: Int = 1,
+    val limit: Int = 20,
+    val total: Int = 0,
+    val hasMore: Boolean = false
+)
+
 // -------------------------------------------------------------
 // Retrofit API Service
 // -------------------------------------------------------------
@@ -271,6 +448,71 @@ interface TokPulseApiService {
 
     @POST("api/v1/auth/login")
     suspend fun login(@Body req: LoginRequest): Response<AuthResponse>
+
+    @POST("api/v1/auth/logout")
+    suspend fun logout(): Response<GenericActionResponse>
+
+    @GET("api/v1/auth/sessions")
+    suspend fun listSessions(): Response<SessionsResponse>
+
+    @DELETE("api/v1/auth/sessions/{sessionId}")
+    suspend fun revokeSession(@Path("sessionId") sessionId: String): Response<RevokeResponse>
+
+    @POST("api/v1/auth/oauth/google")
+    suspend fun oauthGoogle(@Body req: OAuthGoogleRequest): Response<AuthResponse>
+
+    @POST("api/v1/auth/oauth/facebook")
+    suspend fun oauthFacebook(@Body req: OAuthFacebookRequest): Response<AuthResponse>
+
+    @POST("api/v1/auth/phone/request")
+    suspend fun phoneRequest(@Body req: PhoneRequestBody): Response<OtpResponse>
+
+    @POST("api/v1/auth/phone/verify")
+    suspend fun phoneVerify(@Body req: PhoneVerifyRequest): Response<AuthResponse>
+
+    @POST("api/v1/auth/recover/request")
+    suspend fun recoverRequest(@Body req: RecoverRequestBody): Response<OtpResponse>
+
+    @POST("api/v1/auth/recover/confirm")
+    suspend fun recoverConfirm(@Body req: RecoverConfirmRequest): Response<AuthResponse>
+
+    @GET("api/v1/auth/providers")
+    suspend fun linkedProviders(): Response<ProvidersResponse>
+
+    @POST("api/v1/auth/link")
+    suspend fun linkProvider(@Body req: LinkProviderRequest): Response<LinkProviderResponse>
+
+    @GET("api/v1/users/{userId}/notifications")
+    suspend fun getNotifications(
+        @Path("userId") userId: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): Response<NotificationsResponse>
+
+    @POST("api/v1/users/{userId}/notifications/read")
+    suspend fun readNotifications(
+        @Path("userId") userId: String,
+        @Body req: NotificationsReadRequest = NotificationsReadRequest()
+    ): Response<NotificationsReadResponse>
+
+    @GET("api/v1/admin/reports")
+    suspend fun adminReports(
+        @Query("status") status: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): Response<AdminReportsResponse>
+
+    @POST("api/v1/admin/reports/{reportId}/resolve")
+    suspend fun resolveReport(
+        @Path("reportId") reportId: String,
+        @Body req: ResolveReportRequest
+    ): Response<ResolveReportResponse>
+
+    @GET("api/v1/admin/logins")
+    suspend fun adminLogins(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): Response<LoginRecordsResponse>
 
     @GET("api/v1/feed")
     suspend fun getFeed(

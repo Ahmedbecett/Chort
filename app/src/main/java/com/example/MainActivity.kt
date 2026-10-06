@@ -1,5 +1,6 @@
 package com.example
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
@@ -28,16 +31,16 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -45,6 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -59,30 +63,30 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.remote.FacebookAuth
+import com.example.ui.components.ChortMark
 import com.example.ui.screens.admin.AdminDashboardScreen
 import com.example.ui.screens.auth.AuthScreen
+import com.example.ui.screens.auth.OtpMode
+import com.example.ui.screens.auth.OtpScreen
+import com.example.ui.screens.auth.PhoneAuthScreen
+import com.example.ui.screens.auth.RecoveryScreen
+import com.example.ui.screens.auth.SplashScreen
+import com.example.ui.screens.auth.WelcomeAuthScreen
 import com.example.ui.screens.chat.DirectMessageScreen
 import com.example.ui.screens.discover.DiscoverScreen
 import com.example.ui.screens.feed.FeedScreen
+import com.example.ui.screens.friends.FriendsScreen
 import com.example.ui.screens.inbox.InboxScreen
 import com.example.ui.screens.legal.LegalScreen
 import com.example.ui.screens.live.LiveStreamScreen
 import com.example.ui.screens.profile.ProfileScreen
+import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.sound.SoundDetailScreen
 import com.example.ui.screens.tracking.ExternalTrackingCenterScreen
 import com.example.ui.screens.upload.UploadScreen
-import com.example.ui.theme.TextMuted
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
 import com.example.ui.theme.TokPulseTheme
 import com.example.ui.theme.TokRed
-
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.border
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,6 +96,15 @@ class MainActivity : ComponentActivity() {
             TokPulseTheme {
                 TokPulseApp()
             }
+        }
+    }
+
+    @Deprecated("Forwarded to the Facebook SDK for Login results.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        try {
+            FacebookAuth.callbackManager.onActivityResult(requestCode, resultCode, data)
+        } catch (_: Exception) {
         }
     }
 }
@@ -106,23 +119,48 @@ fun TokPulseApp() {
     val connectivityMonitor = remember { NetworkConnectivityMonitor(context) }
     val isOnline by connectivityMonitor.isOnline.collectAsState(initial = true)
 
-    var currentScreen by remember { mutableStateOf("feed") } // "feed", "discover", "upload", "inbox", "profile", "admin", "auth", "legal", "live", "sound", "chat", "tracking"
+    // Screens: "splash" | auth: "welcome","email","phone","otp","recover" |
+    // main: "feed","friends","upload","inbox","profile" | sub: "discover","settings",
+    // "admin","legal","live","sound","chat","tracking"
+    var currentScreen by remember { mutableStateOf("splash") }
     var viewingProfileUserId by remember { mutableStateOf<String?>(null) }
     var selectedSoundTitle by remember { mutableStateOf("Original Sound - Chort Creator") }
     var legalType by remember { mutableStateOf("terms") } // "terms" or "privacy"
 
-    // Back handling for sub screens
-    BackHandler(enabled = currentScreen != "feed") {
+    // OTP handoff state (phone flow)
+    var otpPhone by remember { mutableStateOf("") }
+    var otpCooldown by remember { mutableIntStateOf(60) }
+    var otpExpiresIn by remember { mutableIntStateOf(600) }
+
+    fun goHome() {
+        viewingProfileUserId = null
+        currentScreen = "feed"
+    }
+
+    fun goWelcome() {
+        viewingProfileUserId = null
+        currentScreen = "welcome"
+    }
+
+    // Back handling for sub screens (welcome/splash use the system back = exit)
+    BackHandler(enabled = currentScreen != "feed" && currentScreen != "splash" && currentScreen != "welcome") {
         if (currentScreen == "profile" && viewingProfileUserId != null) {
             viewingProfileUserId = null
-        } else if (currentScreen in listOf("live", "sound", "chat", "tracking")) {
+        } else if (currentScreen in listOf("live", "sound", "chat", "tracking", "discover")) {
             currentScreen = "feed"
+        } else if (currentScreen == "settings" || currentScreen == "admin") {
+            viewingProfileUserId = null
+            currentScreen = "profile"
+        } else if (currentScreen == "legal") {
+            currentScreen = "profile"
+        } else if (currentScreen in listOf("email", "phone", "otp", "recover")) {
+            currentScreen = "welcome"
         } else {
             currentScreen = "feed"
         }
     }
 
-    val showBottomNav = currentScreen in listOf("feed", "discover", "upload", "inbox", "profile") && (currentScreen != "profile" || viewingProfileUserId == null)
+    val showBottomNav = currentScreen in listOf("feed", "friends", "upload", "inbox", "profile") && (currentScreen != "profile" || viewingProfileUserId == null)
     val navBarBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     Scaffold(
@@ -173,6 +211,65 @@ fun TokPulseApp() {
                     )
             ) {
                 when (currentScreen) {
+                    "splash" -> {
+                        SplashScreen(
+                            onFinished = {
+                                if (currentUser != null) goHome() else goWelcome()
+                            }
+                        )
+                    }
+
+                    "welcome" -> {
+                        WelcomeAuthScreen(
+                            repository = repository,
+                            onAuthSuccess = { goHome() },
+                            onUseEmail = { currentScreen = "email" },
+                            onUsePhone = { currentScreen = "phone" },
+                            onRecoverAccount = { currentScreen = "recover" }
+                        )
+                    }
+
+                    "email" -> {
+                        AuthScreen(
+                            repository = repository,
+                            onAuthSuccess = { goHome() },
+                            onBackToOptions = { goWelcome() }
+                        )
+                    }
+
+                    "phone" -> {
+                        PhoneAuthScreen(
+                            repository = repository,
+                            onCodeSent = { phone, cooldown, expires ->
+                                otpPhone = phone
+                                otpCooldown = cooldown
+                                otpExpiresIn = expires
+                                currentScreen = "otp"
+                            },
+                            onBack = { goWelcome() }
+                        )
+                    }
+
+                    "otp" -> {
+                        OtpScreen(
+                            repository = repository,
+                            mode = OtpMode.REGISTER,
+                            phone = otpPhone,
+                            cooldownSeconds = otpCooldown,
+                            expiresInSeconds = otpExpiresIn,
+                            onSuccess = { goHome() },
+                            onBack = { currentScreen = "phone" }
+                        )
+                    }
+
+                    "recover" -> {
+                        RecoveryScreen(
+                            repository = repository,
+                            onRecovered = { goHome() },
+                            onBack = { goWelcome() }
+                        )
+                    }
+
                     "feed" -> {
                         FeedScreen(
                             repository = repository,
@@ -191,6 +288,22 @@ fun TokPulseApp() {
                         )
                     }
 
+                    "friends" -> {
+                        FriendsScreen(
+                            repository = repository,
+                            onNavigateToSearch = { currentScreen = "discover" },
+                            onNavigateToProfile = { creatorId ->
+                                viewingProfileUserId = creatorId
+                                currentScreen = "profile"
+                            },
+                            onNavigateToCreate = { currentScreen = "upload" },
+                            onNavigateToSound = { title ->
+                                selectedSoundTitle = title
+                                currentScreen = "sound"
+                            }
+                        )
+                    }
+
                     "discover" -> {
                         DiscoverScreen(
                             repository = repository,
@@ -204,7 +317,8 @@ fun TokPulseApp() {
                             onNavigateToSound = { title ->
                                 selectedSoundTitle = title
                                 currentScreen = "sound"
-                            }
+                            },
+                            onBack = { currentScreen = "feed" }
                         )
                     }
 
@@ -224,9 +338,8 @@ fun TokPulseApp() {
                                 viewingProfileUserId = actorId
                                 currentScreen = "profile"
                             },
-                            onNavigateToChat = {
-                                currentScreen = "chat"
-                            }
+                            onNavigateToSearch = { currentScreen = "discover" },
+                            onNavigateToCreate = { currentScreen = "upload" }
                         )
                     }
 
@@ -272,8 +385,29 @@ fun TokPulseApp() {
                                 currentScreen = "feed"
                             },
                             onRequireLogin = {
-                                currentScreen = "auth"
-                            }
+                                goWelcome()
+                            },
+                            onNavigateToSettings = { currentScreen = "settings" }
+                        )
+                    }
+
+                    "settings" -> {
+                        SettingsScreen(
+                            repository = repository,
+                            onBack = {
+                                viewingProfileUserId = null
+                                currentScreen = "profile"
+                            },
+                            onNavigateToProfile = {
+                                viewingProfileUserId = null
+                                currentScreen = "profile"
+                            },
+                            onNavigateToInbox = { currentScreen = "inbox" },
+                            onNavigateToLegal = { type ->
+                                legalType = type
+                                currentScreen = "legal"
+                            },
+                            onLoggedOut = { goWelcome() }
                         )
                     }
 
@@ -281,13 +415,6 @@ fun TokPulseApp() {
                         AdminDashboardScreen(
                             repository = repository,
                             onBackToFeed = { currentScreen = "feed" }
-                        )
-                    }
-
-                    "auth" -> {
-                        AuthScreen(
-                            repository = repository,
-                            onAuthSuccess = { currentScreen = "feed" }
                         )
                     }
 
@@ -371,13 +498,13 @@ fun TokPulseBottomNavigation(
                 testTag = "nav_home"
             )
 
-            // Discover
+            // Friends
             BottomNavItem(
-                icon = if (currentScreen == "discover") Icons.Default.Search else Icons.Outlined.Search,
-                label = "Discover",
-                isSelected = (currentScreen == "discover"),
-                onClick = { onNavigate("discover") },
-                testTag = "nav_discover"
+                icon = if (currentScreen == "friends") Icons.Default.Groups else Icons.Outlined.Groups,
+                label = "Friends",
+                isSelected = (currentScreen == "friends"),
+                onClick = { onNavigate("friends") },
+                testTag = "nav_friends"
             )
 
             // Distinctive Chort Center Create '+' Button
@@ -385,14 +512,14 @@ fun TokPulseBottomNavigation(
                 onClick = { onNavigate("upload") }
             )
 
-            // Notifications
+            // Inbox
             BottomNavItem(
-                icon = if (currentScreen == "inbox") Icons.Default.Notifications else Icons.Outlined.Notifications,
-                label = "Notifications",
+                icon = if (currentScreen == "inbox") Icons.AutoMirrored.Filled.Chat else Icons.AutoMirrored.Outlined.Chat,
+                label = "Inbox",
                 isSelected = (currentScreen == "inbox"),
                 badgeCount = unreadBadgeCount,
                 onClick = { onNavigate("inbox") },
-                testTag = "nav_notifications"
+                testTag = "nav_inbox"
             )
 
             // Profile
@@ -435,11 +562,19 @@ private fun BottomNavItem(
             if (badgeCount > 0) {
                 Box(
                     modifier = Modifier
-                        .offset(x = 5.dp, y = (-2).dp)
-                        .size(7.dp)
+                        .offset(x = 8.dp, y = (-4).dp)
                         .clip(CircleShape)
                         .background(TokRed)
-                )
+                        .padding(horizontal = 4.dp, vertical = 1.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (badgeCount > 99) "99+" else "$badgeCount",
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
         Spacer(modifier = Modifier.height(2.dp))
@@ -461,27 +596,7 @@ private fun ChortCenterCreateButton(onClick: () -> Unit) {
             .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Sleek Chort Squircle with integrated Cyan-Red gradient border and crisp white center
-        Box(
-            modifier = Modifier
-                .size(width = 42.dp, height = 28.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .background(
-                    androidx.compose.ui.graphics.Brush.horizontalGradient(
-                        colors = listOf(TokCyan, TokRed)
-                    )
-                )
-                .padding(1.5.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.White),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Create Video",
-                tint = Color.Black,
-                modifier = Modifier.size(18.dp)
-            )
-        }
+        // Chort mark as the center action, framed by the brand gradient
+        ChortMark(size = 34.dp)
     }
 }

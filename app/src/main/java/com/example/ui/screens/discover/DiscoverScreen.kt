@@ -1,5 +1,6 @@
 package com.example.ui.screens.discover
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,8 +23,14 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
@@ -55,7 +62,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -89,11 +99,37 @@ fun DiscoverScreen(
     repository: TokPulseRepository,
     onNavigateToProfile: (String) -> Unit,
     onSelectVideo: (VideoEntity) -> Unit,
-    onNavigateToSound: (String) -> Unit = {}
+    onNavigateToSound: (String) -> Unit = {},
+    onBack: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("All") } // "All", "Videos", "Users", "Sounds", "Hashtags"
+    val context = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val searchPrefs = remember { context.getSharedPreferences("chort_search", Context.MODE_PRIVATE) }
+    var searchHistory by remember {
+        mutableStateOf(searchPrefs.getStringSet("history", emptySet())?.toList().orEmpty())
+    }
+    var historyExpanded by remember { mutableStateOf(false) }
+    var suggestionSeed by remember { mutableStateOf(0) }
+
+    fun saveToHistory(query: String) {
+        val clean = query.trim()
+        if (clean.length < 2) return
+        val updated = (listOf(clean) + searchHistory.filterNot { it.equals(clean, ignoreCase = true) }).take(10)
+        searchHistory = updated
+        searchPrefs.edit().putStringSet("history", updated.toSet()).apply()
+    }
+    fun removeFromHistory(query: String) {
+        val updated = searchHistory.filterNot { it == query }
+        searchHistory = updated
+        searchPrefs.edit().putStringSet("history", updated.toSet()).apply()
+    }
+    fun submitSearch() {
+        saveToHistory(searchQuery)
+        keyboardController?.hide()
+    }
 
     val allVideos by repository.getActiveVideos().collectAsState(initial = emptyList())
     val allUsers by repository.getAllUsersAdmin().collectAsState(initial = emptyList())
@@ -170,6 +206,16 @@ fun DiscoverScreen(
 
     val hasAnyResults = searchResultsVideos.isNotEmpty() || searchResultsUsers.isNotEmpty() || searchResultsSounds.isNotEmpty()
 
+    // "You may like": suggestions drawn from real on-device content.
+    val youMayLike = remember(dynamicTags, allSounds, allUsers, suggestionSeed) {
+        val pool = mutableListOf<String>()
+        pool += dynamicTags.take(8).map { it.first }
+        pool += allSounds.take(6).map { it.title }
+        pool += allUsers.filter { it.role != "admin" }.take(6).map { "@${it.username}" }
+        if (pool.isEmpty()) pool += listOf("#chort", "#fyp", "#viral", "#newhere")
+        pool.distinct().shuffled(java.util.Random(suggestionSeed * 31L + 7))
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -177,13 +223,21 @@ fun DiscoverScreen(
             .statusBarsPadding()
             .testTag("discover_screen")
     ) {
-        // Search Header
+        // Search Header: back + field + Search action
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = TextPrimary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -218,10 +272,21 @@ fun DiscoverScreen(
                 ),
                 shape = RoundedCornerShape(24.dp),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { submitSearch() }),
                 modifier = Modifier
                     .weight(1f)
                     .height(50.dp)
                     .testTag("search_input")
+            )
+            Text(
+                text = "Search",
+                color = TokRed,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .clickable { submitSearch() }
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             )
         }
 
@@ -305,6 +370,131 @@ fun DiscoverScreen(
                     .fillMaxSize()
                     .padding(bottom = 60.dp)
             ) {
+                // Search history (idle state)
+                if (searchQuery.isBlank() && searchHistory.isNotEmpty()) {
+                    val visibleHistory = if (historyExpanded) searchHistory else searchHistory.take(4)
+                    items(visibleHistory) { past ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { searchQuery = past }
+                                .padding(horizontal = 18.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = null,
+                                tint = TextMuted,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = past,
+                                color = TextPrimary,
+                                fontSize = 15.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                onClick = { removeFromHistory(past) },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Remove",
+                                    tint = TextMuted,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                    if (searchHistory.size > 4) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (historyExpanded) "See less" else "See more",
+                                    color = TextSecondary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.clickable { historyExpanded = !historyExpanded }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // "You may like" suggestions (idle state, from real content)
+                if (searchQuery.isBlank()) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 18.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "You may like",
+                                color = TextPrimary,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable { suggestionSeed++ }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Refresh",
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Refresh",
+                                    color = TextSecondary,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
+                    items(youMayLike.take(8).withIndex().toList()) { (index, suggestion) ->
+                        val hot = index < 2
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    searchQuery = suggestion.removePrefix("#").removePrefix("@")
+                                    submitSearch()
+                                }
+                                .padding(horizontal = 18.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .clip(CircleShape)
+                                    .background(if (hot) TokRed else TextMuted)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = suggestion,
+                                color = if (hot) TokRed else TextPrimary,
+                                fontSize = 15.sp,
+                                fontWeight = if (hot) FontWeight.Bold else FontWeight.Normal,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+
                 // Trending Hashtags section
                 if (searchQuery.isBlank() || selectedFilter == "Hashtags" || selectedFilter == "All") {
                     item {

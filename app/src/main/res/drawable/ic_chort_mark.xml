@@ -1,0 +1,21 @@
+<!-- Original Chort mark: a bold "C" arc opening into a play triangle.
+     Designed for Chort - not affiliated with any other short-video brand. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#171B26"
+        android:pathData="M38,18 h32 a20,20 0 0 1 20,20 v32 a20,20 0 0 1 -20,20 h-32 a20,20 0 0 1 -20,-20 v-32 a20,20 0 0 1 20,-20 Z" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M64.9,41.0 A17,17 0 1 0 64.9,67.0"
+        android:strokeWidth="8.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#FE2C55"
+        android:pathData="M50,45 L63,54 L50,63 Z"
+        android:strokeLineJoin="round" />
+</vector>

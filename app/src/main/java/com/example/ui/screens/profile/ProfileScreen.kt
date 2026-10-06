@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Policy
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
@@ -102,7 +103,8 @@ fun ProfileScreen(
     onNavigateToAdmin: () -> Unit,
     onNavigateToLegal: (String) -> Unit,
     onSelectVideo: (VideoEntity) -> Unit,
-    onRequireLogin: () -> Unit
+    onRequireLogin: () -> Unit,
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -202,6 +204,14 @@ fun ProfileScreen(
                         onDismissRequest = { showMenu = false },
                         modifier = Modifier.background(TokDarkSurface)
                     ) {
+                        DropdownMenuItem(
+                            text = { Text("Settings and privacy", color = TextPrimary) },
+                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null, tint = TokCyan) },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToSettings()
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text("Terms of Service", color = TextPrimary) },
                             leadingIcon = { Icon(Icons.Default.Policy, contentDescription = null, tint = TokCyan) },

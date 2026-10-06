@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
@@ -16,11 +17,31 @@ import com.example.data.local.entities.UserEntity
 import com.example.data.local.entities.VideoEntity
 import com.example.data.local.entities.ViolationEntity
 import com.example.data.remote.AddCommentRequest
+import com.example.data.remote.ApiLoginRecord
+import com.example.data.remote.ApiSession
+import com.example.data.remote.AuthResponse
+import com.example.data.remote.ApiUser
 import com.example.data.remote.CompleteUploadRequest
+import com.example.data.remote.FacebookAuth
 import com.example.data.remote.FirebaseService
+import com.example.data.remote.GoogleAuth
 import com.example.data.remote.LikeRequest
+import com.example.data.remote.LinkProviderRequest
+import com.example.data.remote.LinkedProvider
 import com.example.data.remote.LoginRequest
+import com.example.data.remote.LoginRecordsResponse
+import com.example.data.remote.AdminReportsResponse
+import com.example.data.remote.NotificationsReadRequest
+import com.example.data.remote.OAuthFacebookRequest
+import com.example.data.remote.OAuthGoogleRequest
+import com.example.data.remote.OtpResponse
+import com.example.data.remote.PhoneRequestBody
+import com.example.data.remote.PhoneVerifyRequest
+import com.example.data.remote.RecoverConfirmRequest
+import com.example.data.remote.RecoverRequestBody
 import com.example.data.remote.RegisterRequest
+import com.example.data.remote.ResolveReportRequest
+import com.example.data.remote.ResolveReportResponse
 import com.example.data.remote.ShareRequest
 import com.example.data.remote.TokPulseApiClient
 import com.example.data.remote.UploadTicketRequest
@@ -267,6 +288,14 @@ class TokPulseRepository(private val context: Context) {
     }
 
     suspend fun logout() = withContext(Dispatchers.IO) {
+        try {
+            TokPulseApiClient.api.logout()
+        } catch (_: Exception) {
+        }
+        try {
+            FacebookAuth.logout()
+        } catch (_: Exception) {
+        }
         sharedPrefs.edit().clear().apply()
         TokPulseApiClient.setAuthToken(null)
         firebaseService.signOut()
@@ -440,6 +469,481 @@ class TokPulseRepository(private val context: Context) {
         }
         result
     }
+
+    // --- BACKEND AUTH: Google / Facebook / Phone / Recovery ---
+
+    private fun backendError(errJson: String?, code: Int, fallback: String): String {
+        return try {
+            val msg = JSONObject(errJson ?: "").optString("error", "")
+            if (msg.isNotBlank()) msg else "$fallback ($code)"
+        } catch (_: Exception) {
+            "$fallback ($code)"
+        }
+    }
+
+    private suspend fun persistBackendSession(
+        body: AuthResponse,
+        displayFallback: String
+    ): UserEntity? {
+        val apiUser: ApiUser = body.user ?: return null
+        val token = body.token
+        if (!token.isNullOrBlank()) {
+            TokPulseApiClient.setAuthToken(token)
+            sharedPrefs.edit()
+                .putString("auth_token", token)
+                .putString("user_id", apiUser.id)
+                .apply()
+        }
+        val userEntity = UserEntity(
+            id = apiUser.id,
+            username = apiUser.username,
+            displayName = apiUser.displayName ?: displayFallback.ifBlank { apiUser.username },
+            email = apiUser.email,
+            passwordHash = "JWT_SECURED",
+            avatarUrl = apiUser.avatarUrl
+                ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${apiUser.username}",
+            bio = apiUser.bio ?: "",
+            followersCount = apiUser.followersCount ?: 0,
+            followingCount = apiUser.followingCount ?: 0,
+            totalLikes = 0,
+            role = (apiUser.role ?: "user").lowercase(),
+            status = "active",
+            createdAt = System.currentTimeMillis()
+        )
+        dao.insertUser(userEntity)
+        _currentUserId.value = userEntity.id
+        _currentUser.value = userEntity
+        return userEntity
+    }
+
+    suspend fun signInWithGoogleBackend(activity: Activity): Result<UserEntity> =
+        withContext(Dispatchers.IO) {
+            val idToken = GoogleAuth.getIdToken(activity).getOrElse {
+                return@withContext Result.failure(it)
+            }
+            try {
+                val response = TokPulseApiClient.api.oauthGoogle(OAuthGoogleRequest(idToken))
+                val body = response.body()
+                if (response.isSuccessful && body?.user != null) {
+                    val user = persistBackendSession(body, "") ?: return@withContext Result.failure(
+                        Exception("Google sign-in returned an empty profile.")
+                    )
+                    syncWithCloud()
+                    Result.success(user)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(
+                                response.errorBody()?.string(),
+                                response.code(),
+                                "Google sign-in failed"
+                            )
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Google sign-in failed."))
+            }
+        }
+
+    suspend fun signInWithFacebookBackend(activity: Activity): Result<UserEntity> =
+        withContext(Dispatchers.IO) {
+            val accessToken = FacebookAuth.login(activity).getOrElse {
+                return@withContext Result.failure(it)
+            }
+            try {
+                val response = TokPulseApiClient.api.oauthFacebook(OAuthFacebookRequest(accessToken))
+                val body = response.body()
+                if (response.isSuccessful && body?.user != null) {
+                    val user = persistBackendSession(body, "") ?: return@withContext Result.failure(
+                        Exception("Facebook sign-in returned an empty profile.")
+                    )
+                    syncWithCloud()
+                    Result.success(user)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(
+                                response.errorBody()?.string(),
+                                response.code(),
+                                "Facebook sign-in failed"
+                            )
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Facebook sign-in failed."))
+            }
+        }
+
+    suspend fun requestPhoneOtp(phone: String): Result<OtpResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = TokPulseApiClient.api.phoneRequest(PhoneRequestBody(phone.trim()))
+                val body = response.body()
+                if (response.isSuccessful && body != null && body.sent) {
+                    Result.success(body)
+                } else {
+                    Result.failure(
+                        Exception(
+                            body?.error
+                                ?: backendError(
+                                    response.errorBody()?.string(),
+                                    response.code(),
+                                    "Could not send the code"
+                                )
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Could not send the code."))
+            }
+        }
+
+    suspend fun verifyPhoneOtp(phone: String, code: String, name: String? = null): Result<UserEntity> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = TokPulseApiClient.api.phoneVerify(
+                    PhoneVerifyRequest(phone.trim(), code.trim(), name?.trim()?.ifBlank { null })
+                )
+                val body = response.body()
+                if ((response.isSuccessful || response.code() == 201) && body?.user != null) {
+                    val user = persistBackendSession(body, name ?: "") ?: return@withContext Result.failure(
+                        Exception("Phone verification returned an empty profile.")
+                    )
+                    syncWithCloud()
+                    Result.success(user)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(
+                                response.errorBody()?.string(),
+                                response.code(),
+                                "Verification failed"
+                            )
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Verification failed."))
+            }
+        }
+
+    suspend fun requestRecoveryOtp(phone: String): Result<OtpResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = TokPulseApiClient.api.recoverRequest(RecoverRequestBody(phone.trim()))
+                val body = response.body()
+                if (response.isSuccessful && body != null && body.sent) {
+                    Result.success(body)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(
+                                response.errorBody()?.string(),
+                                response.code(),
+                                "Could not send the recovery code"
+                            )
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Could not send the recovery code."))
+            }
+        }
+
+    suspend fun confirmRecovery(
+        phone: String,
+        code: String,
+        newPassword: String? = null
+    ): Result<UserEntity> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = TokPulseApiClient.api.recoverConfirm(
+                    RecoverConfirmRequest(phone.trim(), code.trim(), newPassword)
+                )
+                val body = response.body()
+                if (response.isSuccessful && body?.user != null) {
+                    val user = persistBackendSession(body, "") ?: return@withContext Result.failure(
+                        Exception("Recovery returned an empty profile.")
+                    )
+                    syncWithCloud()
+                    Result.success(user)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(
+                                response.errorBody()?.string(),
+                                response.code(),
+                                "Recovery failed"
+                            )
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Recovery failed."))
+            }
+        }
+
+    suspend fun getLinkedProviders(): Result<List<LinkedProvider>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = TokPulseApiClient.api.linkedProviders()
+                if (response.isSuccessful && response.body() != null) {
+                    Result.success(response.body()!!.providers)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(
+                                response.errorBody()?.string(),
+                                response.code(),
+                                "Could not load linked accounts"
+                            )
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Could not load linked accounts."))
+            }
+        }
+
+    suspend fun linkGoogleToMyAccount(activity: Activity): Result<String> =
+        withContext(Dispatchers.IO) {
+            val idToken = GoogleAuth.getIdToken(activity).getOrElse {
+                return@withContext Result.failure(it)
+            }
+            try {
+                val response = TokPulseApiClient.api.linkProvider(
+                    LinkProviderRequest(provider = "google", idToken = idToken)
+                )
+                if (response.isSuccessful && response.body()?.linked == true) {
+                    Result.success("google")
+                } else {
+                    Result.failure(
+                        Exception(
+                            response.body()?.error
+                                ?: backendError(
+                                    response.errorBody()?.string(),
+                                    response.code(),
+                                    "Could not link Google"
+                                )
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Could not link Google."))
+            }
+        }
+
+    suspend fun linkFacebookToMyAccount(activity: Activity): Result<String> =
+        withContext(Dispatchers.IO) {
+            val accessToken = FacebookAuth.login(activity).getOrElse {
+                return@withContext Result.failure(it)
+            }
+            try {
+                val response = TokPulseApiClient.api.linkProvider(
+                    LinkProviderRequest(provider = "facebook", accessToken = accessToken)
+                )
+                if (response.isSuccessful && response.body()?.linked == true) {
+                    Result.success("facebook")
+                } else {
+                    Result.failure(
+                        Exception(
+                            response.body()?.error
+                                ?: backendError(
+                                    response.errorBody()?.string(),
+                                    response.code(),
+                                    "Could not link Facebook"
+                                )
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Could not link Facebook."))
+            }
+        }
+
+    // --- LIVE SERVER DATA: notifications / sessions / admin ---
+
+    /**
+     * Pulls real notifications from the Chort API into the local inbox.
+     * Actor profiles are resolved best-effort (cache first, profile API
+     * second) so rows always show genuine usernames/avatars.
+     */
+    suspend fun syncRemoteNotifications(): Result<Int> = withContext(Dispatchers.IO) {
+        val me = _currentUser.value?.id ?: return@withContext Result.failure(
+            Exception("Sign in to load notifications.")
+        )
+        try {
+            val response = TokPulseApiClient.api.getNotifications(me, 1, 30)
+            val body = response.body()
+            if (!response.isSuccessful || body == null) {
+                return@withContext Result.failure(
+                    Exception(backendError(response.errorBody()?.string(), response.code(), "Inbox unavailable"))
+                )
+            }
+            val entities = body.notifications.map { n ->
+                var actorName: String? = null
+                var actorAvatar: String? = null
+                try {
+                    val cached = dao.getUserByIdSync(n.actorId)
+                    if (cached != null) {
+                        actorName = cached.username
+                        actorAvatar = cached.avatarUrl
+                    } else {
+                        val profile = TokPulseApiClient.api.getUserProfile(n.actorId)
+                        val remote = profile.body()?.user
+                        if (profile.isSuccessful && remote != null) {
+                            actorName = remote.username
+                            actorAvatar = remote.avatarUrl
+                            dao.insertUser(
+                                UserEntity(
+                                    id = remote.id,
+                                    username = remote.username,
+                                    displayName = remote.displayName ?: remote.username,
+                                    email = "",
+                                    passwordHash = "REMOTE",
+                                    avatarUrl = remote.avatarUrl
+                                        ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${remote.username}",
+                                    bio = remote.bio ?: "",
+                                    followersCount = remote.followersCount,
+                                    followingCount = remote.followingCount,
+                                    totalLikes = remote.likesReceived,
+                                    role = "user",
+                                    status = "active",
+                                    createdAt = System.currentTimeMillis()
+                                )
+                            )
+                        }
+                    }
+                } catch (_: Exception) {
+                }
+                NotificationEntity(
+                    id = n.id,
+                    userId = me,
+                    actorId = n.actorId,
+                    actorUsername = actorName ?: "user_${n.actorId.take(6)}",
+                    actorAvatar = actorAvatar
+                        ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${n.actorId}",
+                    type = n.type,
+                    message = n.message,
+                    videoId = n.referenceId,
+                    isRead = n.isRead,
+                    createdAt = if (n.createdAt > 0) n.createdAt else System.currentTimeMillis()
+                )
+            }
+            if (entities.isNotEmpty()) dao.insertNotifications(entities)
+            Result.success(body.unreadCount)
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Inbox unavailable."))
+        }
+    }
+
+    suspend fun markRemoteNotificationsRead(): Result<Int> = withContext(Dispatchers.IO) {
+        val me = _currentUser.value?.id ?: return@withContext Result.failure(
+            Exception("Sign in first.")
+        )
+        return@withContext try {
+            val response = TokPulseApiClient.api.readNotifications(me, NotificationsReadRequest())
+            dao.markNotificationsAsRead(me)
+            Result.success(response.body()?.marked ?: 0)
+        } catch (e: Exception) {
+            try {
+                dao.markNotificationsAsRead(me)
+            } catch (_: Exception) {
+            }
+            Result.failure(Exception(e.message ?: "Could not sync read state."))
+        }
+    }
+
+    suspend fun listMySessions(): Result<List<ApiSession>> = withContext(Dispatchers.IO) {
+        try {
+            val response = TokPulseApiClient.api.listSessions()
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!.sessions)
+            } else {
+                Result.failure(
+                    Exception(
+                        backendError(response.errorBody()?.string(), response.code(), "Sessions unavailable")
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Sessions unavailable."))
+        }
+    }
+
+    suspend fun revokeMySession(sessionId: String): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = TokPulseApiClient.api.revokeSession(sessionId)
+                if (response.isSuccessful && response.body()?.revoked == true) {
+                    Result.success(true)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(response.errorBody()?.string(), response.code(), "Could not revoke session")
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Could not revoke session."))
+            }
+        }
+
+    suspend fun getAdminLogins(page: Int = 1): Result<LoginRecordsResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = TokPulseApiClient.api.adminLogins(page, 20)
+                if (response.isSuccessful && response.body() != null) {
+                    Result.success(response.body()!!)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(response.errorBody()?.string(), response.code(), "Login records unavailable")
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Login records unavailable."))
+            }
+        }
+
+    suspend fun getAdminReports(status: String? = null, page: Int = 1): Result<AdminReportsResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = TokPulseApiClient.api.adminReports(status, page, 20)
+                if (response.isSuccessful && response.body() != null) {
+                    Result.success(response.body()!!)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(response.errorBody()?.string(), response.code(), "Reports unavailable")
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Reports unavailable."))
+            }
+        }
+
+    suspend fun resolveAdminReport(reportId: String, action: String): Result<ResolveReportResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = TokPulseApiClient.api.resolveReport(reportId, ResolveReportRequest(action))
+                if (response.isSuccessful && response.body() != null) {
+                    Result.success(response.body()!!)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(response.errorBody()?.string(), response.code(), "Could not resolve report")
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Could not resolve report."))
+            }
+        }
 
     suspend fun devSwitchToAdmin(): UserEntity = withContext(Dispatchers.IO) {
         val adminUser = UserEntity(

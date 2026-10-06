@@ -487,7 +487,7 @@ private fun TopFeedBar(
 }
 
 @Composable
-private fun VideoFeedItem(
+fun VideoFeedItem(
     video: VideoEntity,
     isCurrentPage: Boolean,
     isLiked: Boolean,

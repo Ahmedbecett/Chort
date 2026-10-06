@@ -26,15 +26,18 @@ import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,11 +51,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.local.entities.NotificationEntity
 import com.example.data.repository.TokPulseRepository
+import com.example.ui.components.StoriesRow
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.AccentGreen
 import com.example.ui.theme.TextMuted
@@ -66,19 +71,41 @@ import com.example.ui.theme.TokDarkSurface
 import com.example.ui.theme.TokRed
 import kotlinx.coroutines.launch
 
+/**
+ * Inbox: stories on top, live activity (likes, comments, follows)
+ * synced from the Chort server below. No placeholder content.
+ */
 @Composable
 fun InboxScreen(
     repository: TokPulseRepository,
     onNavigateToProfile: (String) -> Unit,
-    onNavigateToChat: (String) -> Unit = {}
+    onNavigateToSearch: () -> Unit = {},
+    onNavigateToCreate: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val currentUser by repository.currentUser.collectAsState()
-    val notifications by repository.getNotifications(currentUser?.id ?: "user_me").collectAsState(initial = emptyList())
-    val unreadCount by repository.getUnreadCount(currentUser?.id ?: "user_me").collectAsState(initial = 0)
+    val userId = currentUser?.id ?: "user_me"
+    val notifications by repository.getNotifications(userId).collectAsState(initial = emptyList())
+    val unreadCount by repository.getUnreadCount(userId).collectAsState(initial = 0)
 
-    var mainTab by remember { mutableStateOf("Activity") } // "Activity" or "Messages"
-    var selectedFilter by remember { mutableStateOf("All") } // "All", "Likes", "Comments", "Followers", "System"
+    var selectedFilter by remember { mutableStateOf("All") }
+    var isSyncing by remember { mutableStateOf(false) }
+    var syncError by remember { mutableStateOf<String?>(null) }
+
+    fun sync() {
+        if (isSyncing) return
+        isSyncing = true
+        syncError = null
+        scope.launch {
+            val result = repository.syncRemoteNotifications()
+            isSyncing = false
+            if (result.isFailure) {
+                syncError = result.exceptionOrNull()?.message
+            }
+        }
+    }
+
+    LaunchedEffect(userId) { sync() }
 
     val filteredNotifications = remember(notifications, selectedFilter) {
         when (selectedFilter) {
@@ -97,37 +124,16 @@ fun InboxScreen(
             .statusBarsPadding()
             .testTag("inbox_screen")
     ) {
-        // Top Header with Tabs: Activity | Direct Messages
+        // Header: centered title + search + mark-read
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Activity",
-                    color = if (mainTab == "Activity") TextPrimary else TextMuted,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { mainTab = "Activity" }
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "Messages (3)",
-                    color = if (mainTab == "Messages") TokCyan else TextMuted,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable { mainTab = "Messages" }
-                )
-            }
-
             IconButton(
                 onClick = {
-                    currentUser?.id?.let { uid ->
-                        scope.launch { repository.markAllNotificationsRead(uid) }
-                    }
+                    scope.launch { repository.markRemoteNotificationsRead() }
                 }
             ) {
                 Icon(
@@ -137,57 +143,67 @@ fun InboxScreen(
                     modifier = Modifier.size(22.dp)
                 )
             }
+            Text(
+                text = "Inbox",
+                color = TextPrimary,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onNavigateToSearch) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = TextPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
 
-        if (mainTab == "Messages") {
-            // Direct messages list
-            val dms = listOf(
-                Triple("alex_skates", "Alex Rivera", "Let's do a duet next week for the #skatechallenge! 🛹"),
-                Triple("chef_elena", "Chef Elena", "Loved the recipe feedback, trying your suggestion! 🍳"),
-                Triple("maya_beats", "Maya Lin", "Hey, your video is trending on the sound page! ✨")
+        StoriesRow(
+            repository = repository,
+            onCreateStory = onNavigateToCreate,
+            onStoryClick = { user -> onNavigateToProfile(user.id) },
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        // Activity header row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = if (unreadCount > 0) "Activity ($unreadCount new)" else "Activity",
+                color = TextPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
             )
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(dms) { (handle, name, lastMsg) ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onNavigateToChat(handle) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, TokBorder)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .clip(CircleShape)
-                                    .background(TokDarkElevated),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(name.take(1), color = TokCyan, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(name, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text(lastMsg, color = TextSecondary, fontSize = 12.sp, maxLines = 1)
-                            }
-                            Text("Active", color = TokCyan, fontSize = 10.sp)
-                        }
-                    }
+            if (isSyncing) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(
+                        color = TokCyan,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "Syncing…", color = TextMuted, fontSize = 11.sp)
                 }
+            } else if (syncError != null && notifications.isEmpty()) {
+                Text(
+                    text = "Tap to retry",
+                    color = TokCyan,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickable { sync() }
+                )
             }
-        } else {
-            // Filter Categories
+        }
+
+        // Filter Categories
         LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
@@ -219,12 +235,12 @@ fun InboxScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Notifications List
         if (filteredNotifications.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 60.dp),
+                    .padding(bottom = 60.dp)
+                    .clickable { sync() },
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -242,9 +258,15 @@ fun InboxScreen(
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = "When people like, comment or follow you, it'll appear here",
+                        text = if (syncError != null) {
+                            (syncError ?: "Couldn't reach the server.") + " Tap to retry."
+                        } else {
+                            "When people like, comment or follow you, it'll appear here"
+                        },
                         color = TextMuted,
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 32.dp)
                     )
                 }
             }
@@ -265,7 +287,6 @@ fun InboxScreen(
             }
         }
     }
-}
 }
 
 @Composable
@@ -300,7 +321,6 @@ private fun NotificationCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Actor Avatar with badge
             Box(contentAlignment = Alignment.BottomEnd) {
                 AsyncImage(
                     model = notification.actorAvatar,

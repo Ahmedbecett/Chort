@@ -7,4 +7,12 @@
     <string name="tab_create">Create</string>
     <string name="tab_notifications">Notifications</string>
     <string name="tab_profile">Profile</string>
+    <string name="tab_friends">Friends</string>
+    <string name="tab_inbox">Inbox</string>
+    <!-- Facebook Login: replace with the real App ID + Client Token from
+         https://developers.facebook.com/apps (public identifiers, safe here).
+         Until set, Facebook sign-in shows a "not configured" message. -->
+    <string name="facebook_app_id">SET_YOUR_FB_APP_ID</string>
+    <string name="facebook_client_token">SET_YOUR_FB_CLIENT_TOKEN</string>
+    <string name="fb_login_protocol_scheme">fbSET_YOUR_FB_APP_ID</string>
 </resources>
