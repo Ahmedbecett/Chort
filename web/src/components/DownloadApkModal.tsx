@@ -11,10 +11,10 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
 
   if (!isOpen) return null;
 
-  const APK_DOWNLOAD_URL = 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.5/Chort-latest.apk';
-  const APK_VERSIONED_URL = 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.5/Chort-v2.4.5-release.apk';
-  const SOURCE_ZIP_URL = 'https://github.com/Ahmedbecett/Chort/archive/refs/tags/v2.4.5.zip';
-  const RELEASE_URL = 'https://github.com/Ahmedbecett/Chort/releases/tag/v2.4.5';
+  const APK_DOWNLOAD_URL = 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.6/Chort-latest.apk';
+  const APK_VERSIONED_URL = 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.6/Chort-v2.4.6-release.apk';
+  const SOURCE_ZIP_URL = 'https://github.com/Ahmedbecett/Chort/archive/refs/tags/v2.4.6.zip';
+  const RELEASE_URL = 'https://github.com/Ahmedbecett/Chort/releases/tag/v2.4.6';
   const REPO_URL = 'https://github.com/Ahmedbecett/Chort';
 
   const handleCopyLink = () => {
@@ -39,7 +39,7 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-bold text-white">تحميل تطبيق Chort APK</h3>
                 <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded-full font-mono border border-emerald-500/30">
-                  v2.4.5 الأحدث
+                  v2.4.6 الأحدث
                 </span>
               </div>
               <p className="text-xs text-zinc-400 mt-0.5">الإصدار الرسمي الفعلي الأحدث من المستودع</p>
@@ -74,7 +74,7 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
             className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-zinc-200 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 active:scale-[0.98] transition-all text-center text-xs"
           >
             <Download className="w-4 h-4 text-cyan-400" />
-            <span>رابط بديل: تحميل Chort-v2.4.5-release.apk</span>
+            <span>رابط بديل: تحميل Chort-v2.4.6-release.apk</span>
           </a>
 
           {/* Full Files Download Action */}
@@ -96,7 +96,7 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
             </div>
             <div className="bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-800">
               <span className="block text-xs text-zinc-400">الإصدار</span>
-              <span className="text-sm font-semibold text-cyan-400 font-mono">v2.4.5</span>
+              <span className="text-sm font-semibold text-cyan-400 font-mono">v2.4.6</span>
             </div>
             <div className="bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-800">
               <span className="block text-xs text-zinc-400">الحالة</span>
@@ -131,7 +131,7 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
               className="flex-1 py-2 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 flex items-center justify-center gap-2 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
-              <span>صفحة الإصدار v2.4.5</span>
+              <span>صفحة الإصدار v2.4.6</span>
             </a>
             <a 
               href={REPO_URL}

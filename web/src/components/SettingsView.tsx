@@ -46,7 +46,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           className="flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-semibold bg-gradient-to-r from-pink-600 to-cyan-600 text-white"
         >
           <Download className="w-3.5 h-3.5" />
-          <span>APK v2.4.5</span>
+          <span>APK v2.4.6</span>
         </button>
       </div>
 
@@ -159,7 +159,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <Smartphone className="w-4 h-4 text-cyan-400" />
                 <div>
                   <div className="text-xs font-semibold text-white">تنزيل التطبيق الأحدث (APK)</div>
-                  <div className="text-[11px] text-zinc-500">إصدار المستودع الرسمي v2.4.5</div>
+                  <div className="text-[11px] text-zinc-500">إصدار المستودع الرسمي v2.4.6</div>
                 </div>
               </div>
               <Download className="w-4 h-4 text-cyan-400" />

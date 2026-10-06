@@ -103,7 +103,7 @@ export default function App() {
           className="flex items-center gap-1.5 py-1.5 px-3 rounded-full bg-gradient-to-r from-pink-600 via-rose-600 to-cyan-600 hover:from-pink-500 hover:to-cyan-500 text-white text-xs font-bold shadow-lg shadow-pink-600/30 border border-white/20 active:scale-95 transition-all"
         >
           <Download className="w-3.5 h-3.5 animate-bounce" />
-          <span>تحميل APK الأحدث v2.4.5</span>
+          <span>تحميل APK الأحدث v2.4.6</span>
         </button>
       </div>
 
