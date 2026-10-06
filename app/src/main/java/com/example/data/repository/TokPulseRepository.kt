@@ -78,7 +78,7 @@ class TokPulseRepository(private val context: Context) {
     private val dao = db.appDao()
     val firebaseService = FirebaseService(context)
 
-    private val _currentUserId = MutableStateFlow<String?>("user_me")
+    private val _currentUserId = MutableStateFlow<String?>(null)
     val currentUserId = _currentUserId.asStateFlow()
 
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
