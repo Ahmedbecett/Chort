@@ -71,7 +71,7 @@ import coil.compose.AsyncImage
 import com.example.ui.theme.TokCyan
 import com.example.ui.theme.TokRed
 
-import com.example.data.remote.ChortApiClient
+import com.example.data.remote.TokPulseApiClient
 
 private const val TAG = "VideoPlayerView"
 
@@ -181,7 +181,7 @@ fun VideoPlayerView(
                             refreshAttempted = true
                             isBuffering = true
                             hasError = false
-                            val refreshedStreamUrl = ChortApiClient.getCanonicalStreamUrl(effectiveVideoId)
+                            val refreshedStreamUrl = TokPulseApiClient.getCanonicalStreamUrl(effectiveVideoId)
                             Log.i(TAG, "Refreshing stream URL via $refreshedStreamUrl")
                             try {
                                 val mediaItem = MediaItem.Builder()
@@ -227,7 +227,7 @@ fun VideoPlayerView(
                         isBuffering = false
                     }
                 } else if (effectiveVideoId != null) {
-                    val canonicalStream = ChortApiClient.getCanonicalStreamUrl(effectiveVideoId)
+                    val canonicalStream = TokPulseApiClient.getCanonicalStreamUrl(effectiveVideoId)
                     val mediaItem = MediaItem.Builder()
                         .setUri(Uri.parse(canonicalStream))
                         .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MP4)

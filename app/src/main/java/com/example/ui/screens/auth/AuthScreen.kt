@@ -64,7 +64,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.repository.ChortRepository
+import com.example.data.repository.TokPulseRepository
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
@@ -79,7 +79,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AuthScreen(
-    repository: ChortRepository,
+    repository: TokPulseRepository,
     onAuthSuccess: () -> Unit,
     onBackToOptions: (() -> Unit)? = null
 ) {

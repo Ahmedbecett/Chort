@@ -79,7 +79,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.local.entities.CommentEntity
 import com.example.data.local.entities.VideoEntity
-import com.example.data.repository.ChortRepository
+import com.example.data.repository.TokPulseRepository
 import com.example.ui.components.BurstHeart
 import com.example.ui.components.CommentBottomSheet
 import com.example.ui.components.ReportDialog
@@ -96,7 +96,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(
-    repository: ChortRepository,
+    repository: TokPulseRepository,
     onNavigateToSearch: () -> Unit,
     onNavigateToProfile: (String) -> Unit,
     onNavigateToCreate: () -> Unit = {},

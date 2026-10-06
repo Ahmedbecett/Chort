@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.remote.FacebookAuth
 import com.example.data.remote.GoogleAuth
-import com.example.data.repository.ChortRepository
+import com.example.data.repository.TokPulseRepository
 import com.example.ui.components.ChortLogo
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
@@ -67,7 +67,7 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun WelcomeAuthScreen(
-    repository: ChortRepository,
+    repository: TokPulseRepository,
     onAuthSuccess: () -> Unit,
     onUseEmail: () -> Unit,
     onUsePhone: () -> Unit,

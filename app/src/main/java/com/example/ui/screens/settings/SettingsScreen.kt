@@ -79,7 +79,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.remote.ApiSession
 import com.example.data.remote.LinkedProvider
-import com.example.data.repository.ChortRepository
+import com.example.data.repository.TokPulseRepository
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
@@ -101,7 +101,7 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun SettingsScreen(
-    repository: ChortRepository,
+    repository: TokPulseRepository,
     onBack: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToInbox: () -> Unit,
@@ -522,7 +522,7 @@ private fun SettingToggleRow(
 
 @Composable
 private fun LinkedAccountsSection(
-    repository: ChortRepository,
+    repository: TokPulseRepository,
     activity: Activity?
 ) {
     val scope = rememberCoroutineScope()
@@ -667,7 +667,7 @@ private fun LinkChip(
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun SessionsSection(repository: ChortRepository) {
+private fun SessionsSection(repository: TokPulseRepository) {
     val scope = rememberCoroutineScope()
     var sessions by remember { mutableStateOf<List<ApiSession>?>(null) }
     var isLoading by remember { mutableStateOf(true) }

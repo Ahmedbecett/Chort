@@ -85,7 +85,7 @@ import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.sound.SoundDetailScreen
 import com.example.ui.screens.tracking.ExternalTrackingCenterScreen
 import com.example.ui.screens.upload.UploadScreen
-import com.example.ui.theme.ChortTheme
+import com.example.ui.theme.TokPulseTheme
 import com.example.ui.theme.TokRed
 
 class MainActivity : ComponentActivity() {
@@ -93,8 +93,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ChortTheme {
-                ChortApp()
+            TokPulseTheme {
+                TokPulseApp()
             }
         }
     }
@@ -110,9 +110,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun ChortApp() {
+fun TokPulseApp() {
     val context = LocalContext.current
-    val repository = ChortApplication.instance.repository
+    val repository = TokPulseApplication.instance.repository
     val currentUser by repository.currentUser.collectAsState()
     val unreadNotifications by repository.getUnreadCount(currentUser?.id ?: "user_me").collectAsState(initial = 0)
 
@@ -429,7 +429,7 @@ fun ChortApp() {
 
             // Bottom Navigation overlay positioned at bottom center
             if (showBottomNav) {
-                ChortBottomNavigation(
+                TokPulseBottomNavigation(
                     currentScreen = currentScreen,
                     isFeedScreen = (currentScreen == "feed"),
                     unreadBadgeCount = unreadNotifications,
@@ -447,7 +447,7 @@ fun ChortApp() {
 }
 
 @Composable
-fun ChortBottomNavigation(
+fun TokPulseBottomNavigation(
     currentScreen: String,
     isFeedScreen: Boolean,
     unreadBadgeCount: Int,

@@ -69,7 +69,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
-import com.example.data.repository.ChortRepository
+import com.example.data.repository.TokPulseRepository
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
@@ -82,7 +82,7 @@ import com.example.ui.theme.TokRed
 @Composable
 fun SoundDetailScreen(
     soundTitle: String,
-    repository: ChortRepository,
+    repository: TokPulseRepository,
     onBack: () -> Unit,
     onUseSound: () -> Unit,
     onSelectVideo: (String) -> Unit

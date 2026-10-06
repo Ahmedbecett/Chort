@@ -66,7 +66,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.data.repository.ChortRepository
+import com.example.data.repository.TokPulseRepository
 import com.example.ui.components.VideoPlayerView
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.AccentGreen
@@ -84,7 +84,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun UploadScreen(
-    repository: ChortRepository,
+    repository: TokPulseRepository,
     onUploadSuccess: () -> Unit
 ) {
     val context = LocalContext.current

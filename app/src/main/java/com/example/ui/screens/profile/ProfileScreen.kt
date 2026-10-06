@@ -82,7 +82,7 @@ import coil.compose.AsyncImage
 import com.example.BuildConfig
 import com.example.data.local.entities.UserEntity
 import com.example.data.local.entities.VideoEntity
-import com.example.data.repository.ChortRepository
+import com.example.data.repository.TokPulseRepository
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
@@ -98,7 +98,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
-    repository: ChortRepository,
+    repository: TokPulseRepository,
     userIdToView: String? = null,
     onNavigateToAdmin: () -> Unit,
     onNavigateToLegal: (String) -> Unit,

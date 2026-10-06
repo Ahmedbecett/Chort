@@ -63,9 +63,10 @@ fun ChortLogo(
             contentAlignment = Alignment.Center
         ) {
             Canvas(modifier = Modifier.size(size * 0.66f)) {
-                val s = size.minDimension
-                val ox = (size.width - s) / 2f
-                val oy = (size.height - s) / 2f
+                // this.size = DrawScope canvas size in px (the Dp param shadows it by name).
+                val s = this.size.minDimension
+                val ox = (this.size.width - s) / 2f
+                val oy = (this.size.height - s) / 2f
                 // Neon glow: wide soft halos, then chromatic offsets, then core.
                 drawNoteMark(TokRed.copy(alpha = 0.30f), ox + s * 0.035f, oy, s, s * 0.16f)
                 drawNoteMark(TokCyan.copy(alpha = 0.30f), ox - s * 0.035f, oy, s, s * 0.16f)

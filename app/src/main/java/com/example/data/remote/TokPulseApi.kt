@@ -526,6 +526,9 @@ interface TokPulseApiService {
         @Query("limit") limit: Int = 20
     ): Response<LoginRecordsResponse>
 
+    @GET("api/v1/admin/overview")
+    suspend fun adminOverview(): Response<AdminOverviewResponse>
+
     @GET("api/v1/feed")
     suspend fun getFeed(
         @Query("cursor") cursor: String? = null,
