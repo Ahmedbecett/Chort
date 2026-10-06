@@ -85,7 +85,7 @@ import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.sound.SoundDetailScreen
 import com.example.ui.screens.tracking.ExternalTrackingCenterScreen
 import com.example.ui.screens.upload.UploadScreen
-import com.example.ui.theme.TokPulseTheme
+import com.example.ui.theme.ChortTheme
 import com.example.ui.theme.TokRed
 
 class MainActivity : ComponentActivity() {
@@ -93,8 +93,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            TokPulseTheme {
-                TokPulseApp()
+            ChortTheme {
+                ChortApp()
             }
         }
     }
@@ -110,9 +110,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TokPulseApp() {
+fun ChortApp() {
     val context = LocalContext.current
-    val repository = TokPulseApplication.instance.repository
+    val repository = ChortApplication.instance.repository
     val currentUser by repository.currentUser.collectAsState()
     val unreadNotifications by repository.getUnreadCount(currentUser?.id ?: "user_me").collectAsState(initial = 0)
 
@@ -124,7 +124,7 @@ fun TokPulseApp() {
     // "admin","legal","live","sound","chat","tracking"
     var currentScreen by remember { mutableStateOf("splash") }
     var viewingProfileUserId by remember { mutableStateOf<String?>(null) }
-    var selectedSoundTitle by remember { mutableStateOf("Original Sound - Chort Creator") }
+    var selectedSoundTitle by remember { mutableStateOf("Original Sound - thileli dz Creator") }
     var legalType by remember { mutableStateOf("terms") } // "terms" or "privacy"
 
     // OTP handoff state (phone flow)
@@ -207,7 +207,7 @@ fun TokPulseApp() {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(
-                        bottom = if (showBottomNav && currentScreen != "feed") (48.dp + navBarBottomInset) else 0.dp
+                        bottom = if (showBottomNav && currentScreen != "feed") (58.dp + navBarBottomInset) else 0.dp
                     )
             ) {
                 when (currentScreen) {
@@ -429,7 +429,7 @@ fun TokPulseApp() {
 
             // Bottom Navigation overlay positioned at bottom center
             if (showBottomNav) {
-                TokPulseBottomNavigation(
+                ChortBottomNavigation(
                     currentScreen = currentScreen,
                     isFeedScreen = (currentScreen == "feed"),
                     unreadBadgeCount = unreadNotifications,
@@ -447,7 +447,7 @@ fun TokPulseApp() {
 }
 
 @Composable
-fun TokPulseBottomNavigation(
+fun ChortBottomNavigation(
     currentScreen: String,
     isFeedScreen: Boolean,
     unreadBadgeCount: Int,
@@ -484,7 +484,7 @@ fun TokPulseBottomNavigation(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .height(58.dp)
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceAround
@@ -507,7 +507,7 @@ fun TokPulseBottomNavigation(
                 testTag = "nav_friends"
             )
 
-            // Distinctive Chort Center Create '+' Button
+            // Distinctive thileli dz Center Create '+' Button
             ChortCenterCreateButton(
                 onClick = { onNavigate("upload") }
             )
@@ -557,7 +557,7 @@ private fun BottomNavItem(
                 imageVector = icon,
                 contentDescription = label,
                 tint = if (isSelected) Color.White else Color.White.copy(alpha = 0.55f),
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(26.dp)
             )
             if (badgeCount > 0) {
                 Box(
@@ -571,7 +571,7 @@ private fun BottomNavItem(
                     Text(
                         text = if (badgeCount > 99) "99+" else "$badgeCount",
                         color = Color.White,
-                        fontSize = 9.sp,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -581,8 +581,8 @@ private fun BottomNavItem(
         Text(
             text = label,
             color = if (isSelected) Color.White else Color.White.copy(alpha = 0.55f),
-            fontSize = 10.sp,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+            fontSize = 12.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
         )
     }
 }
@@ -596,7 +596,7 @@ private fun ChortCenterCreateButton(onClick: () -> Unit) {
             .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Chort mark as the center action, framed by the brand gradient
-        ChortMark(size = 34.dp)
+        // thileli dz mark as the center action, framed by the brand gradient
+        ChortMark(size = 44.dp)
     }
 }

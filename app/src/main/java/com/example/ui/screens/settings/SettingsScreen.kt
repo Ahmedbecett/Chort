@@ -79,7 +79,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.remote.ApiSession
 import com.example.data.remote.LinkedProvider
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ChortRepository
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
@@ -96,12 +96,12 @@ import kotlinx.coroutines.launch
 
 /**
  * Settings and privacy, in grouped cards: every toggle is persisted on
- * device, and account/security rows are backed by the live Chort API
+ * device, and account/security rows are backed by the live thileli dz API
  * (linked providers, active sessions, sign-out).
  */
 @Composable
 fun SettingsScreen(
-    repository: TokPulseRepository,
+    repository: ChortRepository,
     onBack: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToInbox: () -> Unit,
@@ -274,7 +274,7 @@ fun SettingsScreen(
                         val handle = currentUser?.username ?: "chort"
                         val send = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, "Follow me on Chort: @$handle")
+                            putExtra(Intent.EXTRA_TEXT, "Follow me on thileli dz: @$handle")
                         }
                         context.startActivity(Intent.createChooser(send, "Share profile"))
                     }
@@ -368,8 +368,8 @@ fun SettingsScreen(
             SettingsCard {
                 SettingRow(
                     icon = Icons.Default.Info,
-                    title = "About Chort",
-                    subtitle = "Version 2.4.1",
+                    title = "About thileli dz",
+                    subtitle = "Version 2.4.2",
                     onClick = { onNavigateToLegal("terms") }
                 )
                 SettingRow(
@@ -522,7 +522,7 @@ private fun SettingToggleRow(
 
 @Composable
 private fun LinkedAccountsSection(
-    repository: TokPulseRepository,
+    repository: ChortRepository,
     activity: Activity?
 ) {
     val scope = rememberCoroutineScope()
@@ -667,7 +667,7 @@ private fun LinkChip(
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun SessionsSection(repository: TokPulseRepository) {
+private fun SessionsSection(repository: ChortRepository) {
     val scope = rememberCoroutineScope()
     var sessions by remember { mutableStateOf<List<ApiSession>?>(null) }
     var isLoading by remember { mutableStateOf(true) }

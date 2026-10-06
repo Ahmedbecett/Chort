@@ -69,7 +69,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ChortRepository
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
@@ -82,7 +82,7 @@ import com.example.ui.theme.TokRed
 @Composable
 fun SoundDetailScreen(
     soundTitle: String,
-    repository: TokPulseRepository,
+    repository: ChortRepository,
     onBack: () -> Unit,
     onUseSound: () -> Unit,
     onSelectVideo: (String) -> Unit
@@ -273,7 +273,7 @@ fun SoundDetailScreen(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "Chort Verified Audio • ${if (isPlaying) "Playing now" else "Tap play to listen"}",
+                    text = "thileli dz Verified Audio • ${if (isPlaying) "Playing now" else "Tap play to listen"}",
                     color = TokCyan,
                     fontSize = 12.sp
                 )

@@ -174,7 +174,7 @@ fun FriendsScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 60.dp),
+                    .padding(bottom = 72.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(

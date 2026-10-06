@@ -393,6 +393,18 @@ data class AdminReportsResponse(
 )
 
 @JsonClass(generateAdapter = true)
+data class AdminOverviewResponse(
+    val usersTotal: Int = 0,
+    val videosTotal: Int = 0,
+    val videosPublic: Int = 0,
+    val reportsPending: Int = 0,
+    val reportsTotal: Int = 0,
+    val sessionsActive: Int = 0,
+    val sessionsTotal: Int = 0,
+    val serverTime: String? = null
+)
+
+@JsonClass(generateAdapter = true)
 data class ResolveReportRequest(
     val action: String // dismiss | hide_video | show_video
 )

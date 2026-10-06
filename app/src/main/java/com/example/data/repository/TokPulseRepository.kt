@@ -30,6 +30,7 @@ import com.example.data.remote.LinkProviderRequest
 import com.example.data.remote.LinkedProvider
 import com.example.data.remote.LoginRequest
 import com.example.data.remote.LoginRecordsResponse
+import com.example.data.remote.AdminOverviewResponse
 import com.example.data.remote.AdminReportsResponse
 import com.example.data.remote.NotificationsReadRequest
 import com.example.data.remote.OAuthFacebookRequest
@@ -133,7 +134,7 @@ class TokPulseRepository(private val context: Context) {
                         email = "ahmedbecetti41@gmail.com",
                         passwordHash = "INITIAL_ACTIVE",
                         avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
-                        bio = "Chort Platform Creator & Developer 🎬",
+                        bio = "thileli dz Creator & Developer 🎬",
                         followersCount = 0,
                         followingCount = 0,
                         totalLikes = 0,
@@ -927,6 +928,24 @@ class TokPulseRepository(private val context: Context) {
             }
         }
 
+    suspend fun getAdminOverview(): Result<AdminOverviewResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = TokPulseApiClient.api.adminOverview()
+                if (response.isSuccessful && response.body() != null) {
+                    Result.success(response.body()!!)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(response.errorBody()?.string(), response.code(), "Overview unavailable")
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Overview unavailable."))
+            }
+        }
+
     suspend fun resolveAdminReport(reportId: String, action: String): Result<ResolveReportResponse> =
         withContext(Dispatchers.IO) {
             try {
@@ -953,7 +972,7 @@ class TokPulseRepository(private val context: Context) {
             email = "ahmedbecetti35@gmail.com",
             passwordHash = "PROTECTED",
             avatarUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300",
-            bio = "Chort Platform Administrator & Moderation Lead.",
+            bio = "thileli dz Administrator & Moderation Lead.",
             followersCount = 0,
             followingCount = 0,
             totalLikes = 0,
@@ -1153,7 +1172,7 @@ class TokPulseRepository(private val context: Context) {
                     actorUsername = user.username,
                     actorAvatar = user.avatarUrl,
                     type = "follow",
-                    message = "started following you on TokPulse!"
+                    message = "started following you on thileli dz!"
                 )
             )
             true

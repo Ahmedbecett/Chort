@@ -126,7 +126,7 @@ class FirebaseService(private val context: Context) {
                 email = email.trim(),
                 passwordHash = "AUTH_SECURE",
                 avatarUrl = photoUrl,
-                bio = "Welcome to my TokPulse profile! 🎬",
+                bio = "Welcome to my thileli dz profile! 🎬",
                 followersCount = 0,
                 followingCount = 0,
                 totalLikes = 0,
@@ -156,7 +156,7 @@ class FirebaseService(private val context: Context) {
                     email = email.trim(),
                     passwordHash = "AUTH_SECURE",
                     avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
-                    bio = "Welcome to my TokPulse profile! 🎬",
+                    bio = "Welcome to my thileli dz profile! 🎬",
                     role = if (isAdminEmail(email)) "admin" else "user",
                     status = "active"
                 )
@@ -192,7 +192,7 @@ class FirebaseService(private val context: Context) {
 
                 val uid = firebaseUser.uid
                 val email = firebaseUser.email ?: "user@tokpulse.com"
-                val displayName = firebaseUser.displayName ?: "TokPulse Creator"
+                val displayName = firebaseUser.displayName ?: "thileli dz Creator"
                 val photoUrl = firebaseUser.photoUrl?.toString()
                     ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
                 val username = email.substringBefore("@").lowercase().replace(".", "_")
@@ -224,7 +224,7 @@ class FirebaseService(private val context: Context) {
                         email = email,
                         passwordHash = "GOOGLE_AUTH",
                         avatarUrl = existingDoc.getString("avatarUrl")?.takeIf { it.isNotBlank() } ?: photoUrl,
-                        bio = existingDoc.getString("bio")?.takeIf { it.isNotBlank() } ?: "Welcome to my TokPulse profile! 🎬",
+                        bio = existingDoc.getString("bio")?.takeIf { it.isNotBlank() } ?: "Welcome to my thileli dz profile! 🎬",
                         followersCount = (existingDoc.getLong("followersCount") ?: 0L).toInt().coerceAtLeast(0),
                         followingCount = (existingDoc.getLong("followingCount") ?: 0L).toInt().coerceAtLeast(0),
                         totalLikes = (existingDoc.getLong("totalLikes") ?: 0L).toInt().coerceAtLeast(0),
@@ -240,7 +240,7 @@ class FirebaseService(private val context: Context) {
                         email = email,
                         passwordHash = "GOOGLE_AUTH",
                         avatarUrl = photoUrl,
-                        bio = "Welcome to my TokPulse profile! 🎬",
+                        bio = "Welcome to my thileli dz profile! 🎬",
                         followersCount = 0,
                         followingCount = 0,
                         totalLikes = 0,
@@ -290,7 +290,7 @@ class FirebaseService(private val context: Context) {
         val authUser = auth?.currentUser
 
         val effectiveEmail = fallbackEmail ?: authUser?.email ?: ""
-        val effectiveDisplayName = fallbackDisplayName ?: authUser?.displayName ?: "TokPulse Creator"
+        val effectiveDisplayName = fallbackDisplayName ?: authUser?.displayName ?: "thileli dz Creator"
         val effectiveUsername = effectiveEmail.substringBefore("@").ifEmpty { "user_${uid.take(6)}" }.lowercase().replace(".", "_")
         val effectiveAvatar = authUser?.photoUrl?.toString() ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
         val isAdmin = isAdminEmail(effectiveEmail)
@@ -303,7 +303,7 @@ class FirebaseService(private val context: Context) {
                 email = effectiveEmail,
                 passwordHash = "AUTHENTICATED",
                 avatarUrl = effectiveAvatar,
-                bio = "Welcome to my TokPulse profile! 🎬",
+                bio = "Welcome to my thileli dz profile! 🎬",
                 followersCount = 0,
                 followingCount = 0,
                 totalLikes = 0,
@@ -335,7 +335,7 @@ class FirebaseService(private val context: Context) {
                     email = doc.getString("email")?.takeIf { it.isNotBlank() } ?: effectiveEmail,
                     passwordHash = "AUTHENTICATED",
                     avatarUrl = doc.getString("avatarUrl")?.takeIf { it.isNotBlank() } ?: effectiveAvatar,
-                    bio = doc.getString("bio")?.takeIf { it.isNotBlank() } ?: "Welcome to my TokPulse profile! 🎬",
+                    bio = doc.getString("bio")?.takeIf { it.isNotBlank() } ?: "Welcome to my thileli dz profile! 🎬",
                     followersCount = (doc.getLong("followersCount") ?: 0L).toInt().coerceAtLeast(0),
                     followingCount = (doc.getLong("followingCount") ?: 0L).toInt().coerceAtLeast(0),
                     totalLikes = (doc.getLong("totalLikes") ?: 0L).toInt().coerceAtLeast(0),
@@ -351,7 +351,7 @@ class FirebaseService(private val context: Context) {
                     email = effectiveEmail,
                     passwordHash = "AUTHENTICATED",
                     avatarUrl = effectiveAvatar,
-                    bio = "Welcome to my TokPulse profile! 🎬",
+                    bio = "Welcome to my thileli dz profile! 🎬",
                     followersCount = 0,
                     followingCount = 0,
                     totalLikes = 0,
@@ -391,7 +391,7 @@ class FirebaseService(private val context: Context) {
                 email = effectiveEmail,
                 passwordHash = "AUTHENTICATED",
                 avatarUrl = effectiveAvatar,
-                bio = "Welcome to my TokPulse profile! 🎬",
+                bio = "Welcome to my thileli dz profile! 🎬",
                 followersCount = 0,
                 followingCount = 0,
                 totalLikes = 0,
@@ -606,7 +606,7 @@ class FirebaseService(private val context: Context) {
                 "actorUsername" to followerUser.username,
                 "actorAvatar" to followerUser.avatarUrl,
                 "type" to "follow",
-                "message" to "started following you on TokPulse!",
+                "message" to "started following you on thileli dz!",
                 "isRead" to false,
                 "createdAt" to System.currentTimeMillis()
             )
@@ -715,7 +715,7 @@ class FirebaseService(private val context: Context) {
                 UserEntity(
                     id = doc.getString("id") ?: doc.id,
                     username = doc.getString("username") ?: "user",
-                    displayName = doc.getString("displayName") ?: "TokPulse User",
+                    displayName = doc.getString("displayName") ?: "thileli dz User",
                     email = doc.getString("email") ?: "",
                     passwordHash = "PROTECTED",
                     avatarUrl = doc.getString("avatarUrl") ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
@@ -776,7 +776,7 @@ class FirebaseService(private val context: Context) {
                 "id" to notifId,
                 "userId" to userId,
                 "actorId" to "system_moderation",
-                "actorUsername" to "TokPulse Safety",
+                "actorUsername" to "thileli dz Safety",
                 "actorAvatar" to "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300",
                 "type" to "warning",
                 "message" to "Official Warning: $reason. Repeated violations will lead to permanent suspension.",

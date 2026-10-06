@@ -1,21 +1,60 @@
-<!-- Original Chort mark: a bold "C" arc opening into a play triangle.
-     Designed for Chort - not affiliated with any other short-video brand. -->
+<!-- Original thileli dz mark: eighth-note with a play-triangle head and a
+     neon glow. Designed for thileli dz - not affiliated with any brand. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="#171B26"
+        android:fillColor="#0B0D13"
         android:pathData="M38,18 h32 a20,20 0 0 1 20,20 v32 a20,20 0 0 1 -20,20 h-32 a20,20 0 0 1 -20,-20 v-32 a20,20 0 0 1 20,-20 Z" />
+    <group android:translateX="3">
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M62,20 L62,68"
+            android:strokeWidth="11"
+            android:strokeColor="#4DFE2C55"
+            android:strokeLineCap="round" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M62,20 C80,24 84,38 80,50"
+            android:strokeWidth="11"
+            android:strokeColor="#4DFE2C55"
+            android:strokeLineCap="round" />
+        <path
+            android:fillColor="#4DFE2C55"
+            android:pathData="M28,55 L28,89 L60,72 Z" />
+    </group>
+    <group android:translateX="-3">
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M62,20 L62,68"
+            android:strokeWidth="11"
+            android:strokeColor="#4D25F4EE"
+            android:strokeLineCap="round" />
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M62,20 C80,24 84,38 80,50"
+            android:strokeWidth="11"
+            android:strokeColor="#4D25F4EE"
+            android:strokeLineCap="round" />
+        <path
+            android:fillColor="#4D25F4EE"
+            android:pathData="M28,55 L28,89 L60,72 Z" />
+    </group>
     <path
-        android:fillColor="@android:color/transparent"
-        android:pathData="M64.9,41.0 A17,17 0 1 0 64.9,67.0"
-        android:strokeWidth="8.5"
+        android:fillColor="#00000000"
+        android:pathData="M62,20 L62,68"
+        android:strokeWidth="10"
         android:strokeColor="#FFFFFF"
         android:strokeLineCap="round" />
     <path
-        android:fillColor="#FE2C55"
-        android:pathData="M50,45 L63,54 L50,63 Z"
-        android:strokeLineJoin="round" />
+        android:fillColor="#00000000"
+        android:pathData="M62,20 C80,24 84,38 80,50"
+        android:strokeWidth="10"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,55 L28,89 L60,72 Z" />
 </vector>

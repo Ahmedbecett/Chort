@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.remote.FacebookAuth
 import com.example.data.remote.GoogleAuth
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ChortRepository
 import com.example.ui.components.ChortLogo
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
@@ -67,7 +67,7 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun WelcomeAuthScreen(
-    repository: TokPulseRepository,
+    repository: ChortRepository,
     onAuthSuccess: () -> Unit,
     onUseEmail: () -> Unit,
     onUsePhone: () -> Unit,
@@ -222,7 +222,7 @@ fun WelcomeAuthScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "By continuing you agree to Chort's Terms of Service and Privacy Policy.",
+            text = "By continuing you agree to the thileli dz Terms of Service and Privacy Policy.",
             color = TextMuted,
             fontSize = 11.sp,
             textAlign = TextAlign.Center,

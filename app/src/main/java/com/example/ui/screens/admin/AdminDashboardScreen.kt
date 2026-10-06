@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Visibility
@@ -83,7 +84,7 @@ import com.example.data.local.entities.ReportEntity
 import com.example.data.local.entities.UserEntity
 import com.example.data.local.entities.VideoEntity
 import com.example.data.local.entities.ViolationEntity
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ChortRepository
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.AccentGreen
 import com.example.ui.theme.AccentOrange
@@ -107,7 +108,7 @@ import java.util.Locale
 
 @Composable
 fun AdminDashboardScreen(
-    repository: TokPulseRepository,
+    repository: ChortRepository,
     onBackToFeed: () -> Unit
 ) {
     val context = LocalContext.current
@@ -131,6 +132,32 @@ fun AdminDashboardScreen(
     val totalReports = allReports.size
     val pendingReports = allReports.count { it.status == "pending" || it.status == "reviewing" }
     val openPrivacyRequests = privacyRequests.count { it.status == "pending" }
+
+    // ---- Live server overview: real counts + measured round-trip latency ----
+    var liveOverview by remember { mutableStateOf<AdminOverviewResponse?>(null) }
+    var overviewLatencyMs by remember { mutableLongStateOf(-1L) }
+    var overviewError by remember { mutableStateOf<String?>(null) }
+    var overviewLoading by remember { mutableStateOf(false) }
+    var lastSyncLabel by remember { mutableStateOf<String?>(null) }
+
+    fun refreshOverview() {
+        scope.launch {
+            overviewLoading = true
+            val started = System.currentTimeMillis()
+            val result = repository.getAdminOverview()
+            overviewLatencyMs = System.currentTimeMillis() - started
+            result.onSuccess { data ->
+                liveOverview = data
+                overviewError = null
+                lastSyncLabel = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            }.onFailure { e ->
+                overviewError = e.message ?: "Server unreachable"
+            }
+            overviewLoading = false
+        }
+    }
+
+    LaunchedEffect(Unit) { refreshOverview() }
 
     Column(
         modifier = Modifier
@@ -174,7 +201,7 @@ fun AdminDashboardScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
-                        text = "Chort Admin Center",
+                        text = "thileli dz Admin Center",
                         color = TextPrimary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
@@ -187,16 +214,27 @@ fun AdminDashboardScreen(
                 }
             }
 
+            val badgeColor = when {
+                overviewError != null -> TokRed
+                liveOverview != null -> AccentGreen
+                else -> TextMuted
+            }
+            val badgeText = when {
+                overviewLoading && liveOverview == null -> "Connecting…"
+                overviewError != null -> "System: Offline"
+                liveOverview != null -> "Online • ${overviewLatencyMs}ms"
+                else -> "System: …"
+            }
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(AccentGreen.copy(alpha = 0.2f))
-                    .border(0.8.dp, AccentGreen, RoundedCornerShape(8.dp))
+                    .background(badgeColor.copy(alpha = 0.2f))
+                    .border(0.8.dp, badgeColor, RoundedCornerShape(8.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    text = "System: Online",
-                    color = AccentGreen,
+                    text = badgeText,
+                    color = badgeColor,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -250,7 +288,13 @@ fun AdminDashboardScreen(
                 totalViews = totalViews,
                 totalReports = totalReports,
                 pendingReports = pendingReports,
-                openPrivacyRequests = openPrivacyRequests
+                openPrivacyRequests = openPrivacyRequests,
+                overview = liveOverview,
+                latencyMs = overviewLatencyMs,
+                isRefreshing = overviewLoading,
+                lastSync = lastSyncLabel,
+                error = overviewError,
+                onRefresh = { refreshOverview() }
             )
             1 -> AdminReportsTab(
                 reports = allReports,
@@ -356,36 +400,83 @@ private fun AdminOverviewTab(
     totalViews: Int,
     totalReports: Int,
     pendingReports: Int,
-    openPrivacyRequests: Int
+    openPrivacyRequests: Int,
+    overview: AdminOverviewResponse?,
+    latencyMs: Long,
+    isRefreshing: Boolean,
+    lastSync: String?,
+    error: String?,
+    onRefresh: () -> Unit
 ) {
+    val liveUsers = overview?.usersTotal
+    val liveVideos = overview?.videosTotal
+    val livePublic = overview?.videosPublic
+    val liveReportsTotal = overview?.reportsTotal
+    val livePending = overview?.reportsPending ?: pendingReports
+    val liveSessions = overview?.sessionsActive
+    val serverOnline = overview != null && error == null
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
         item {
-            Text(
-                text = "Key Platform Metrics",
-                color = TextPrimary,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Live Server Metrics",
+                        color = TextPrimary,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = when {
+                            isRefreshing && overview == null -> "Contacting server…"
+                            error != null -> "Server unreachable — showing device cache"
+                            lastSync != null -> "Last sync $lastSync • ${latencyMs}ms round-trip"
+                            else -> "Waiting for server…"
+                        },
+                        color = if (error != null) TokRed else TextMuted,
+                        fontSize = 11.sp
+                    )
+                }
+                if (isRefreshing) {
+                    CircularProgressIndicator(
+                        color = TokRed,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(22.dp)
+                    )
+                } else {
+                    IconButton(onClick = onRefresh) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh live metrics",
+                            tint = TextPrimary
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Stat Cards Grid
+            // Stat Cards Grid — server numbers when online, device cache as fallback
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 AdminStatCard(
                     title = "Total Users",
-                    value = "$totalUsers",
-                    sub = "$activeUsers active / $bannedUsers restricted",
+                    value = liveUsers?.toString() ?: "$totalUsers",
+                    sub = if (serverOnline) "live server total" else "$activeUsers active on this device",
                     icon = Icons.Default.People,
                     color = TokCyan,
                     modifier = Modifier.weight(1f)
                 )
                 AdminStatCard(
                     title = "Total Videos",
-                    value = "$totalVideos",
-                    sub = "${formatCount(totalViews)} total views",
+                    value = liveVideos?.toString() ?: "$totalVideos",
+                    sub = if (serverOnline) "${livePublic ?: 0} public on server" else "${formatCount(totalViews)} views on device",
                     icon = Icons.Default.Movie,
                     color = TokRed,
                     modifier = Modifier.weight(1f)
@@ -397,25 +488,35 @@ private fun AdminOverviewTab(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 AdminStatCard(
                     title = "Moderation Reports",
-                    value = "$totalReports",
-                    sub = "$pendingReports pending review",
+                    value = liveReportsTotal?.toString() ?: "$totalReports",
+                    sub = "$livePending pending review${if (serverOnline) " (live)" else " (device)"}",
                     icon = Icons.Outlined.Flag,
-                    color = if (pendingReports > 0) StatusPending else AccentGreen,
+                    color = if (livePending > 0) StatusPending else AccentGreen,
                     modifier = Modifier.weight(1f)
                 )
                 AdminStatCard(
-                    title = "Privacy / Deletions",
-                    value = "$openPrivacyRequests",
-                    sub = "GDPR & CCPA Requests",
-                    icon = Icons.Default.Lock,
+                    title = "Active Sessions",
+                    value = liveSessions?.toString() ?: "—",
+                    sub = if (serverOnline) "of ${overview?.sessionsTotal ?: 0} total logins" else "needs server connection",
+                    icon = Icons.Default.Security,
                     color = AccentGold,
                     modifier = Modifier.weight(1f)
                 )
             }
 
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = "Device cache (Room): $totalUsers users • $totalVideos videos • " +
+                    "$totalReports reports • $openPrivacyRequests privacy requests • " +
+                    "$bannedUsers restricted accounts",
+                color = TextMuted,
+                fontSize = 11.sp
+            )
+
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Infrastructure & Backend Status
+            // Infrastructure & Backend Status — every row reflects a real measurement
             Text(
                 text = "Backend & Cloud Services",
                 color = TextPrimary,
@@ -424,6 +525,12 @@ private fun AdminOverviewTab(
             )
             Spacer(modifier = Modifier.height(10.dp))
 
+            val apiStatus = when {
+                error != null -> "Unreachable"
+                latencyMs > 2500 -> "Slow"
+                latencyMs >= 0 -> "Operational"
+                else -> "Probing…"
+            }
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
@@ -432,14 +539,42 @@ private fun AdminOverviewTab(
                     .border(1.dp, TokBorder, RoundedCornerShape(16.dp))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    StatusRow(service = "REST API Gateway", status = "Operational", ping = "14ms", isOk = true)
+                    StatusRow(
+                        service = "REST API Gateway",
+                        status = apiStatus,
+                        ping = if (latencyMs >= 0) "measured round-trip ${latencyMs}ms" else "no response yet",
+                        isOk = error == null && latencyMs >= 0 && latencyMs <= 2500
+                    )
                     HorizontalDivider(color = TokBorder, modifier = Modifier.padding(vertical = 8.dp))
-                    StatusRow(service = "Room SQLite Database", status = "Connected & Synced", ping = "Local Persistent", isOk = true)
+                    StatusRow(
+                        service = "Server Database",
+                        status = if (serverOnline) "Connected" else "Unknown",
+                        ping = overview?.serverTime?.let { "server clock $it" } ?: "verified via live /admin/overview",
+                        isOk = serverOnline
+                    )
                     HorizontalDivider(color = TokBorder, modifier = Modifier.padding(vertical = 8.dp))
-                    StatusRow(service = "Cloud Video Storage CDN", status = "Ready", ping = "Multi-Region", isOk = true)
+                    StatusRow(
+                        service = "Device Cache (Room)",
+                        status = "Available",
+                        ping = "$totalUsers users • $totalVideos videos stored locally",
+                        isOk = true
+                    )
                     HorizontalDivider(color = TokBorder, modifier = Modifier.padding(vertical = 8.dp))
-                    StatusRow(service = "Content Moderation Queue", status = if (pendingReports > 0) "$pendingReports Pending" else "Clear", ping = "Live", isOk = pendingReports == 0)
+                    StatusRow(
+                        service = "Moderation Queue",
+                        status = if (livePending > 0) "$livePending Pending" else "Clear",
+                        ping = if (serverOnline) "live server queue" else "device queue (offline)",
+                        isOk = livePending == 0
+                    )
                 }
+            }
+            if (error != null) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Last error: $error",
+                    color = TokRed,
+                    fontSize = 11.sp
+                )
             }
         }
     }
@@ -768,6 +903,7 @@ private fun ReportCard(
                     text = "Resolution: ${report.resolutionNotes} (by @${report.resolvedByAdmin})",
                     color = AccentGreen,
                     fontSize = 11.sp
+                           fontSize = 11.sp
                 )
             }
 

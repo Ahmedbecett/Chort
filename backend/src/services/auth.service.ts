@@ -193,7 +193,7 @@ export class AuthService {
       return { sent: true, via: 'dev-echo', ...base, devOtp: code };
     }
 
-    const sms = await sendSmsViaTwilio(phone, `Chort code: ${code}. It expires in ${Math.round(config.otp.ttlSeconds / 60)} minutes.`);
+    const sms = await sendSmsViaTwilio(phone, `thileli dz code: ${code}. It expires in ${Math.round(config.otp.ttlSeconds / 60)} minutes.`);
     if (!sms.ok) {
       return { sent: false, via: 'failed', ...base, error: sms.error || 'SMS delivery failed' };
     }
@@ -259,7 +259,7 @@ export class AuthService {
       throw err;
     }
     if (!data?.sub || data.aud !== config.google.clientId) {
-      const err = new Error('Google credential was not issued for Chort');
+      const err = new Error('Google credential was not issued for thileli dz');
       (err as any).statusCode = 401;
       throw err;
     }
@@ -431,7 +431,7 @@ export class AuthService {
     const { phone } = await AuthService.verifyOtp(phoneRaw, codeRaw, 'recovery');
     const user = await prisma.user.findFirst({ where: { phone }, include: { profile: true } });
     if (!user) {
-      const err = new Error('No Chort account is linked to this number');
+      const err = new Error('No thileli dz account is linked to this number');
       (err as any).statusCode = 404;
       throw err;
     }

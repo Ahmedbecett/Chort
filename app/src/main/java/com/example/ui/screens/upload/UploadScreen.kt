@@ -66,7 +66,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ChortRepository
 import com.example.ui.components.VideoPlayerView
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.AccentGreen
@@ -84,7 +84,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun UploadScreen(
-    repository: TokPulseRepository,
+    repository: ChortRepository,
     onUploadSuccess: () -> Unit
 ) {
     val context = LocalContext.current
@@ -139,7 +139,7 @@ fun UploadScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Share short-form stories with millions on Chort",
+                    text = "Share short-form stories with millions on thileli dz",
                     color = TextMuted,
                     fontSize = 12.sp
                 )
@@ -509,7 +509,7 @@ fun UploadScreen(
                     delay(200)
 
                     isUploading = false
-                    Toast.makeText(context, "Video published to Chort!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Video published to thileli dz!", Toast.LENGTH_SHORT).show()
                     onUploadSuccess()
                 }
             },

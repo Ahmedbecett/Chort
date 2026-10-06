@@ -71,7 +71,7 @@ import coil.compose.AsyncImage
 import com.example.ui.theme.TokCyan
 import com.example.ui.theme.TokRed
 
-import com.example.data.remote.TokPulseApiClient
+import com.example.data.remote.ChortApiClient
 
 private const val TAG = "VideoPlayerView"
 
@@ -129,7 +129,7 @@ fun VideoPlayerView(
             .setReadTimeoutMs(25000)
             .setAllowCrossProtocolRedirects(true)
             .setKeepPostFor302Redirects(true)
-            .setUserAgent("Chort-Android/${BuildConfig.VERSION_NAME} (Linux; Android)")
+            .setUserAgent("thileli dz-Android/${BuildConfig.VERSION_NAME} (Linux; Android)")
 
         val dataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(context, httpDataSourceFactory)
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
@@ -181,7 +181,7 @@ fun VideoPlayerView(
                             refreshAttempted = true
                             isBuffering = true
                             hasError = false
-                            val refreshedStreamUrl = TokPulseApiClient.getCanonicalStreamUrl(effectiveVideoId)
+                            val refreshedStreamUrl = ChortApiClient.getCanonicalStreamUrl(effectiveVideoId)
                             Log.i(TAG, "Refreshing stream URL via $refreshedStreamUrl")
                             try {
                                 val mediaItem = MediaItem.Builder()
@@ -227,7 +227,7 @@ fun VideoPlayerView(
                         isBuffering = false
                     }
                 } else if (effectiveVideoId != null) {
-                    val canonicalStream = TokPulseApiClient.getCanonicalStreamUrl(effectiveVideoId)
+                    val canonicalStream = ChortApiClient.getCanonicalStreamUrl(effectiveVideoId)
                     val mediaItem = MediaItem.Builder()
                         .setUri(Uri.parse(canonicalStream))
                         .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MP4)

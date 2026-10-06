@@ -131,7 +131,7 @@ fun ShareBottomSheet(
                         iconTint = TokCyan,
                         onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText("Chort Video", "https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream")
+                            val clip = ClipData.newPlainText("thileli dz Video", "https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream")
                             clipboard.setPrimaryClip(clip)
                             Toast.makeText(context, "Link copied to clipboard!", Toast.LENGTH_SHORT).show()
                             onDismiss()
@@ -147,8 +147,8 @@ fun ShareBottomSheet(
                         onClick = {
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "Check out this clip on Chort!")
-                                putExtra(Intent.EXTRA_TEXT, "Watch @${video.creatorUsername}'s video on Chort: ${video.caption} https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream")
+                                putExtra(Intent.EXTRA_SUBJECT, "Check out this clip on thileli dz!")
+                                putExtra(Intent.EXTRA_TEXT, "Watch @${video.creatorUsername}'s video on thileli dz: ${video.caption} https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream")
                             }
                             context.startActivity(Intent.createChooser(intent, "Share via"))
                             onDismiss()

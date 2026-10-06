@@ -368,7 +368,7 @@ fun DiscoverScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 60.dp)
+                    .padding(bottom = 72.dp)
             ) {
                 // Search history (idle state)
                 if (searchQuery.isBlank() && searchHistory.isNotEmpty()) {

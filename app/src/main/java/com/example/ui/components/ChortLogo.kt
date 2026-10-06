@@ -14,12 +14,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,13 +30,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.ThileliFont
 import com.example.ui.theme.TokCyan
 import com.example.ui.theme.TokRed
 
 /**
- * Original Chort brand mark: a bold "C" arc opening into a play triangle,
- * set on a dark tile with a cyan-to-red gradient frame. Drawn in code -
- * no third-party artwork.
+ * Original thileli dz brand mark: an eighth-note whose head is a play
+ * triangle, drawn with a neon glow (soft cyan/red light layers behind a
+ * crisp white core). Still by design - the glow does the talking.
  */
 @Composable
 fun ChortLogo(
@@ -54,50 +57,32 @@ fun ChortLogo(
                 .background(
                     Brush.horizontalGradient(listOf(TokCyan, TokRed))
                 )
-                .padding(size * 0.035f)
+                .padding(size * 0.03f)
                 .clip(RoundedCornerShape(size * 0.25f))
-                .background(Color(0xFF10131B)),
+                .background(Color(0xFF0B0D13)),
             contentAlignment = Alignment.Center
         ) {
-            Canvas(modifier = Modifier.size(size * 0.62f)) {
-                val w = this.size.width
-                val h = this.size.height
-                val stroke = w * 0.14f
-                // "C" arc: gap faces right where the play triangle sits.
-                drawArc(
-                    color = Color.White,
-                    startAngle = 52f,
-                    sweepAngle = 256f,
-                    useCenter = false,
-                    topLeft = Offset(stroke / 2f, stroke / 2f),
-                    size = Size(w - stroke, h - stroke),
-                    style = Stroke(width = stroke, cap = StrokeCap.Round)
-                )
-                // Play triangle in the opening of the C.
-                val tri = Path().apply {
-                    moveTo(w * 0.44f, h * 0.36f)
-                    lineTo(w * 0.66f, h * 0.50f)
-                    lineTo(w * 0.44f, h * 0.64f)
-                    close()
-                }
-                drawPath(
-                    path = tri,
-                    brush = Brush.linearGradient(
-                        colors = listOf(TokCyan, TokRed),
-                        start = Offset(w * 0.44f, h * 0.36f),
-                        end = Offset(w * 0.66f, h * 0.64f)
-                    )
-                )
+            Canvas(modifier = Modifier.size(size * 0.66f)) {
+                val s = size.minDimension
+                val ox = (size.width - s) / 2f
+                val oy = (size.height - s) / 2f
+                // Neon glow: wide soft halos, then chromatic offsets, then core.
+                drawNoteMark(TokRed.copy(alpha = 0.30f), ox + s * 0.035f, oy, s, s * 0.16f)
+                drawNoteMark(TokCyan.copy(alpha = 0.30f), ox - s * 0.035f, oy, s, s * 0.16f)
+                drawNoteMark(TokRed.copy(alpha = 0.65f), ox + s * 0.018f, oy, s, s * 0.115f)
+                drawNoteMark(TokCyan.copy(alpha = 0.65f), ox - s * 0.018f, oy, s, s * 0.115f)
+                drawNoteMark(Color.White, ox, oy, s, s * 0.10f)
             }
         }
         if (showWordmark) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "Chort",
+                text = "thileli dz",
                 color = TextPrimary,
                 fontSize = 30.sp,
                 fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 2.sp,
+                fontFamily = ThileliFont,
+                letterSpacing = 1.sp,
                 textAlign = TextAlign.Center
             )
             if (tagline != null) {
@@ -107,6 +92,7 @@ fun ChortLogo(
                     color = TextSecondary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
+                    fontFamily = ThileliFont,
                     textAlign = TextAlign.Center
                 )
             }
@@ -121,4 +107,37 @@ fun ChortMark(
     modifier: Modifier = Modifier
 ) {
     ChortLogo(size = size, showWordmark = false, modifier = modifier)
+}
+
+private fun DrawScope.drawNoteMark(color: Color, ox: Float, oy: Float, s: Float, stroke: Float) {
+    // Stem of the note.
+    drawRoundRect(
+        color = color,
+        topLeft = Offset(ox + s * 0.52f, oy + s * 0.16f),
+        size = Size(s * 0.10f, s * 0.48f),
+        cornerRadius = CornerRadius(s * 0.05f)
+    )
+    // Flag sweeping off the stem.
+    drawPath(
+        path = Path().apply {
+            moveTo(ox + s * 0.57f, oy + s * 0.17f)
+            cubicTo(
+                ox + s * 0.78f, oy + s * 0.21f,
+                ox + s * 0.82f, oy + s * 0.34f,
+                ox + s * 0.76f, oy + s * 0.46f
+            )
+        },
+        color = color,
+        style = Stroke(width = stroke, cap = StrokeCap.Round)
+    )
+    // Head of the note: a play triangle.
+    drawPath(
+        path = Path().apply {
+            moveTo(ox + s * 0.24f, oy + s * 0.50f)
+            lineTo(ox + s * 0.24f, oy + s * 0.82f)
+            lineTo(ox + s * 0.56f, oy + s * 0.66f)
+            close()
+        },
+        color = color
+    )
 }

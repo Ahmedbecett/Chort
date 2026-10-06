@@ -82,7 +82,7 @@ import coil.compose.AsyncImage
 import com.example.BuildConfig
 import com.example.data.local.entities.UserEntity
 import com.example.data.local.entities.VideoEntity
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ChortRepository
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
@@ -98,7 +98,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
-    repository: TokPulseRepository,
+    repository: ChortRepository,
     userIdToView: String? = null,
     onNavigateToAdmin: () -> Unit,
     onNavigateToLegal: (String) -> Unit,
@@ -255,7 +255,7 @@ fun ProfileScreen(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    text = "Chort v${BuildConfig.VERSION_NAME} " +
+                                    text = "thileli dz v${BuildConfig.VERSION_NAME} " +
                                         "(${BuildConfig.VERSION_CODE}) · " +
                                         "${BuildConfig.GIT_COMMIT}",
                                     color = TextMuted,
@@ -274,7 +274,7 @@ fun ProfileScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 60.dp)
+                .padding(bottom = 72.dp)
         ) {
             item {
                 Column(

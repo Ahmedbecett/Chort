@@ -239,7 +239,7 @@ fun InboxScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 60.dp)
+                    .padding(bottom = 72.dp)
                     .clickable { sync() },
                 contentAlignment = Alignment.Center
             ) {
@@ -275,7 +275,7 @@ fun InboxScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
-                    .padding(bottom = 60.dp)
+                    .padding(bottom = 72.dp)
             ) {
                 items(filteredNotifications, key = { it.id }) { notif ->
                     NotificationCard(

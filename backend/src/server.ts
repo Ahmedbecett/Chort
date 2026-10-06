@@ -77,7 +77,7 @@ app.use('/api/v1', apiRouter);
 // Root Status
 app.get('/', (req, res) => {
   res.json({
-    app: 'Chort High-Scale Video Platform Backend',
+    app: 'thileli dz High-Scale Video Platform Backend',
     version: '2.2.0',
     documentation: '/api/v1/health',
     status: 'ONLINE',
@@ -101,7 +101,7 @@ app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
 
 if (!process.env.VERCEL) {
   app.listen(config.port, '0.0.0.0', () => {
-    console.log(`🚀 Chort API Server running on port ${config.port} (Production Mode)`);
+    console.log(`🚀 thileli dz API Server running on port ${config.port} (Production Mode)`);
   });
 }
 

@@ -64,7 +64,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ChortRepository
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
@@ -79,7 +79,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AuthScreen(
-    repository: TokPulseRepository,
+    repository: ChortRepository,
     onAuthSuccess: () -> Unit,
     onBackToOptions: (() -> Unit)? = null
 ) {
@@ -135,7 +135,7 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // TokPulse Header Icon
+        // thileli dz Header Icon
         Box(
             modifier = Modifier
                 .size(72.dp)
@@ -146,7 +146,7 @@ fun AuthScreen(
         ) {
             Icon(
                 imageVector = Icons.Default.Security,
-                contentDescription = "TokPulse",
+                contentDescription = "thileli dz",
                 tint = TokCyan,
                 modifier = Modifier.size(38.dp)
             )
@@ -155,7 +155,7 @@ fun AuthScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "Chort",
+            text = "thileli dz",
             color = TextPrimary,
             fontSize = 30.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -571,7 +571,7 @@ fun AuthScreen(
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "Chort Platform • Production Infrastructure Active",
+            text = "thileli dz Platform • Production Infrastructure Active",
             color = TextMuted,
             fontSize = 11.sp
         )

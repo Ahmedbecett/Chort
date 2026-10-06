@@ -79,7 +79,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.local.entities.CommentEntity
 import com.example.data.local.entities.VideoEntity
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ChortRepository
 import com.example.ui.components.BurstHeart
 import com.example.ui.components.CommentBottomSheet
 import com.example.ui.components.ReportDialog
@@ -96,7 +96,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(
-    repository: TokPulseRepository,
+    repository: ChortRepository,
     onNavigateToSearch: () -> Unit,
     onNavigateToProfile: (String) -> Unit,
     onNavigateToCreate: () -> Unit = {},
@@ -171,7 +171,7 @@ fun FeedScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Be the first to create and publish a video on Chort!",
+                        text = "Be the first to create and publish a video on thileli dz!",
                         color = TextSecondary,
                         fontSize = 13.sp,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -380,13 +380,13 @@ private fun TopFeedBar(
                 imageVector = Icons.Default.Videocam,
                 contentDescription = "LIVE",
                 tint = TokRed,
-                modifier = Modifier.size(15.dp)
+                modifier = Modifier.size(17.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = "LIVE",
                 color = Color.White,
-                fontSize = 11.5.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold
             )
         }
@@ -406,15 +406,15 @@ private fun TopFeedBar(
                 Text(
                     text = "Following",
                     color = if (selectedTab == 0) Color.White else Color.White.copy(alpha = 0.65f),
-                    fontSize = 16.5.sp,
+                    fontSize = 18.sp,
                     fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal
                 )
                 if (selectedTab == 0) {
                     Box(
                         modifier = Modifier
                             .padding(top = 3.dp)
-                            .width(22.dp)
-                            .height(2.5.dp)
+                            .width(26.dp)
+                            .height(3.dp)
                             .clip(RoundedCornerShape(2.dp))
                             .background(TokRed)
                     )
@@ -435,15 +435,15 @@ private fun TopFeedBar(
                 Text(
                     text = "For You",
                     color = if (selectedTab == 1) Color.White else Color.White.copy(alpha = 0.65f),
-                    fontSize = 16.5.sp,
+                    fontSize = 18.sp,
                     fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal
                 )
                 if (selectedTab == 1) {
                     Box(
                         modifier = Modifier
                             .padding(top = 3.dp)
-                            .width(22.dp)
-                            .height(2.5.dp)
+                            .width(26.dp)
+                            .height(3.dp)
                             .clip(RoundedCornerShape(2.dp))
                             .background(TokCyan)
                     )
@@ -522,12 +522,12 @@ fun VideoFeedItem(
 
     // Compute navigation bar insets to guarantee caption and action rail never collide with bottom navigation
     val navBarBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomSafeMargin = 58.dp + navBarBottomInset
+    val bottomSafeMargin = 70.dp + navBarBottomInset
 
     val isLongCaption = remember(video.caption) { video.caption.length > 55 || video.caption.contains("\n") }
     val displayMusicTitle = remember(video.musicTitle, video.creatorUsername) {
         val raw = video.musicTitle.trim()
-        if (raw.isBlank() || raw.contains("Chort", ignoreCase = true) || raw.contains("TokPulse", ignoreCase = true) || raw.contains("Original", ignoreCase = true)) {
+        if (raw.isBlank() || raw.contains("thileli dz", ignoreCase = true) || raw.contains("Chort", ignoreCase = true) || raw.contains("Original", ignoreCase = true)) {
             "Original sound - @${video.creatorUsername}"
         } else {
             raw
@@ -602,7 +602,7 @@ fun VideoFeedItem(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 14.dp, end = 76.dp, bottom = bottomSafeMargin)
+                .padding(start = 14.dp, end = 88.dp, bottom = bottomSafeMargin)
         ) {
             // Creator Handle with verified check or Pexels attribution badge
             Row(
@@ -615,7 +615,7 @@ fun VideoFeedItem(
                 Text(
                     text = "@${video.creatorUsername}",
                     color = Color.White,
-                    fontSize = 15.5.sp,
+                    fontSize = 17.5.sp,
                     fontWeight = FontWeight.Bold
                 )
                 if (video.isExternal || video.source.equals("pexels", true) || video.provider.equals("pexels", true)) {
@@ -639,7 +639,7 @@ fun VideoFeedItem(
                         imageVector = Icons.Default.Verified,
                         contentDescription = "Verified",
                         tint = TokCyan,
-                        modifier = Modifier.size(15.dp)
+                        modifier = Modifier.size(17.dp)
                     )
                 }
             }
@@ -651,8 +651,8 @@ fun VideoFeedItem(
                 Text(
                     text = video.caption,
                     color = Color.White,
-                    fontSize = 13.5.sp,
-                    lineHeight = 18.sp,
+                    fontSize = 14.5.sp,
+                    lineHeight = 20.sp,
                     maxLines = if (isCaptionExpanded) 12 else 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -660,7 +660,7 @@ fun VideoFeedItem(
                     Text(
                         text = if (isCaptionExpanded) "less" else "...more",
                         color = Color.White.copy(alpha = 0.85f),
-                        fontSize = 12.5.sp,
+                        fontSize = 13.5.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
                             .clickable { isCaptionExpanded = !isCaptionExpanded }
@@ -675,7 +675,7 @@ fun VideoFeedItem(
                 Text(
                     text = formattedTags,
                     color = Color.White.copy(alpha = 0.9f),
-                    fontSize = 13.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -701,13 +701,13 @@ fun VideoFeedItem(
                         imageVector = Icons.Default.MusicNote,
                         contentDescription = "Sound",
                         tint = Color.White,
-                        modifier = Modifier.size(13.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(5.dp))
                     Text(
                         text = displayMusicTitle,
                         color = Color.White,
-                        fontSize = 11.5.sp,
+                        fontSize = 13.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -716,7 +716,7 @@ fun VideoFeedItem(
                 // Audio Mute/Unmute Button: visually changes according to current mute state
                 Box(
                     modifier = Modifier
-                        .size(30.dp)
+                        .size(34.dp)
                         .clip(CircleShape)
                         .background(Color.Black.copy(alpha = 0.55f))
                         .clickable { onToggleMute() }
@@ -727,7 +727,7 @@ fun VideoFeedItem(
                         imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                         contentDescription = if (isMuted) "Unmute Audio" else "Mute Audio",
                         tint = if (isMuted) TokRed else Color.White,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
@@ -737,9 +737,9 @@ fun VideoFeedItem(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 10.dp, bottom = bottomSafeMargin),
+                .padding(end = 12.dp, bottom = bottomSafeMargin),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(13.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Creator Avatar with Follow '+' button
             Box(
@@ -751,16 +751,16 @@ fun VideoFeedItem(
                     contentDescription = video.creatorUsername,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(52.dp)
                         .clip(CircleShape)
-                        .border(1.5.dp, Color.White, CircleShape)
+                        .border(2.dp, Color.White, CircleShape)
                         .clickable { onOpenProfile() }
                 )
 
                 if (!isFollowing && !video.isExternal && !video.source.equals("pexels", true)) {
                     Box(
                         modifier = Modifier
-                            .size(18.dp)
+                            .size(22.dp)
                             .align(Alignment.BottomCenter)
                             .clip(CircleShape)
                             .background(TokRed)
@@ -771,7 +771,7 @@ fun VideoFeedItem(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Follow",
                             tint = Color.White,
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(14.dp)
                         )
                     }
                 }
@@ -816,7 +816,7 @@ fun VideoFeedItem(
             // Rotating Vinyl Album Disc
             Box(
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(46.dp)
                     .clip(CircleShape)
                     .background(Color.DarkGray)
                     .border(1.5.dp, Color.White.copy(alpha = 0.5f), CircleShape)
@@ -829,7 +829,7 @@ fun VideoFeedItem(
                     contentDescription = "Sound Disc",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(22.dp)
+                        .size(28.dp)
                         .clip(CircleShape)
                 )
             }
@@ -856,13 +856,13 @@ private fun ActionRailItem(
             imageVector = icon,
             contentDescription = label,
             tint = tint,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(34.dp)
         )
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(3.dp))
         Text(
             text = label,
             color = Color.White,
-            fontSize = 11.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold
         )
     }

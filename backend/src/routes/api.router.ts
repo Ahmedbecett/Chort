@@ -95,3 +95,4 @@ apiRouter.post('/reports', reportLimiter, validateBody('report'), ApiController.
 apiRouter.get('/admin/reports', ApiController.listReports);
 apiRouter.post('/admin/reports/:reportId/resolve', validateBody('resolveReport'), ApiController.resolveReport);
 apiRouter.get('/admin/logins', ApiController.listLogins);
+apiRouter.get('/admin/overview', ApiController.adminOverview);

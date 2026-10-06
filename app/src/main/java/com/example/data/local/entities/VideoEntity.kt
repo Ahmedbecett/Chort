@@ -13,7 +13,7 @@ data class VideoEntity(
     val videoUrl: String,
     val thumbnailUrl: String,
     val caption: String,
-    val musicTitle: String = "Original Sound - Chort Creator",
+    val musicTitle: String = "Original Sound - thileli dz Creator",
     val tags: String = "#chort,#fyp,#viral",
     val likesCount: Int = 0,
     val commentsCount: Int = 0,

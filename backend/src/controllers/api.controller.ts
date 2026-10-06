@@ -139,7 +139,7 @@ export class ApiController {
 
     return res.status(200).json({
       status: 'UP',
-      service: 'Chort Video Platform API',
+      service: 'thileli dz Video Platform API',
       timestamp: new Date().toISOString(),
       version: '2.2.0',
       database: dbMessage,
@@ -534,7 +534,7 @@ export class ApiController {
       const video = await VideoService.completeUpload({
         videoId,
         userId: activeUserId,
-        caption: caption || 'New Chort Video',
+        caption: caption || 'New thileli dz Video',
         videoUrl,
         thumbnailUrl,
         musicTitle,
@@ -818,7 +818,7 @@ export class ApiController {
       }
 
       // 2. High-res dynamic SVG poster
-      const title = (video?.caption || 'Chort Video').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 48);
+      const title = (video?.caption || 'thileli dz Video').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 48);
       const creator = (video?.user?.username || 'creator').replace(/&/g, '&amp;');
 
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1280" viewBox="0 0 720 1280">
@@ -1156,6 +1156,30 @@ export class ApiController {
     }
   }
 
+  // --- ADMIN: live platform overview counters ---
+  static async adminOverview(req: Request, res: Response) {
+    try {
+      if (!ApiController.requireAdmin(req, res)) return;
+      await ensureDatabaseSchema();
+      const now = new Date();
+      const [usersTotal, videosTotal, videosPublic, reportsPending, reportsTotal, sessionsActive, sessionsTotal] = await Promise.all([
+        prisma.user.count().catch(() => 0),
+        prisma.video.count().catch(() => 0),
+        prisma.video.count({ where: { visibility: 'PUBLIC' } }).catch(() => 0),
+        prisma.report.count({ where: { status: 'PENDING' } }).catch(() => 0),
+        prisma.report.count().catch(() => 0),
+        prisma.session.count({ where: { expiresAt: { gt: now } } }).catch(() => 0),
+        prisma.session.count().catch(() => 0),
+      ]);
+      return res.status(200).json({
+        usersTotal, videosTotal, videosPublic, reportsPending, reportsTotal,
+        sessionsActive, sessionsTotal, serverTime: now.toISOString(),
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   // --- ADMIN: login/session records (real data from Session table) ---
   static async listLogins(req: Request, res: Response) {
     try {
@@ -1225,7 +1249,7 @@ export class ApiController {
       }
       const existing = await prisma.account.findUnique({ where: { provider_providerId: { provider, providerId: profile.sub } } });
       if (existing && existing.userId !== self.userId) {
-        return res.status(409).json({ error: 'That account is already linked to another Chort user.' });
+        return res.status(409).json({ error: 'That account is already linked to another thileli dz user.' });
       }
       if (!existing) {
         await prisma.account.create({ data: { userId: self.userId, provider, providerId: profile.sub, email: profile.email || null } });

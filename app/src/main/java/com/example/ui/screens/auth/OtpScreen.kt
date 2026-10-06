@@ -52,7 +52,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ChortRepository
 import com.example.ui.components.ChortMark
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
@@ -76,7 +76,7 @@ enum class OtpMode { REGISTER, RECOVERY }
  */
 @Composable
 fun OtpScreen(
-    repository: TokPulseRepository,
+    repository: ChortRepository,
     mode: OtpMode,
     phone: String,
     cooldownSeconds: Int,
@@ -123,7 +123,7 @@ fun OtpScreen(
             }
             isVerifying = false
             if (result.isSuccess) {
-                successMessage = if (mode == OtpMode.RECOVERY) "Account recovered. Welcome back!" else "Phone verified. Welcome to Chort!"
+                successMessage = if (mode == OtpMode.RECOVERY) "Account recovered. Welcome back!" else "Phone verified. Welcome to thileli dz!"
                 delay(700)
                 onSuccess()
             } else {
