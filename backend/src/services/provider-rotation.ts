@@ -17,10 +17,10 @@ const PEXELS_TOPICS = [
 ];
 const PEXELS_MAX_PAGE = 6;
 
-// Coverr topics empirically returning portrait videos.
+// Coverr topics verified live to return portrait hits (its search only
+// matches its own taxonomy; nature/dance/city/music/people/ocean return 0).
 const COVERR_TOPICS = [
-  'vertical', 'fashion', 'concert', 'crowd', 'city', 'nature',
-  'dance', 'travel', 'people', 'music', 'sports', 'food',
+  'vertical', 'fashion', 'concert', 'crowd', 'sports', 'food', 'travel',
 ];
 const COVERR_MAX_PAGE = 4;
 

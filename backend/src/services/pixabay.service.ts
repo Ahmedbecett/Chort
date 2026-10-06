@@ -177,12 +177,26 @@ export class PixabayService {
         });
       }
 
+      const wantAudio = options.verifyAudio ?? true;
       const mask = await checkMediaBatch(
         formattedVideos.map((v) => v.streamUrl),
         redis,
-        options.verifyAudio ?? true
+        wantAudio
       );
-      const verified = formattedVideos.filter((_, i) => mask[i]).slice(0, perPage);
+      let verified = formattedVideos.filter((_, i) => mask[i]);
+      if (wantAudio && verified.length < perPage) {
+        // Audio-preferred backfill: silent-but-valid clips fill the page
+        // instead of a thin/empty slice (verdicts are cached, so this is cheap).
+        const silentMask = await checkMediaBatch(
+          formattedVideos.map((v) => v.streamUrl),
+          redis,
+          false
+        );
+        for (let i = 0; i < formattedVideos.length && verified.length < perPage; i++) {
+          if (silentMask[i] && !mask[i]) verified.push({ ...formattedVideos[i], musicTitle: 'Original Audio' });
+        }
+      }
+      verified = verified.slice(0, perPage);
       if (verified.length === 0 && !explicitQuery) {
         // Rotation fallback: one retry on the next topic before giving up.
         return this.getVideos({ query: nextTopic('pixabay', query), page: requestedPage, perPage });
