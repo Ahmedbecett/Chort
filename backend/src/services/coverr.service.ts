@@ -49,7 +49,7 @@ export class CoverrService {
     const page = Math.max(1, options.page || 1);
     const perPage = Math.min(20, Math.max(1, options.perPage || 15));
     const coverrPage = page - 1;
-    const query = options.query?.trim() || '';
+    const query = options.query?.trim() || 'vertical';
 
     if (!this.isConfigured()) {
       return {
