@@ -664,7 +664,8 @@ export class FeedEngine {
 
     const servedIds = videos.map((v) => String(v.id));
     const nextSd = [...cursorSd, ...servedIds].slice(-CURSOR_SD_CAP);
-    const hasMore = videos.length > 0 && avail.length > servedIds.length;
+    // Honest hasMore: more UNTRIED pool remains (gate-dropped tails end here).
+    const hasMore = avail.length > candidates.length;
 
     await this.attachInteractionFlags(videos, userId);
 
