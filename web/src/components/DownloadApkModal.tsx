@@ -11,8 +11,10 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
 
   if (!isOpen) return null;
 
-  const APK_DOWNLOAD_URL = 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.4/Chort-latest.apk';
-  const RELEASE_URL = 'https://github.com/Ahmedbecett/Chort/releases/tag/v2.4.4';
+  const APK_DOWNLOAD_URL = 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.5/Chort-latest.apk';
+  const APK_VERSIONED_URL = 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.5/Chort-v2.4.5-release.apk';
+  const SOURCE_ZIP_URL = 'https://github.com/Ahmedbecett/Chort/archive/refs/tags/v2.4.5.zip';
+  const RELEASE_URL = 'https://github.com/Ahmedbecett/Chort/releases/tag/v2.4.5';
   const REPO_URL = 'https://github.com/Ahmedbecett/Chort';
 
   const handleCopyLink = () => {
@@ -37,10 +39,10 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
               <div className="flex items-center gap-2">
                 <h3 className="text-lg font-bold text-white">تحميل تطبيق Chort APK</h3>
                 <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded-full font-mono border border-emerald-500/30">
-                  v2.4.4 الأحدث
+                  v2.4.5 الأحدث
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 mt-0.5">الإصدار الرسمي الأخير من المستودع</p>
+              <p className="text-xs text-zinc-400 mt-0.5">الإصدار الرسمي الفعلي الأحدث من المستودع</p>
             </div>
           </div>
           <button 
@@ -52,7 +54,7 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-4">
           {/* Main Direct Download Action */}
           <a
             href={APK_DOWNLOAD_URL}
@@ -61,44 +63,51 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
             className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-pink-600 via-rose-600 to-cyan-600 hover:from-pink-500 hover:to-cyan-500 shadow-xl shadow-pink-600/25 active:scale-[0.98] transition-all text-center text-base"
           >
             <Download className="w-6 h-6 animate-bounce" />
-            <span>تحميل Chort-latest.apk المباشر الآن</span>
+            <span>تحميل Chort-latest.apk المباشر الآن (24.7 MB)</span>
+          </a>
+
+          {/* Secondary APK Direct Download */}
+          <a
+            href={APK_VERSIONED_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-zinc-200 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 active:scale-[0.98] transition-all text-center text-xs"
+          >
+            <Download className="w-4 h-4 text-cyan-400" />
+            <span>رابط بديل: تحميل Chort-v2.4.5-release.apk</span>
+          </a>
+
+          {/* Full Files Download Action */}
+          <a
+            href={SOURCE_ZIP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-amber-300 bg-amber-950/40 hover:bg-amber-900/50 border border-amber-800/60 active:scale-[0.98] transition-all text-center text-xs"
+          >
+            <Download className="w-4 h-4 text-amber-400" />
+            <span>تحميل ملفات المشروع كاملة (Source Code .ZIP)</span>
           </a>
 
           {/* Quick Info Badges */}
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-800">
               <span className="block text-xs text-zinc-400">الحجم</span>
-              <span className="text-sm font-semibold text-white">48.2 MB</span>
+              <span className="text-sm font-semibold text-white">24.7 MB</span>
             </div>
             <div className="bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-800">
-              <span className="block text-xs text-zinc-400">النظام</span>
-              <span className="text-sm font-semibold text-white">Android 8.0+</span>
+              <span className="block text-xs text-zinc-400">الإصدار</span>
+              <span className="text-sm font-semibold text-cyan-400 font-mono">v2.4.5</span>
             </div>
             <div className="bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-800">
               <span className="block text-xs text-zinc-400">الحالة</span>
               <span className="text-sm font-semibold text-emerald-400 flex items-center justify-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" /> آمن وموثق
+                <ShieldCheck className="w-3.5 h-3.5" /> تم التحقق 100%
               </span>
             </div>
           </div>
 
-          {/* Features in this version */}
-          <div className="bg-zinc-950/60 p-4 rounded-xl border border-zinc-800/80 space-y-2 text-xs">
-            <div className="flex items-center gap-2 font-medium text-zinc-300">
-              <Sparkles className="w-4 h-4 text-pink-400" />
-              <span>أبرز المميزات في هذا التحديث الأخير:</span>
-            </div>
-            <ul className="space-y-1.5 text-zinc-400 pr-5 list-disc marker:text-cyan-400">
-              <li>تسجيل دخول حقيقي بالبريد والهاتف مع رمز OTP فوري (6 أرقام).</li>
-              <li>استوديو تصوير متكامل مع فلاتر سينمائية مباشرة وتسريع وتوقيت.</li>
-              <li>فيديوهات عالية الدقة ومتنوعة من مصادر مفتوحة دون تكرار.</li>
-              <li>محفظة مالية وسحب الأرباح إلى بريدي موب (BaridiMob) و CCP.</li>
-              <li>مركز النشاط (سجل المشاهدة والإعجابات) ووضع بدون إنترنت (Offline).</li>
-            </ul>
-          </div>
-
           {/* Direct Links section */}
-          <div className="space-y-2 pt-1 border-t border-zinc-800">
+          <div className="space-y-2 pt-2 border-t border-zinc-800">
             <div className="flex items-center justify-between text-xs text-zinc-400">
               <span>رابط التحميل المباشر للـ APK:</span>
               <button 
@@ -122,7 +131,7 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
               className="flex-1 py-2 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 flex items-center justify-center gap-2 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
-              <span>صفحة الإصدار (Releases)</span>
+              <span>صفحة الإصدار v2.4.5</span>
             </a>
             <a 
               href={REPO_URL}
@@ -131,7 +140,7 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
               className="flex-1 py-2 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 flex items-center justify-center gap-2 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
-              <span>مستودع المشروع الرئيسي</span>
+              <span>مستودع المشروع</span>
             </a>
           </div>
         </div>

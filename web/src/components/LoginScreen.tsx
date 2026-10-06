@@ -164,7 +164,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onOpen
           className="flex items-center gap-2 py-1.5 px-3 rounded-full text-xs font-semibold bg-gradient-to-r from-pink-600 to-cyan-600 hover:from-pink-500 hover:to-cyan-500 text-white shadow-md shadow-pink-600/20 active:scale-95 transition-all"
         >
           <Download className="w-3.5 h-3.5 animate-bounce" />
-          <span>تحميل APK (v2.4.4)</span>
+          <span>تحميل APK (v2.4.5)</span>
         </button>
       </div>
 
@@ -434,7 +434,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onOpen
           <span>سياسة الخصوصية</span>
           <span>·</span>
           <button onClick={onOpenDownloadModal} className="text-pink-400 hover:underline font-medium">
-            تحميل أحدث إصدار APK v2.4.4
+            تحميل أحدث إصدار APK v2.4.5
           </button>
         </div>
         <p className="text-[11px] text-zinc-600">

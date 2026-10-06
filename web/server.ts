@@ -268,10 +268,12 @@ async function startServer() {
 
   app.get('/api/releases/latest', (req, res) => {
     res.json({
-      tag_name: 'v2.4.4',
-      name: 'Chort - الإصدار الأحدث المستقر v2.4.4',
-      download_url: 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.4/Chort-latest.apk',
-      html_url: 'https://github.com/Ahmedbecett/Chort/releases/tag/v2.4.4',
+      tag_name: 'v2.4.5',
+      name: 'Chort - الإصدار الأحدث المستقر v2.4.5',
+      download_url: 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.5/Chort-latest.apk',
+      versioned_download_url: 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.5/Chort-v2.4.5-release.apk',
+      source_zip_url: 'https://github.com/Ahmedbecett/Chort/archive/refs/tags/v2.4.5.zip',
+      html_url: 'https://github.com/Ahmedbecett/Chort/releases/tag/v2.4.5',
       repo_url: 'https://github.com/Ahmedbecett/Chort',
     });
   });

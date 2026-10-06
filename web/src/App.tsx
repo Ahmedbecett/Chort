@@ -23,7 +23,7 @@ import { PromoteModal } from './components/modals/PromoteModal';
 import { Download, Users, Bell, Play, X, Heart, MessageCircle, Share2, Music } from 'lucide-react';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => api.getAuthStatus());
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<UserProfile>(() => api.getUser());
   const [videos, setVideos] = useState<VideoItem[]>(INITIAL_VIDEOS);
   const [currentTab, setCurrentTab] = useState<'home' | 'friends' | 'inbox' | 'profile'>('home');
@@ -103,7 +103,7 @@ export default function App() {
           className="flex items-center gap-1.5 py-1.5 px-3 rounded-full bg-gradient-to-r from-pink-600 via-rose-600 to-cyan-600 hover:from-pink-500 hover:to-cyan-500 text-white text-xs font-bold shadow-lg shadow-pink-600/30 border border-white/20 active:scale-95 transition-all"
         >
           <Download className="w-3.5 h-3.5 animate-bounce" />
-          <span>تحميل APK الأحدث v2.4.4</span>
+          <span>تحميل APK الأحدث v2.4.5</span>
         </button>
       </div>
 
