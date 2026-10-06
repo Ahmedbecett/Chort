@@ -907,7 +907,6 @@ private fun ReportCard(
                     text = "Resolution: ${report.resolutionNotes} (by @${report.resolvedByAdmin})",
                     color = AccentGreen,
                     fontSize = 11.sp
-                           fontSize = 11.sp
                 )
             }
 
