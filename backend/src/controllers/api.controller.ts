@@ -10,6 +10,7 @@ import { CoverrService } from '../services/coverr.service';
 import { ExternalVideoService } from '../services/external-video.service';
 import { prisma, checkDatabaseConnection, isDbConfigured, ensureDatabaseSchema } from '../lib/prisma';
 import { config, isStorageConfigured, s3Client } from '../config';
+import { clientIpFrom } from '../services/feed-history';
 
 export class ApiController {
   // --- HEALTH CHECK & SCHEMA VERIFICATION ---
@@ -317,15 +318,31 @@ export class ApiController {
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
       res.setHeader('Pragma', 'no-cache');
       const userId = (req as any).user?.userId;
-      const { cursor, limit } = req.query;
+      const q = (req.query || {}) as Record<string, unknown>;
+      const body = (req.body || {}) as Record<string, unknown>;
+      const headerDevice = req.headers['x-device-id'];
+      const deviceId =
+        (Array.isArray(headerDevice) ? headerDevice[0] : (headerDevice as string)) ||
+        (body.deviceId as string) ||
+        (q.deviceId as string) ||
+        (q.device_id as string) ||
+        (q.distinct_id as string);
+      const includeRaw = (q.includeExternal as string) ?? (q.include_external as string);
+      const includeExternal =
+        includeRaw === undefined ? undefined : !['false', '0', 'no'].includes(String(includeRaw).toLowerCase());
 
       // Ensure schema is ready before querying
       await ensureDatabaseSchema();
 
       const feed = await FeedService.getForYouFeed({
         userId,
-        cursor: cursor as string,
-        limit: limit ? parseInt(limit as string, 10) : 20,
+        deviceId: deviceId ? String(deviceId) : undefined,
+        ip: clientIpFrom(req),
+        cursor: q.cursor as string,
+        limit: q.limit ? parseInt(q.limit as string, 10) : 20,
+        category: q.category as string,
+        includeExternal,
+        seen: q.seen as string,
       });
 
       return res.status(200).json(feed);

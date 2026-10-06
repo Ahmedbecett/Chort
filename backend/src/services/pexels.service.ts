@@ -1,4 +1,6 @@
 import { config, redis } from '../config';
+import { checkMediaBatch } from './media-verify';
+import { nextTopic, rotatedPage, rotatedTopic } from './provider-rotation';
 
 export interface PexelsVideoFile {
   id: number;
@@ -65,6 +67,7 @@ export class PexelsService {
     query?: string;
     page?: number;
     perPage?: number;
+    verifyAudio?: boolean;
   } = {}): Promise<{
     configured: boolean;
     provider: string;
@@ -74,9 +77,11 @@ export class PexelsService {
     videos: FormattedExternalVideo[];
     error?: string;
   }> {
-    const page = Math.max(1, options.page || 1);
+    const requestedPage = Math.max(1, options.page || 1);
+    const page = rotatedPage('pexels', requestedPage);
     const perPage = Math.min(30, Math.max(1, options.perPage || 15));
-    const query = options.query?.trim();
+    const explicitQuery = options.query?.trim();
+    const query = rotatedTopic('pexels', options.query);
 
     if (!this.isConfigured()) {
       return {
@@ -99,9 +104,10 @@ export class PexelsService {
       }
     } catch {}
 
+    const fetchCount = Math.min(30, perPage * 2);
     const endpoint = query
-      ? `${this.API_BASE}/search?query=${encodeURIComponent(query)}&orientation=portrait&page=${page}&per_page=${perPage}`
-      : `${this.API_BASE}/popular?orientation=portrait&page=${page}&per_page=${perPage}`;
+      ? `${this.API_BASE}/search?query=${encodeURIComponent(query)}&orientation=portrait&page=${page}&per_page=${fetchCount}`
+      : `${this.API_BASE}/popular?orientation=portrait&page=${page}&per_page=${fetchCount}`;
 
     try {
       const response = await fetch(endpoint, {
@@ -169,13 +175,23 @@ export class PexelsService {
         };
       });
 
+      const mask = await checkMediaBatch(
+        formattedVideos.map((v) => v.streamUrl),
+        redis,
+        options.verifyAudio ?? true,
+      );
+      const verified = formattedVideos.filter((_, i) => mask[i]).slice(0, perPage);
+      if (verified.length === 0 && !explicitQuery) {
+        // Rotation fallback: one retry on the next topic before giving up.
+        return this.getVideos({ query: nextTopic('pexels', query), page: requestedPage, perPage });
+      }
       const result = {
         configured: true,
         provider: 'pexels',
         page: data.page || page,
         perPage: data.per_page || perPage,
         total: data.total_results || formattedVideos.length,
-        videos: formattedVideos,
+        videos: verified,
       };
 
       // Cache for 15 minutes (900 seconds) to respect Pexels rate limits

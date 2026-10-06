@@ -1,4 +1,6 @@
 import { config, redis } from '../config';
+import { checkMediaBatch } from './media-verify';
+import { nextTopic, rotatedPage, rotatedTopic } from './provider-rotation';
 import { FormattedExternalVideo } from './pexels.service';
 
 export interface CoverrVideoUrls {
@@ -37,6 +39,7 @@ export class CoverrService {
     query?: string;
     page?: number;
     perPage?: number;
+    verifyAudio?: boolean;
   } = {}): Promise<{
     configured: boolean;
     provider: string;
@@ -46,10 +49,12 @@ export class CoverrService {
     videos: FormattedExternalVideo[];
     error?: string;
   }> {
-    const page = Math.max(1, options.page || 1);
+    const requestedPage = Math.max(1, options.page || 1);
+    const page = rotatedPage('coverr', requestedPage);
     const perPage = Math.min(20, Math.max(1, options.perPage || 15));
     const coverrPage = page - 1;
-    const query = options.query?.trim() || 'vertical';
+    const explicitQuery = options.query?.trim();
+    const query = rotatedTopic('coverr', options.query);
 
     if (!this.isConfigured()) {
       return {
@@ -72,10 +77,11 @@ export class CoverrService {
       }
     } catch {}
 
+    const fetchCount = Math.min(20, perPage * 2);
     const params = new URLSearchParams({
       query,
       page: String(coverrPage),
-      page_size: String(perPage),
+      page_size: String(fetchCount),
       sort: 'popular',
       urls: 'true',
     });
@@ -145,13 +151,23 @@ export class CoverrService {
         });
       }
 
+      const mask = await checkMediaBatch(
+        formattedVideos.map((v) => v.streamUrl),
+        redis,
+        options.verifyAudio ?? true,
+      );
+      const verified = formattedVideos.filter((_, i) => mask[i]).slice(0, perPage);
+      if (verified.length === 0 && !explicitQuery) {
+        // Rotation fallback: one retry on the next topic before giving up.
+        return this.getVideos({ query: nextTopic('coverr', query), page: requestedPage, perPage });
+      }
       const result = {
         configured: true,
         provider: 'coverr',
         page: (Number(data.page) || coverrPage) + 1,
         perPage: Number(data.page_size) || perPage,
         total: data.total || formattedVideos.length,
-        videos: formattedVideos,
+        videos: verified,
       };
 
       // Cache for 15 minutes (900 seconds) to respect Coverr rate limits

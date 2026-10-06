@@ -196,6 +196,21 @@ model View {
   createdAt   DateTime @default(now())
 
   @@index([videoId, createdAt])
+  @@index([userId, createdAt])
+}
+
+// Durable watch history for licensed seed clips (pex_*/cov_*). No FK by
+// design: external ids are not rows in Video, and history writes must never
+// fail. Powers Feed Engine exclusion for logged-in viewers.
+model ExternalSeen {
+  id         String   @id @default(uuid())
+  userId     String
+  externalId String
+  provider   String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, externalId])
+  @@index([userId, createdAt])
 }
 
 model Share {

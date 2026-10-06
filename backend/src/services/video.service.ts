@@ -3,6 +3,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client, config, redis, isStorageConfigured } from '../config';
 import { prisma } from '../lib/prisma';
 import { v4 as uuidv4 } from 'uuid';
+import { isExternalId, recordWatchHistory, userKeyFor } from './feed-history';
 
 export interface CreateUploadUrlInput {
   userId: string;
@@ -185,16 +186,9 @@ export class VideoService {
       },
     });
 
-    try {
-      await redis.del('feed:fyp:guest:top');
-      await redis.del('feed:fyp:guest:top:20');
-      await redis.del('feed:fyp:guest:top:15');
-      await redis.del('feed:fyp:guest:top:10');
-      await redis.del('feed:fyp:guest:top:2');
-      await redis.del(`feed:fyp:${userId}:top`);
-    } catch {
-      // Invalidation ignore
-    }
+    // No page-cache invalidation needed: the Feed Engine serves personalized,
+    // uncached pages, so a new READY/PUBLIC row enters rotation immediately.
+    // (Provider slices + media verdicts stay cached deeper down.)
 
     return video;
   }
@@ -427,31 +421,72 @@ export class VideoService {
   }
 
   /**
-   * Record video view
+   * Record video view: increments the counter (60s dedupe) AND persists watch
+   * history so the Feed Engine excludes already-watched videos. Logged-in
+   * viewers get durable PostgreSQL history (View / ExternalSeen rows);
+   * guests get a fast seen-list. History failures never break counting.
    */
-  static async recordView(videoId: string, userId?: string, ipAddress?: string) {
-    const dedupeKey = `viewed:${videoId}:${userId || ipAddress || 'anon'}`;
-    const alreadyViewed = await redis.get(dedupeKey);
+  static async recordView(
+    videoId: string,
+    opts?: {
+      userId?: string;
+      deviceId?: string;
+      ipAddress?: string;
+      watchSec?: number;
+      completed?: boolean;
+    } | string,
+    ipAddress?: string
+  ) {
+    const o = typeof opts === 'string' ? { userId: opts, ipAddress } : opts || {};
+    const userId = o.userId?.trim() || undefined;
+    const userKey = userKeyFor({ userId, deviceId: o.deviceId, ip: o.ipAddress });
 
-    if (!alreadyViewed) {
-      await redis.set(dedupeKey, '1', 'EX', 60);
-      try {
-        const updated = await prisma.video.update({
-          where: { id: videoId },
-          data: { viewsCount: { increment: 1 } },
-          select: { viewsCount: true },
-        });
-        return { counted: true, viewsCount: updated.viewsCount };
-      } catch (e) {
-        // Fallback if DB error
-      }
+    try {
+      await recordWatchHistory({
+        videoId,
+        userId,
+        userKey,
+        watchSec: o.watchSec,
+        completed: o.completed,
+        ipAddress: o.ipAddress,
+      });
+    } catch {
+      // history is best-effort
     }
 
-    const current = await prisma.video.findUnique({
-      where: { id: videoId },
-      select: { viewsCount: true },
-    });
-    return { counted: false, viewsCount: current?.viewsCount || 0 };
+    // Licensed seed clips live outside the Video table: no counter row.
+    if (isExternalId(videoId)) {
+      return { counted: true, viewsCount: 0, external: true };
+    }
+
+    try {
+      const dedupeKey = `viewed:${videoId}:${userId || o.ipAddress || 'anon'}`;
+      const alreadyViewed = await redis.get(dedupeKey);
+
+      if (!alreadyViewed) {
+        await redis.set(dedupeKey, '1', 'EX', 60);
+        try {
+          const updated = await prisma.video.update({
+            where: { id: videoId },
+            data: { viewsCount: { increment: 1 } },
+            select: { viewsCount: true },
+          });
+          return { counted: true, viewsCount: updated.viewsCount };
+        } catch (e) {
+          // Fallback if DB error
+        }
+      }
+
+      const current = await prisma.video
+        .findUnique({
+          where: { id: videoId },
+          select: { viewsCount: true },
+        })
+        .catch(() => null);
+      return { counted: false, viewsCount: current?.viewsCount || 0 };
+    } catch {
+      return { counted: false, viewsCount: 0 };
+    }
   }
 
   /**
@@ -549,12 +584,7 @@ export class VideoService {
       where: { id: videoId },
     });
 
-    // 3. Invalidate caches
-    try {
-      await redis.del('feed:fyp:guest:top');
-      await redis.del(`feed:fyp:${video.userId}:top`);
-      await redis.del(`feed:fyp:${requestingUserId}:top`);
-    } catch {}
+    // 3. No page-cache invalidation needed (Feed Engine pages are uncached).
 
     return {
       success: true,

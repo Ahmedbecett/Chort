@@ -24,6 +24,7 @@ export class ExternalVideoService {
     query?: string;
     page?: number;
     perPage?: number;
+    verifyAudio?: boolean;
   } = {}) {
     if (this.selectedProvider() === 'coverr') return CoverrService.getVideos(options);
     return PexelsService.getVideos(options);

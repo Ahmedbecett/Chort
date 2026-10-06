@@ -246,6 +246,19 @@ const DDL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS "Follow_followingId_idx" ON "Follow"("followingId");`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Follow_followerId_followingId_key" ON "Follow"("followerId", "followingId");`,
   `CREATE INDEX IF NOT EXISTS "View_videoId_createdAt_idx" ON "View"("videoId", "createdAt");`,
+  `CREATE INDEX IF NOT EXISTS "View_userId_createdAt_idx" ON "View"("userId", "createdAt" DESC);`,
+
+  // Feed Engine watch history for licensed seed clips (additive only).
+  `CREATE TABLE IF NOT EXISTS "ExternalSeen" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "externalId" TEXT NOT NULL,
+    "provider" TEXT NOT NULL DEFAULT '',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ExternalSeen_pkey" PRIMARY KEY ("id")
+  );`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "ExternalSeen_userId_externalId_key" ON "ExternalSeen"("userId", "externalId");`,
+  `CREATE INDEX IF NOT EXISTS "ExternalSeen_userId_createdAt_idx" ON "ExternalSeen"("userId", "createdAt" DESC);`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "SavedVideo_videoId_userId_key" ON "SavedVideo"("videoId", "userId");`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Hashtag_tag_key" ON "Hashtag"("tag");`,
   `CREATE INDEX IF NOT EXISTS "Hashtag_tag_idx" ON "Hashtag"("tag");`,
@@ -375,6 +388,7 @@ export async function ensureDatabaseSchema(force = false): Promise<{
       'Notification',
       'Report',
       'Session',
+      'ExternalSeen',
     ];
 
     const allTablesExist = requiredTables.every((t) => existingTables.has(t));

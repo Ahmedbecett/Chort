@@ -30,6 +30,12 @@ export const config = {
   coverr: {
     apiKey: process.env.COVERR_API_KEY || '',
   },
+  feed: {
+    // When true (default), licensed seed videos must carry a verified audio
+    // track before entering the feed. Set FEED_REQUIRE_EXTERNAL_AUDIO=false
+    // to allow silent-but-valid licensed clips. Never applies to user uploads.
+    requireExternalAudio: process.env.FEED_REQUIRE_EXTERNAL_AUDIO !== 'false',
+  },
 };
 
 // S3 Client configuration
