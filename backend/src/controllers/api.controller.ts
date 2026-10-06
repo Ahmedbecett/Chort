@@ -547,8 +547,10 @@ export class ApiController {
         video,
       });
     } catch (err: any) {
-      return res.status(500).json({
-        error: `Failed to complete video upload: ${err.message}`,
+      const status = err.statusCode || 500;
+      const prefix = status === 422 ? '' : 'Failed to complete video upload: ';
+      return res.status(status).json({
+        error: `${prefix}${err.message}`,
       });
     }
   }

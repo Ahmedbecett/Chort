@@ -67,6 +67,37 @@ export function findBox(buf: Buffer, boxes: Box[], type: string): Box | null {
   return null;
 }
 
+/**
+ * Byte-scan fallback for box discovery. Box-walking from an arbitrary offset
+ * (a tail window starts mid-mdat) cannot align to real boxes, so scan for the
+ * 4CC with a sane size prefix instead. Returns the LAST match: moov sits at
+ * the very end of tail-moov files. Without this, every non-faststart upload
+ * (most phone recordings) is wrongly judged "no-moov" and dropped.
+ */
+export function scanForBox(buf: Buffer, type: string): Box | null {
+  if (type.length !== 4) return null;
+  const c0 = type.charCodeAt(0);
+  const c1 = type.charCodeAt(1);
+  const c2 = type.charCodeAt(2);
+  const c3 = type.charCodeAt(3);
+  let found: Box | null = null;
+  const end = buf.length - 8;
+  for (let i = 0; i <= end; i++) {
+    if (buf[i + 4] !== c0 || buf[i + 5] !== c1 || buf[i + 6] !== c2 || buf[i + 7] !== c3) continue;
+    const size = buf.readUInt32BE(i);
+    if (size === 1) {
+      if (i + 16 > buf.length) continue;
+      const big = Number(buf.readBigUInt64BE(i + 8));
+      if (big >= 16 && i + big <= buf.length) {
+        found = { type, start: i, end: i + big, body: i + 16 };
+      }
+    } else if (size >= 8 && i + size <= buf.length) {
+      found = { type, start: i, end: i + size, body: i + 8 };
+    }
+  }
+  return found;
+}
+
 interface TrackInfo { handler: string; codec: string }
 
 export function parseTrak(buf: Buffer, trak: Box): TrackInfo | null {
@@ -184,7 +215,7 @@ export async function verifyMedia(url: string, cache?: VerdictCache | null): Pro
     if (!findBox(buf, boxes, 'ftyp')) {
       return store({ reachable: true, hasVideo: false, hasAudio: false, detail: 'not-mp4' });
     }
-    let moov = findBox(buf, boxes, 'moov');
+    let moov = findBox(buf, boxes, 'moov') || scanForBox(buf, 'moov');
     let full = buf;
     if (moov && head.total) {
       // Declared moov end (clamped box end cannot reveal truncation).
@@ -209,14 +240,15 @@ export async function verifyMedia(url: string, cache?: VerdictCache | null): Pro
       }
     }
     if (!moov && head.total && head.total > TAIL_BYTES) {
-      // moov likely at tail: fetch the tail window.
+      // moov likely at tail: fetch the tail window and SCAN for it (a blind
+      // box-walk from mid-mdat cannot align to real boxes).
       const tail = await fetchRange(url, head.total - TAIL_BYTES, head.total - 1);
       if (tail.bytes.length > 12) {
         const tailBoxes = readBoxes(tail.bytes, 0, tail.bytes.length);
-        const tailMoov = findBox(tail.bytes, tailBoxes, 'moov');
+        const tailMoov = findBox(tail.bytes, tailBoxes, 'moov') || scanForBox(tail.bytes, 'moov');
         if (tailMoov) {
           full = tail.bytes;
-          moov = { type: 'moov', start: tailMoov.start, body: tailMoov.body, end: tail.bytes.length };
+          moov = { type: 'moov', start: tailMoov.start, body: tailMoov.body, end: tailMoov.end };
         }
       }
     }
