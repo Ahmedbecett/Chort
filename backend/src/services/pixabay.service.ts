@@ -52,6 +52,7 @@ export class PixabayService {
     page?: number;
     perPage?: number;
     verifyAudio?: boolean;
+    debug?: boolean;
   } = {}): Promise<{
     configured: boolean;
     provider: string;
@@ -60,6 +61,7 @@ export class PixabayService {
     total: number;
     videos: FormattedExternalVideo[];
     error?: string;
+    debug?: { raw: number; portraitThumb: number; verified: number; verifyAudio: boolean };
   }> {
     const explicitPage = options.page && options.page > 0 ? Math.floor(options.page) : undefined;
     const requestedPage = explicitPage ?? 1;
@@ -89,7 +91,9 @@ export class PixabayService {
       }
     } catch {}
 
-    const fetchCount = Math.min(40, Math.max(10, perPage * 2));
+    // Portrait clips are a small minority of Pixabay's catalog: fetch a wide
+    // slice (1 API call either way) so portrait+audio filtering nets enough.
+    const fetchCount = Math.min(100, Math.max(40, perPage * 4));
     const params = new URLSearchParams({
       key: config.pixabay.apiKey,
       q: query,
@@ -185,6 +189,16 @@ export class PixabayService {
         perPage,
         total: Number(data.totalHits) || formattedVideos.length,
         videos: verified,
+        ...(options.debug
+          ? {
+              debug: {
+                raw: rawVideos.length,
+                portraitThumb: formattedVideos.length,
+                verified: verified.length,
+                verifyAudio: options.verifyAudio ?? true,
+              },
+            }
+          : {}),
       };
 
       // Cache for 15 minutes (900 seconds) to respect Pixabay rate limits

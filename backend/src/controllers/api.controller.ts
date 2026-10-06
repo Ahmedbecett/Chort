@@ -100,10 +100,13 @@ export class ApiController {
         providerParam === 'pexels' || providerParam === 'coverr' || providerParam === 'pixabay'
           ? providerParam
           : null;
+      const debug = ['1', 'true', 'yes'].includes(String(req.query.debug || '').toLowerCase());
+      const verifyAudioRaw = String(req.query.verify_audio ?? req.query.verifyAudio ?? '').toLowerCase();
+      const verifyAudio = ['false', '0', 'no'].includes(verifyAudioRaw) ? false : undefined;
 
       const result = providerOverride
-        ? await ExternalVideoService.getVideosFrom(providerOverride, { page, perPage, query })
-        : await ExternalVideoService.getVideos({ page, perPage, query });
+        ? await ExternalVideoService.getVideosFrom(providerOverride, { page, perPage, query, debug, verifyAudio })
+        : await ExternalVideoService.getVideos({ page, perPage, query, debug, verifyAudio });
 
       return res.status(200).json(result);
     } catch (err: any) {

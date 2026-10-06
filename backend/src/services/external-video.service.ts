@@ -28,13 +28,14 @@ export class ExternalVideoService {
     page?: number;
     perPage?: number;
     verifyAudio?: boolean;
+    debug?: boolean;
   } = {}) {
     return this.getVideosFrom(this.selectedProvider(), options);
   }
 
   public static async getVideosFrom(
     provider: ExternalProviderName,
-    options: { query?: string; page?: number; perPage?: number; verifyAudio?: boolean } = {}
+    options: { query?: string; page?: number; perPage?: number; verifyAudio?: boolean; debug?: boolean } = {}
   ) {
     if (provider === 'coverr') return CoverrService.getVideos(options);
     if (provider === 'pixabay') return PixabayService.getVideos(options);
