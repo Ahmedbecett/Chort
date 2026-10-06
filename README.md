@@ -13,7 +13,7 @@
 
 ## 📥 Direct APK Download & Production Releases
 
-- 🚀 **[Download Latest Production APK: Chort-v2.3.1-release.apk](https://github.com/Ahmedbecett/Chort/releases/download/v2.3.1/Chort-v2.3.1-release.apk)**  (also built automatically by the [Android Release workflow](.github/workflows/android-release.yml) on every `v*` tag)
+- 🚀 **[Download Latest Production APK: Chort-v2.4.1-release.apk](https://github.com/Ahmedbecett/Chort/releases/download/v2.4.1/Chort-v2.4.1-release.apk)**  (also built automatically by the [Android Release workflow](.github/workflows/android-release.yml) on every `v*` tag)
 - 🔗 **[Stable direct link (always the newest APK): Chort-latest.apk](https://github.com/Ahmedbecett/Chort/releases/latest/download/Chort-latest.apk)**
 - 📦 **[All GitHub Releases](https://github.com/Ahmedbecett/Chort/releases)**
 - ✅ **Every APK is verified against the source commit before release** - see [RELEASE.md](RELEASE.md) and `scripts/verify_apk.py`.

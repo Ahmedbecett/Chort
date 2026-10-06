@@ -102,7 +102,7 @@ old app first, then install the new APK:
 
 ```bash
 adb uninstall com.aistudio.tokpulse.social
-adb install -r release/Chort-v2.3.0-release.apk
+adb install -r release/Chort-v2.4.1-release.apk
 ```
 
 Once both the installed app and the new APK are signed with the same key
