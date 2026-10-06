@@ -33,6 +33,28 @@ export const config = {
   pixabay: {
     apiKey: process.env.PIXABAY_API_KEY || '',
   },
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID || '',
+  },
+  facebook: {
+    appId: process.env.FACEBOOK_APP_ID || '',
+    appSecret: process.env.FACEBOOK_APP_SECRET || '',
+  },
+  twilio: {
+    accountSid: process.env.TWILIO_ACCOUNT_SID || '',
+    authToken: process.env.TWILIO_AUTH_TOKEN || '',
+    fromNumber: process.env.TWILIO_FROM_NUMBER || '',
+    messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID || '',
+  },
+  otp: {
+    ttlSeconds: Math.max(60, parseInt(process.env.OTP_TTL_SECONDS || '600', 10) || 600),
+    cooldownSeconds: Math.max(10, parseInt(process.env.OTP_RESEND_COOLDOWN_SECONDS || '60', 10) || 60),
+    maxPerHour: Math.max(1, parseInt(process.env.OTP_MAX_PER_HOUR || '5', 10) || 5),
+    maxAttempts: Math.max(1, parseInt(process.env.OTP_MAX_ATTEMPTS || '5', 10) || 5),
+    // 'auto' (default): dev-echo ONLY while no SMS provider is configured.
+    // 'never' (OTP_DEV_ECHO=false): kill switch, never echo.
+    devEcho: (process.env.OTP_DEV_ECHO || 'auto').trim().toLowerCase() === 'false' ? 'never' : 'auto',
+  },
   feed: {
     // When true (default), licensed seed videos must carry a verified audio
     // track before entering the feed. Set FEED_REQUIRE_EXTERNAL_AUDIO=false

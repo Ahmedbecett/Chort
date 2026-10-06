@@ -14,6 +14,14 @@ const authLimiter = rateLimit({
   message: { error: 'Too many auth attempts, please try again later' },
 });
 
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many code requests, please try again later' },
+});
+
 const reportLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
@@ -33,6 +41,14 @@ apiRouter.post('/auth/login', authLimiter, validateBody('login'), ApiController.
 apiRouter.post('/auth/logout', ApiController.logout);
 apiRouter.get('/auth/sessions', ApiController.listSessions);
 apiRouter.delete('/auth/sessions/:sessionId', ApiController.revokeSession);
+apiRouter.post('/auth/oauth/google', authLimiter, validateBody('oauthGoogle'), ApiController.oauthGoogle);
+apiRouter.post('/auth/oauth/facebook', authLimiter, validateBody('oauthFacebook'), ApiController.oauthFacebook);
+apiRouter.post('/auth/phone/request', otpLimiter, validateBody('phoneRequest'), ApiController.phoneRequest);
+apiRouter.post('/auth/phone/verify', otpLimiter, validateBody('phoneVerify'), ApiController.phoneVerify);
+apiRouter.post('/auth/recover/request', otpLimiter, validateBody('recoverRequest'), ApiController.recoverRequest);
+apiRouter.post('/auth/recover/confirm', otpLimiter, validateBody('recoverConfirm'), ApiController.recoverConfirm);
+apiRouter.get('/auth/providers', ApiController.myProviders);
+apiRouter.post('/auth/link', authLimiter, ApiController.linkProvider);
 
 // Video Upload Pipeline
 apiRouter.post('/videos/upload-url', validateBody('uploadUrl'), ApiController.requestUploadUrl);
@@ -78,3 +94,4 @@ apiRouter.post('/users/:userId/notifications/read', validateBody('notificationsR
 apiRouter.post('/reports', reportLimiter, validateBody('report'), ApiController.submitReport);
 apiRouter.get('/admin/reports', ApiController.listReports);
 apiRouter.post('/admin/reports/:reportId/resolve', validateBody('resolveReport'), ApiController.resolveReport);
+apiRouter.get('/admin/logins', ApiController.listLogins);

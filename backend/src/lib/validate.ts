@@ -63,6 +63,28 @@ export const schemas = {
   resolveReport: z.object({
     action: z.enum(['dismiss', 'hide_video', 'show_video']),
   }),
+  oauthGoogle: z.object({
+    idToken: z.string().trim().min(10).max(4000),
+  }),
+  oauthFacebook: z.object({
+    accessToken: z.string().trim().min(10).max(4000),
+  }),
+  phoneRequest: z.object({
+    phone: z.string().trim().min(8).max(20),
+  }),
+  phoneVerify: z.object({
+    phone: z.string().trim().min(8).max(20),
+    code: z.string().trim().regex(/^\d{4,8}$/, 'code must be digits'),
+    name: z.string().trim().max(50).optional(),
+  }),
+  recoverRequest: z.object({
+    phone: z.string().trim().min(8).max(20),
+  }),
+  recoverConfirm: z.object({
+    phone: z.string().trim().min(8).max(20),
+    code: z.string().trim().regex(/^\d{4,8}$/, 'code must be digits'),
+    newPassword: z.string().min(6).max(100).optional(),
+  }),
 };
 
 export type SchemaName = keyof typeof schemas;

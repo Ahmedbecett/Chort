@@ -266,6 +266,39 @@ const DDL_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS "Notification_recipientId_createdAt_idx" ON "Notification"("recipientId", "createdAt" DESC);`,
   `CREATE INDEX IF NOT EXISTS "Follow_followerId_createdAt_idx" ON "Follow"("followerId", "createdAt" DESC);`,
   `CREATE INDEX IF NOT EXISTS "Follow_followingId_createdAt_idx" ON "Follow"("followingId", "createdAt" DESC);`,
+
+  // Auth identities + OTP challenges (additive only; existing columns first).
+  `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phone" TEXT;`,
+  `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "phoneVerified" BOOLEAN NOT NULL DEFAULT false;`,
+  `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "primaryProvider" TEXT NOT NULL DEFAULT 'email';`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "User_phone_key" ON "User"("phone");`,
+  `CREATE TABLE IF NOT EXISTS "Account" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "providerId" TEXT NOT NULL,
+    "email" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Account_pkey" PRIMARY KEY ("id")
+  );`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "Account_provider_providerId_key" ON "Account"("provider", "providerId");`,
+  `CREATE INDEX IF NOT EXISTS "Account_userId_idx" ON "Account"("userId");`,
+  `CREATE TABLE IF NOT EXISTS "PhoneOtp" (
+    "id" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
+    "purpose" TEXT NOT NULL DEFAULT 'register',
+    "codeHash" TEXT NOT NULL,
+    "salt" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "maxAttempts" INTEGER NOT NULL DEFAULT 5,
+    "sendCount" INTEGER NOT NULL DEFAULT 1,
+    "lastSentAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "PhoneOtp_pkey" PRIMARY KEY ("id")
+  );`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "PhoneOtp_phone_purpose_key" ON "PhoneOtp"("phone", "purpose");`,
+  `CREATE INDEX IF NOT EXISTS "PhoneOtp_phone_idx" ON "PhoneOtp"("phone");`,
   `CREATE INDEX IF NOT EXISTS "Report_status_idx" ON "Report"("status");`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "Session_token_key" ON "Session"("token");`,
   `CREATE INDEX IF NOT EXISTS "Session_token_idx" ON "Session"("token");`,
@@ -338,6 +371,9 @@ const DDL_STATEMENTS: string[] = [
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Session_userId_fkey') THEN
       ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Account_userId_fkey') THEN
+      ALTER TABLE "Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
   END $$;`,
 ];
 
@@ -392,6 +428,8 @@ export async function ensureDatabaseSchema(force = false): Promise<{
       'Report',
       'Session',
       'ExternalSeen',
+      'Account',
+      'PhoneOtp',
     ];
 
     const allTablesExist = requiredTables.every((t) => existingTables.has(t));

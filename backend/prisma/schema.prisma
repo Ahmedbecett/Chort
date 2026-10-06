@@ -35,14 +35,17 @@ enum Visibility {
 }
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  username      String         @unique
-  passwordHash  String
-  role          Role           @default(USER)
-  status        AccountStatus  @default(ACTIVE)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id              String         @id @default(uuid())
+  email           String         @unique
+  username        String         @unique
+  passwordHash    String
+  role            Role           @default(USER)
+  status          AccountStatus  @default(ACTIVE)
+  phone           String?        @unique
+  phoneVerified   Boolean        @default(false)
+  primaryProvider String         @default("email")
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   profile       Profile?
   videos        Video[]
@@ -59,6 +62,9 @@ model User {
   // Social graph
   followers     Follow[]       @relation("UserFollowers")
   following     Follow[]       @relation("UserFollowing")
+
+  // Linked auth identities (google / facebook / phone)
+  accounts      Account[]
 
   @@index([email])
   @@index([username])
@@ -300,4 +306,38 @@ model Session {
   createdAt DateTime @default(now())
 
   @@index([token])
+}
+
+// One row per linked identity: the same human keeps ONE User row no matter
+// how many ways they sign in (google / facebook / phone).
+model Account {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   String
+  providerId String
+  email      String?
+  createdAt  DateTime @default(now())
+
+  @@unique([provider, providerId])
+  @@index([userId])
+}
+
+// Phone OTP challenges. Codes are stored HASHED (HMAC + salt), expire fast,
+// and are deleted on success/expiry. One active challenge per phone+purpose.
+model PhoneOtp {
+  id          String   @id @default(uuid())
+  phone       String
+  purpose     String   @default("register")
+  codeHash    String
+  salt        String
+  expiresAt   DateTime
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(5)
+  sendCount   Int      @default(1)
+  lastSentAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@unique([phone, purpose])
+  @@index([phone])
 }

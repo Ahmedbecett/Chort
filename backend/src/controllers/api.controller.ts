@@ -10,6 +10,7 @@ import { SocialService } from '../services/social.service';
 import { NotificationService } from '../services/notification.service';
 import { ReportService } from '../services/report.service';
 import { HashtagService } from '../services/hashtag.service';
+import { AuthService, devEchoAllowed, isSmsConfigured, normalizePhone } from '../services/auth.service';
 import { clampLimit, clampPage, parseFeedMode } from '../lib/validate';
 import { PexelsService } from '../services/pexels.service';
 import { CoverrService } from '../services/coverr.service';
@@ -48,6 +49,31 @@ export class ApiController {
       return false;
     }
     return true;
+  }
+
+  private static async issueSession(user: any, req: Request): Promise<{ token: string; user: any }> {
+    const jti = randomUUID();
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, username: user.username, role: user.role, jti },
+      config.jwtSecret,
+      { expiresIn: '30d' }
+    );
+    await ApiController.createSession(user.id, req, jti);
+    return {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        displayName: user.profile?.displayName || user.username,
+        avatarUrl: user.profile?.avatarUrl,
+        bio: user.profile?.bio,
+        role: user.role,
+        phone: user.phone || null,
+        phoneVerified: Boolean(user.phoneVerified),
+        primaryProvider: user.primaryProvider || 'email',
+      },
+    };
   }
 
   private static async createSession(userId: string, req: Request, jti: string): Promise<void> {
@@ -134,6 +160,13 @@ export class ApiController {
         ? 'Pixabay Licensed Video API Active'
         : 'Pixabay Not Configured (Set PIXABAY_API_KEY in Vercel to activate licensed stock videos)',
       pixabayConfigured: PixabayService.isConfigured(),
+      googleOAuth: config.google.clientId ? 'Google OAuth Active' : 'Google OAuth Not Configured (Set GOOGLE_CLIENT_ID)',
+      googleOAuthConfigured: Boolean(config.google.clientId),
+      facebookOAuth: config.facebook.appId ? 'Facebook OAuth Active' : 'Facebook OAuth Not Configured (Set FACEBOOK_APP_ID)',
+      facebookOAuthConfigured: Boolean(config.facebook.appId),
+      sms: isSmsConfigured() ? 'Twilio SMS Active' : 'SMS Not Configured (setup-mode OTP echo; set TWILIO_* to send real SMS)',
+      smsConfigured: isSmsConfigured(),
+      otpDevEcho: devEchoAllowed(),
       cdn: config.cdn.baseUrl,
       vercelProduction: true,
     });
@@ -1038,6 +1071,160 @@ export class ApiController {
       return res.status(200).json(result);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // --- AUTH: Google OAuth ---
+  static async oauthGoogle(req: Request, res: Response) {
+    try {
+      await ensureDatabaseSchema();
+      const profile = await AuthService.verifyGoogleIdToken(String((req.body || {}).idToken || ''));
+      const out = await AuthService.findOrCreateLinkedUser({ provider: 'google', providerId: profile.sub, email: profile.email, name: profile.name, avatar: profile.avatar });
+      const session = await ApiController.issueSession(out.user, req);
+      return res.status(out.isNew ? 201 : 200).json({ message: out.isNew ? 'Account created with Google' : 'Google login successful', ...session, isNew: out.isNew, linked: out.linked });
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  // --- AUTH: Facebook OAuth ---
+  static async oauthFacebook(req: Request, res: Response) {
+    try {
+      await ensureDatabaseSchema();
+      const profile = await AuthService.verifyFacebookToken(String((req.body || {}).accessToken || ''));
+      const out = await AuthService.findOrCreateLinkedUser({ provider: 'facebook', providerId: profile.sub, email: profile.email, name: profile.name, avatar: profile.avatar });
+      const session = await ApiController.issueSession(out.user, req);
+      return res.status(out.isNew ? 201 : 200).json({ message: out.isNew ? 'Account created with Facebook' : 'Facebook login successful', ...session, isNew: out.isNew, linked: out.linked });
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  // --- AUTH: phone OTP request (register / generic) ---
+  static async phoneRequest(req: Request, res: Response) {
+    try {
+      await ensureDatabaseSchema();
+      const result = await AuthService.requestOtp((req.body || {}).phone || '', 'register');
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  // --- AUTH: phone OTP verify -> creates/links user, returns session ---
+  static async phoneVerify(req: Request, res: Response) {
+    try {
+      await ensureDatabaseSchema();
+      const body = req.body || {};
+      const { phone } = await AuthService.verifyOtp(String(body.phone || ''), String(body.code || ''), 'register');
+      const out = await AuthService.claimPhoneUser(phone, typeof body.name === 'string' ? body.name : undefined);
+      const session = await ApiController.issueSession(out.user, req);
+      return res.status(out.isNew ? 201 : 200).json({ message: out.isNew ? 'Account created with phone number' : 'Phone login successful', ...session, isNew: out.isNew, linked: out.linked });
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  // --- AUTH: account recovery via verified phone ---
+  static async recoverRequest(req: Request, res: Response) {
+    try {
+      await ensureDatabaseSchema();
+      const result = await AuthService.requestRecovery((req.body || {}).phone || '');
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  static async recoverConfirm(req: Request, res: Response) {
+    try {
+      await ensureDatabaseSchema();
+      const body = req.body || {};
+      const result = await AuthService.confirmRecovery(String(body.phone || ''), String(body.code || ''), typeof body.newPassword === 'string' ? body.newPassword : undefined);
+      const session = await ApiController.issueSession(result.user, req);
+      return res.status(200).json({ message: 'Account recovered', ...session });
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
+  // --- ADMIN: login/session records (real data from Session table) ---
+  static async listLogins(req: Request, res: Response) {
+    try {
+      if (!ApiController.requireAdmin(req, res)) return;
+      const q = (req.query || {}) as Record<string, unknown>;
+      await ensureDatabaseSchema();
+      const page = clampPage(q.page);
+      const limit = clampLimit(q.limit, 20, 50);
+      const skip = (page - 1) * limit;
+      const [total, rows] = await Promise.all([
+        prisma.session.count(),
+        prisma.session.findMany({
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+          include: { user: { select: { id: true, username: true, email: true, phone: true, primaryProvider: true } } },
+        }),
+      ]);
+      return res.status(200).json({
+        items: rows.map((s) => ({
+          id: s.id,
+          user: s.user,
+          userAgent: s.userAgent,
+          ipAddress: s.ipAddress,
+          createdAt: s.createdAt,
+          expiresAt: s.expiresAt,
+          active: s.expiresAt > new Date(),
+        })),
+        page,
+        limit,
+        total,
+        hasMore: skip + rows.length < total,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // --- AUTH: my linked providers ---
+  static async myProviders(req: Request, res: Response) {
+    try {
+      const self = (req as any).user;
+      if (!self?.userId) return res.status(401).json({ error: 'Authentication required' });
+      await ensureDatabaseSchema();
+      const rows = await prisma.account.findMany({ where: { userId: self.userId }, orderBy: { createdAt: 'asc' } });
+      return res.status(200).json({ providers: rows.map((a) => ({ provider: a.provider, email: a.email, linkedAt: a.createdAt })) });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // --- AUTH: link an additional provider to my account ---
+  static async linkProvider(req: Request, res: Response) {
+    try {
+      const self = (req as any).user;
+      if (!self?.userId) return res.status(401).json({ error: 'Authentication required' });
+      await ensureDatabaseSchema();
+      const body = req.body || {};
+      const provider = String(body.provider || '').toLowerCase();
+      let profile: { sub: string; email: string; name: string; avatar: string };
+      if (provider === 'google') {
+        profile = await AuthService.verifyGoogleIdToken(String(body.idToken || ''));
+      } else if (provider === 'facebook') {
+        profile = await AuthService.verifyFacebookToken(String(body.accessToken || ''));
+      } else {
+        return res.status(400).json({ error: 'provider must be google or facebook' });
+      }
+      const existing = await prisma.account.findUnique({ where: { provider_providerId: { provider, providerId: profile.sub } } });
+      if (existing && existing.userId !== self.userId) {
+        return res.status(409).json({ error: 'That account is already linked to another Chort user.' });
+      }
+      if (!existing) {
+        await prisma.account.create({ data: { userId: self.userId, provider, providerId: profile.sub, email: profile.email || null } });
+      }
+      return res.status(200).json({ linked: true, provider });
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({ error: err.message });
     }
   }
 }
