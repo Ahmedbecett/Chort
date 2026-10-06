@@ -374,8 +374,16 @@ export class ApiController {
         return res.status(401).json({ error: 'Account not found with this email or username' });
       }
 
+      // Password-less accounts (Google/Facebook/phone created) can NEVER log in
+      // with a password until recovery sets one. (Previous code accepted ANY
+      // password for these rows - a full account-takeover hole. Fixed.)
+      if (user.passwordHash === 'OAUTH_OR_SESSION' || user.passwordHash === 'INITIAL_ACTIVE') {
+        return res.status(401).json({
+          error: 'This account uses Google, Facebook, or phone sign-in. Use it to log in, or recover your account to set a password.',
+        });
+      }
       const isValid = await bcrypt.compare(password, user.passwordHash);
-      if (!isValid && user.passwordHash !== 'OAUTH_OR_SESSION' && user.passwordHash !== 'INITIAL_ACTIVE') {
+      if (!isValid) {
         return res.status(401).json({ error: 'Incorrect password' });
       }
 
