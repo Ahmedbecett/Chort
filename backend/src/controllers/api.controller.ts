@@ -6,6 +6,8 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { VideoService } from '../services/video.service';
 import { FeedService } from '../services/feed.service';
 import { PexelsService } from '../services/pexels.service';
+import { CoverrService } from '../services/coverr.service';
+import { ExternalVideoService } from '../services/external-video.service';
 import { prisma, checkDatabaseConnection, isDbConfigured, ensureDatabaseSchema } from '../lib/prisma';
 import { config, isStorageConfigured, s3Client } from '../config';
 
@@ -72,19 +74,23 @@ export class ApiController {
         ? 'Pexels Licensed Video API Active'
         : 'Pexels Not Configured (Set PEXELS_API_KEY in Vercel to activate licensed stock videos)',
       pexelsConfigured: PexelsService.isConfigured(),
+      coverr: CoverrService.isConfigured()
+        ? 'Coverr Licensed Video API Active'
+        : 'Coverr Not Configured (Set COVERR_API_KEY in Vercel to activate licensed stock videos)',
+      coverrConfigured: CoverrService.isConfigured(),
       cdn: config.cdn.baseUrl,
       vercelProduction: true,
     });
   }
 
-  // --- EXTERNAL LICENSED VIDEOS (PEXELS API) ---
+  // --- EXTERNAL LICENSED VIDEOS (PEXELS / COVERR via VIDEO_PROVIDER) ---
   static async getExternalVideos(req: Request, res: Response) {
     try {
       const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
       const perPage = req.query.per_page ? parseInt(req.query.per_page as string, 10) : 15;
       const query = (req.query.query as string) || (req.query.q as string);
 
-      const result = await PexelsService.getVideos({
+      const result = await ExternalVideoService.getVideos({
         page,
         perPage,
         query,
@@ -93,8 +99,8 @@ export class ApiController {
       return res.status(200).json(result);
     } catch (err: any) {
       return res.status(500).json({
-        configured: PexelsService.isConfigured(),
-        provider: 'pexels',
+        configured: ExternalVideoService.isConfigured(),
+        provider: ExternalVideoService.selectedProvider(),
         error: `Failed to fetch external videos: ${err.message}`,
         videos: [],
       });
@@ -557,10 +563,10 @@ export class ApiController {
     try {
       const { videoId } = req.params;
 
-      // Handle external Pexels video stream
-      if (videoId.startsWith('pex_') && PexelsService.isConfigured()) {
-        const pexelsData = await PexelsService.getVideos({ perPage: 30 });
-        const match = pexelsData.videos.find((v) => v.id === videoId);
+      // Handle external provider video stream (pex_ = Pexels, cov_ = Coverr)
+      if ((videoId.startsWith('pex_') || videoId.startsWith('cov_')) && ExternalVideoService.isConfigured()) {
+        const externalData = await ExternalVideoService.getVideos({ perPage: 30 });
+        const match = externalData.videos.find((v) => v.id === videoId);
         if (match && match.streamUrl) {
           return res.redirect(302, match.streamUrl);
         }
@@ -641,9 +647,9 @@ export class ApiController {
     try {
       const { videoId } = req.params;
 
-      if (videoId.startsWith('pex_') && PexelsService.isConfigured()) {
-        const pexelsData = await PexelsService.getVideos({ perPage: 30 });
-        const match = pexelsData.videos.find((v) => v.id === videoId);
+      if ((videoId.startsWith('pex_') || videoId.startsWith('cov_')) && ExternalVideoService.isConfigured()) {
+        const externalData = await ExternalVideoService.getVideos({ perPage: 30 });
+        const match = externalData.videos.find((v) => v.id === videoId);
         if (match && match.thumbnailUrl) {
           return res.redirect(302, match.thumbnailUrl);
         }

@@ -27,6 +27,9 @@ export const config = {
   pexels: {
     apiKey: process.env.PEXELS_API_KEY || '',
   },
+  coverr: {
+    apiKey: process.env.COVERR_API_KEY || '',
+  },
 };
 
 // S3 Client configuration

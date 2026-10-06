@@ -1,7 +1,7 @@
 import { prisma, isDbConfigured } from '../lib/prisma';
 import { redis, config } from '../config';
 import { VideoService } from './video.service';
-import { PexelsService } from './pexels.service';
+import { ExternalVideoService } from './external-video.service';
 
 export interface FeedQueryOptions {
   userId?: string;
@@ -13,7 +13,7 @@ export interface FeedQueryOptions {
 
 export class FeedService {
   /**
-   * Fetches real videos from PostgreSQL with caching and merges licensed Pexels videos when available.
+   * Fetches real videos from PostgreSQL with caching and merges licensed external videos (Pexels/Coverr) when available.
    * Strictly uses real database records and legal external API - No mock or sample videos.
    */
   static async getForYouFeed(options: FeedQueryOptions) {
@@ -38,15 +38,16 @@ export class FeedService {
       } catch (err: any) {
         console.warn('Upstream cluster fallback error:', err.message);
       }
-      if (PexelsService.isConfigured()) {
-        const pexels = await PexelsService.getVideos({ perPage: limit });
+      if (ExternalVideoService.isConfigured()) {
+        const external = await ExternalVideoService.getVideos({ perPage: limit });
+        const providerLabel = external.provider === 'coverr' ? 'Coverr' : 'Pexels';
         return {
-          videos: pexels.videos,
+          videos: external.videos,
           nextCursor: null,
           hasMore: false,
           databaseConnected: false,
-          source: 'Pexels Licensed API',
-          message: 'PostgreSQL not connected; serving licensed Pexels videos.',
+          source: `${providerLabel} Licensed API`,
+          message: `PostgreSQL not connected; serving licensed ${providerLabel} videos.`,
         };
       }
       return {
@@ -142,15 +143,15 @@ export class FeedService {
         })
       );
 
-      // Fetch licensed Pexels videos if configured
-      let pexelsVideos: any[] = [];
-      if (PexelsService.isConfigured() && options.includeExternal !== false) {
+      // Fetch licensed external videos if configured
+      let externalVideos: any[] = [];
+      if (ExternalVideoService.isConfigured() && options.includeExternal !== false) {
         try {
-          const pexelsData = await PexelsService.getVideos({
+          const externalData = await ExternalVideoService.getVideos({
             page: 1,
             perPage: Math.min(10, Math.ceil(limit / 2)),
           });
-          pexelsVideos = pexelsData.videos || [];
+          externalVideos = externalData.videos || [];
         } catch {}
       }
 
@@ -159,9 +160,9 @@ export class FeedService {
       const seenIds = new Set<string>();
 
       let cIdx = 0;
-      let pIdx = 0;
+      let eIdx = 0;
 
-      while (cIdx < formattedVideos.length || pIdx < pexelsVideos.length) {
+      while (cIdx < formattedVideos.length || eIdx < externalVideos.length) {
         if (cIdx < formattedVideos.length) {
           const vid = formattedVideos[cIdx++];
           if (!seenIds.has(vid.id)) {
@@ -169,11 +170,11 @@ export class FeedService {
             combinedVideos.push(vid);
           }
         }
-        if (pIdx < pexelsVideos.length && combinedVideos.length < limit + pexelsVideos.length) {
-          const pVid = pexelsVideos[pIdx++];
-          if (!seenIds.has(pVid.id)) {
-            seenIds.add(pVid.id);
-            combinedVideos.push(pVid);
+        if (eIdx < externalVideos.length && combinedVideos.length < limit + externalVideos.length) {
+          const eVid = externalVideos[eIdx++];
+          if (!seenIds.has(eVid.id)) {
+            seenIds.add(eVid.id);
+            combinedVideos.push(eVid);
           }
         }
       }
@@ -186,7 +187,7 @@ export class FeedService {
         nextCursor,
         hasMore,
         databaseConnected: true,
-        source: pexelsVideos.length > 0 ? 'Chort & Pexels' : 'PostgreSQL/Prisma',
+        source: externalVideos.length > 0 ? (ExternalVideoService.selectedProvider() === 'coverr' ? 'Chort & Coverr' : 'Chort & Pexels') : 'PostgreSQL/Prisma',
       };
 
       try {
@@ -215,15 +216,16 @@ export class FeedService {
       } catch (err: any) {
         console.warn('Upstream cluster fallback error in catch block:', err.message);
       }
-      if (PexelsService.isConfigured()) {
+      if (ExternalVideoService.isConfigured()) {
         try {
-          const pexels = await PexelsService.getVideos({ perPage: limit });
+          const external = await ExternalVideoService.getVideos({ perPage: limit });
+          const providerLabel = external.provider === 'coverr' ? 'Coverr' : 'Pexels';
           return {
-            videos: pexels.videos,
+            videos: external.videos,
             nextCursor: null,
             hasMore: false,
             databaseConnected: false,
-            source: 'Pexels Licensed API',
+            source: `${providerLabel} Licensed API`,
             error: dbError.message,
           };
         } catch {}
