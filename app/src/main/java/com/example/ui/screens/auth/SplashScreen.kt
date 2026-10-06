@@ -89,7 +89,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             )
         }
         Text(
-            text = "Chort • v2.4",
+            text = "Chort • v2.4.1",
             color = Color.White.copy(alpha = 0.25f),
             fontSize = 11.sp,
             modifier = Modifier.align(Alignment.BottomCenter)

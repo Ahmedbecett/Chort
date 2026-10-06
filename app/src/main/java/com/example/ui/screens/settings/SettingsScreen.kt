@@ -369,7 +369,7 @@ fun SettingsScreen(
                 SettingRow(
                     icon = Icons.Default.Info,
                     title = "About Chort",
-                    subtitle = "Version 2.4.0",
+                    subtitle = "Version 2.4.1",
                     onClick = { onNavigateToLegal("terms") }
                 )
                 SettingRow(

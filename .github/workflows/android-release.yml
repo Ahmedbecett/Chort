@@ -1,20 +1,27 @@
 name: Android Release APK
 
+# Builds, signs and verifies a release APK straight from the pushed commit, then
+# publishes it as a downloadable artifact (and attaches it to the GitHub Release
+# when a v* tag is pushed). This is why a stale APK can no longer be shipped:
+# the artifact is rebuilt from source on every release.
+
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  build-release-apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
     steps:
-      - name: Checkout
+      - name: Checkout (full history so the commit stamp is meaningful)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -22,45 +29,85 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # Installed manually instead of via a third-party action: the SDK tools are
+      # pinned so the runner cannot silently pick a cmdline-tools build that
+      # requires a newer JDK (that broke an earlier run of this workflow).
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept licenses and install platform
         run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          set -euo pipefail
+          SDK_ROOT="$RUNNER_TEMP/android-sdk"
+          rm -rf "$SDK_ROOT"
+          mkdir -p "$SDK_ROOT/cmdline-tools"
+          curl -sSLo /tmp/cmdline-tools.zip \
+            https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q /tmp/cmdline-tools.zip -d "$SDK_ROOT/cmdline-tools"
+          mv "$SDK_ROOT/cmdline-tools/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
+          {
+            echo "ANDROID_HOME=$SDK_ROOT"
+            echo "ANDROID_SDK_ROOT=$SDK_ROOT"
+          } >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
 
-      - name: Ensure secrets placeholders
-        run: cp .env.example app/.env.example
-
-      - name: Build release APK
-        run: ./gradlew :app:assembleRelease -x lint --no-daemon --max-workers=2
-
-      - name: Verify APK signature
+      - name: Install SDK packages
         run: |
-          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
-          echo "APK=$APK"
-          ls -la "$APK"
-          ${ANDROID_HOME}/build-tools/36.0.0/apksigner verify "$APK" && echo SIGNATURE_OK
+          yes | sdkmanager --licenses > /dev/null
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-36" \
+            "platforms;android-36.1" \
+            "build-tools;36.1.0" \
+            "build-tools;36.0.0"
 
-      - name: Prepare release assets
+      - name: Read version + commit
+        id: meta
         run: |
-          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
-          cp "$APK" "Chort-${GITHUB_REF_NAME}-release.apk"
-          cp "$APK" "Chort-latest.apk"
-          sha256sum "Chort-${GITHUB_REF_NAME}-release.apk" | tee checksums.txt
+          echo "code=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts | head -1)" >> "$GITHUB_OUTPUT"
+          echo "name=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub Release
+      - name: Build signed release APK
+        run: |
+          ./gradlew --no-daemon clean assembleRelease
+          mkdir -p release
+          cp app/build/outputs/apk/release/app-release.apk \
+             "release/Chort-v${{ steps.meta.outputs.name }}-release.apk"
+          cp app/build/outputs/apk/release/app-release.apk \
+             "release/Chort-latest.apk"
+
+      - name: Verify APK against the current source code
+        run: |
+          python3 scripts/verify_apk.py \
+            --apk "release/Chort-v${{ steps.meta.outputs.name }}-release.apk" \
+            --expect-version-code "${{ steps.meta.outputs.code }}" \
+            --expect-version-name "${{ steps.meta.outputs.name }}" \
+            --source-commit "${{ steps.meta.outputs.commit }}" \
+            --report release/VERIFICATION_REPORT.md
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Chort-v${{ steps.meta.outputs.name }}-release
+          path: |
+            release/*.apk
+            release/VERIFICATION_REPORT.md
+          if-no-files-found: error
+
+      - name: Attach APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            Chort-*-release.apk
-            Chort-latest.apk
-            checksums.txt
+          overwrite_files: true
           body: |
-            ## Chort ${{ github.ref_name }} - Auth + New Experience
+            Chort v${{ steps.meta.outputs.name }} (versionCode ${{ steps.meta.outputs.code }})
 
-            Sign-in with Google, Facebook, phone number (SMS code), or email.
-            One account per human; methods link safely. Phone-based recovery.
-            See AUTH_SETUP.md for the required Vercel env vars + Facebook App ID.
-            Signed with the repo dev-release key (use your upload key for Play).
+            Built from commit `${{ steps.meta.outputs.commit }}` by this workflow and
+            verified against the source tree before publishing (`scripts/verify_apk.py`:
+            the top speaker icon is absent from `VideoPlayerViewKt`, the bottom audio
+            control `feed_mute_button` is present, and `BuildConfig.GIT_COMMIT` matches).
+
+            Signed with the production key (`CN=Ahmed Becetti`, APK Signature Scheme v2+v3).
+            If a previous build signed with the debug key is installed, uninstall it once
+            before installing this APK.
+          files: |
+            release/*.apk
+            release/VERIFICATION_REPORT.md
