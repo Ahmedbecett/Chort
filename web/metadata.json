@@ -1,0 +1,6 @@
+{
+  "name": "Chort - Short Videos",
+  "description": "منصة Chort للفيديوهات القصيرة، البث المباشر، استوديو التصوير والفلاتر، وإدارة الحساب.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
