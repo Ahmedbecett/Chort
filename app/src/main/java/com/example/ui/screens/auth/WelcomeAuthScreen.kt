@@ -219,6 +219,16 @@ fun WelcomeAuthScreen(
             modifier = Modifier.clickable(onClick = onRecoverAccount)
         )
 
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "Continue as guest",
+            color = TextSecondary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.clickable(onClick = onAuthSuccess)
+        )
+
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(

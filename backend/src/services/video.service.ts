@@ -55,6 +55,11 @@ export class VideoService {
    * Generates a playable streaming URL (presigned if S3/Neon bucket requires it)
    */
   static async resolvePlayableStreamUrl(videoId: string, originalKey?: string | null, fallbackUrl?: string | null): Promise<string> {
+    // Externally-hosted bytes (Android Firebase fallback): the stored https URL
+    // IS the playable file; never presign a non-existent S3 key for it.
+    if (originalKey && originalKey.startsWith('external/')) {
+      if (fallbackUrl && /^https:\/\//i.test(fallbackUrl)) return fallbackUrl;
+    }
     if (isStorageConfigured()) {
       try {
         let key = originalKey;
@@ -197,11 +202,28 @@ export class VideoService {
       realThumbnail = `${config.cdn.baseUrl}/api/v1/videos/${videoId}/thumbnail`;
     }
 
-    const storedKey = params.objectKey || `videos/${videoId}.mp4`;
+    const clientVideoUrl = String(videoUrl || '').trim();
+    const isExternalBytes =
+      !params.objectKey &&
+      /^https:\/\//i.test(clientVideoUrl) &&
+      !clientVideoUrl.startsWith(config.cdn.baseUrl);
+
+    const storedKey = params.objectKey || (isExternalBytes ? `external/${videoId}` : `videos/${videoId}.mp4`);
     const canonicalStreamUrl = `${config.cdn.baseUrl}/api/v1/videos/${videoId}/stream`;
 
     // Real upload verification: never mark READY bytes that do not exist.
-    if (isStorageConfigured()) {
+    if (isExternalBytes) {
+      // Android Firebase-fallback path: bytes live outside S3, so verify the
+      // actual https object (HEAD, then 1-byte range GET) instead of HeadObject.
+      const verified = await VideoService.verifyExternalBytes(clientVideoUrl);
+      if (!verified.ok) {
+        const error = new Error(
+          `Upload bytes not reachable at the provided video URL. Finish the file upload before completing. (${verified.detail || 'missing'})`
+        );
+        (error as any).statusCode = 422;
+        throw error;
+      }
+    } else if (isStorageConfigured()) {
       try {
         const head = await s3Client.send(
           new HeadObjectCommand({ Bucket: config.s3.bucket, Key: storedKey })
@@ -223,7 +245,7 @@ export class VideoService {
         userId,
         caption: caption || 'New Chort Video',
         originalKey: storedKey,
-        streamUrl: canonicalStreamUrl,
+        streamUrl: isExternalBytes ? clientVideoUrl : canonicalStreamUrl,
         thumbnailUrl: realThumbnail,
         status: 'READY',
         visibility: 'PUBLIC',
@@ -253,7 +275,39 @@ export class VideoService {
       await HashtagService.linkVideoTags(video.id, video.caption);
     } catch {}
 
-    return video;
+    // Return the exact published DB record in API shape (same formatter as the
+    // feed), so the client binds the real stored video — never a guess.
+    const [formatted] = await VideoService.formatVideoRows([video as unknown as Record<string, any>]);
+    return formatted;
+  }
+
+  /**
+   * Verify externally-hosted upload bytes (https HEAD, else 1-byte range GET).
+   * Returns ok=false unless the object responds 2xx with a positive length.
+   */
+  static async verifyExternalBytes(url: string): Promise<{ ok: boolean; detail?: string }> {
+    try {
+      const head = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(12000) });
+      if (head.ok) {
+        const len = Number(head.headers.get('content-length') || 0);
+        if (!len || len <= 0) return { ok: false, detail: 'empty object' };
+        return { ok: true };
+      }
+      // Some hosts reject HEAD: retry with a 1-byte range GET.
+      const get = await fetch(url, {
+        headers: { Range: 'bytes=0-0' },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (get.ok || get.status === 206) {
+        const len = Number(get.headers.get('content-length') || get.headers.get('content-range')?.split('/')?.pop() || 0);
+        await get.arrayBuffer().catch(() => null);
+        if (!len || len <= 0) return { ok: false, detail: 'empty object' };
+        return { ok: true };
+      }
+      return { ok: false, detail: `HTTP ${get.status}` };
+    } catch (err: any) {
+      return { ok: false, detail: String(err?.message || err).slice(0, 120) };
+    }
   }
 
   /**

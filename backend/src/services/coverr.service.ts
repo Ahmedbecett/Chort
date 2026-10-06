@@ -140,16 +140,19 @@ export class CoverrService {
           videoUrl: videoFileUrl,
           thumbnailUrl: thumb,
           musicTitle: 'Coverr Audio • Original Track',
-          likesCount: 120 + seed * 3,
-          commentsCount: 15 + (seed % 40),
-          sharesCount: 8 + (seed % 25),
-          viewsCount: 1500 + seed * 12,
+          // Providers do not report engagement: zeros are honest, never fabricated.
+          likesCount: 0,
+          commentsCount: 0,
+          sharesCount: 0,
+          viewsCount: 0,
           aspectRatio: width && height ? `${width}:${height}` : '9:16',
           source: 'coverr',
           provider: 'coverr',
           attributionUrl: `https://coverr.co/videos/${v.id}`,
           photographerUrl: 'https://coverr.co',
-          createdAt: Date.now() - (seed % 86400000),
+          // Ranking hint only (Coverr reports no publish date): aged 7-37 days
+          // so fresh user uploads always outrank licensed backfill.
+          createdAt: Date.now() - 7 * 86400000 - ((seed * 7919) % (30 * 86400000)),
         });
       }
 

@@ -164,16 +164,19 @@ export class PexelsService {
           videoUrl: videoFileUrl,
           thumbnailUrl: v.image || '',
           musicTitle: `Pexels Audio • ${v.user?.name || 'Original Track'}`,
-          likesCount: 120 + seed * 3,
-          commentsCount: 15 + (seed % 40),
-          sharesCount: 8 + (seed % 25),
-          viewsCount: 1500 + seed * 12,
+          // Providers do not report engagement: zeros are honest, never fabricated.
+          likesCount: 0,
+          commentsCount: 0,
+          sharesCount: 0,
+          viewsCount: 0,
           aspectRatio: v.width && v.height ? `${v.width}:${v.height}` : '9:16',
           source: 'pexels',
           provider: 'pexels',
           attributionUrl: v.url || 'https://www.pexels.com',
           photographerUrl: v.user?.url || 'https://www.pexels.com',
-          createdAt: Date.now() - (v.id % 86400000),
+          // Ranking hint only (Pexels reports no publish date): aged 7-37 days
+          // so fresh user uploads always outrank licensed backfill.
+          createdAt: Date.now() - 7 * 86400000 - ((v.id * 7919) % (30 * 86400000)),
         };
       });
 

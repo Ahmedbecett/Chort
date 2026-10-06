@@ -8,16 +8,29 @@
 const WINDOW_MS = 15 * 60 * 1000;
 
 // Portrait-rich Pexels topics (Pexels filters orientation server-side).
-const PEXELS_TOPICS = ['nature', 'city', 'people', 'ocean', 'dance', 'travel', 'animals', 'food'];
-const PEXELS_MAX_PAGE = 3;
+// Includes Arabic/MENA-relevant queries so Algerian viewers see familiar
+// content whenever the licensed catalog has it.
+const PEXELS_TOPICS = [
+  'nature', 'city', 'people', 'ocean', 'dance', 'travel', 'animals', 'food',
+  'music', 'sports', 'football', 'fashion', 'desert', 'sahara', 'arabic',
+  'cooking', 'comedy', 'fitness', 'beach', 'mountains', 'streets', 'market', 'family',
+];
+const PEXELS_MAX_PAGE = 6;
 
 // Coverr topics empirically returning portrait videos.
-const COVERR_TOPICS = ['vertical', 'fashion', 'concert', 'crowd'];
-const COVERR_MAX_PAGE = 2;
+const COVERR_TOPICS = [
+  'vertical', 'fashion', 'concert', 'crowd', 'city', 'nature',
+  'dance', 'travel', 'people', 'music', 'sports', 'food',
+];
+const COVERR_MAX_PAGE = 4;
 
 // Pixabay search is broad; same portrait-friendly discovery pool.
-const PIXABAY_TOPICS = ['nature', 'city', 'people', 'ocean', 'dance', 'travel', 'animals', 'food'];
-const PIXABAY_MAX_PAGE = 3;
+const PIXABAY_TOPICS = [
+  'nature', 'city', 'people', 'ocean', 'dance', 'travel', 'animals', 'food',
+  'music', 'sports', 'football', 'fashion', 'desert', 'sahara', 'arabic',
+  'cooking', 'comedy', 'fitness', 'beach', 'mountains', 'streets', 'market', 'family',
+];
+const PIXABAY_MAX_PAGE = 6;
 
 export type RotationProvider = 'pexels' | 'coverr' | 'pixabay';
 

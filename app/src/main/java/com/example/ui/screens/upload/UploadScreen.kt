@@ -460,6 +460,10 @@ fun UploadScreen(
         // Submit Button
         Button(
             onClick = {
+                if (currentUser == null) {
+                    Toast.makeText(context, "Log in to publish videos", Toast.LENGTH_LONG).show()
+                    return@Button
+                }
                 if (selectedDeviceUri == null) {
                     Toast.makeText(context, "Please select a video from your device first", Toast.LENGTH_SHORT).show()
                     return@Button
@@ -504,13 +508,20 @@ fun UploadScreen(
                         }
                     )
 
-                    uploadProgress = 1f
-                    uploadStatusText = "Video published to Cloud & Feed!"
-                    delay(200)
-
-                    isUploading = false
-                    Toast.makeText(context, "Video published to thileli dz!", Toast.LENGTH_SHORT).show()
-                    onUploadSuccess()
+                    if (result.isSuccess) {
+                        uploadProgress = 1f
+                        uploadStatusText = "Video published to Cloud & Feed!"
+                        delay(200)
+                        isUploading = false
+                        Toast.makeText(context, "Video published to thileli dz!", Toast.LENGTH_SHORT).show()
+                        onUploadSuccess()
+                    } else {
+                        isUploading = false
+                        uploadProgress = 0f
+                        val msg = result.exceptionOrNull()?.message ?: "Upload failed"
+                        uploadStatusText = msg
+                        Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                    }
                 }
             },
             enabled = !isUploading,

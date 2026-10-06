@@ -46,6 +46,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -81,6 +82,7 @@ import com.example.ui.screens.inbox.InboxScreen
 import com.example.ui.screens.legal.LegalScreen
 import com.example.ui.screens.live.LiveStreamScreen
 import com.example.ui.screens.profile.ProfileScreen
+import com.example.ui.screens.settings.ChangePasswordScreen
 import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.sound.SoundDetailScreen
 import com.example.ui.screens.tracking.ExternalTrackingCenterScreen
@@ -131,6 +133,7 @@ fun TokPulseApp() {
     var otpPhone by remember { mutableStateOf("") }
     var otpCooldown by remember { mutableIntStateOf(60) }
     var otpExpiresIn by remember { mutableIntStateOf(600) }
+    var otpDevCode by remember { mutableStateOf<String?>(null) }
 
     fun goHome() {
         viewingProfileUserId = null
@@ -148,6 +151,8 @@ fun TokPulseApp() {
             viewingProfileUserId = null
         } else if (currentScreen in listOf("live", "sound", "chat", "tracking", "discover")) {
             currentScreen = "feed"
+        } else if (currentScreen == "change_password") {
+            currentScreen = "settings"
         } else if (currentScreen == "settings" || currentScreen == "admin") {
             viewingProfileUserId = null
             currentScreen = "profile"
@@ -240,10 +245,11 @@ fun TokPulseApp() {
                     "phone" -> {
                         PhoneAuthScreen(
                             repository = repository,
-                            onCodeSent = { phone, cooldown, expires ->
+                            onCodeSent = { phone, cooldown, expires, devOtp ->
                                 otpPhone = phone
                                 otpCooldown = cooldown
                                 otpExpiresIn = expires
+                                otpDevCode = devOtp
                                 currentScreen = "otp"
                             },
                             onBack = { goWelcome() }
@@ -257,6 +263,7 @@ fun TokPulseApp() {
                             phone = otpPhone,
                             cooldownSeconds = otpCooldown,
                             expiresInSeconds = otpExpiresIn,
+                            devOtp = otpDevCode,
                             onSuccess = { goHome() },
                             onBack = { currentScreen = "phone" }
                         )
@@ -323,12 +330,16 @@ fun TokPulseApp() {
                     }
 
                     "upload" -> {
-                        UploadScreen(
-                            repository = repository,
-                            onUploadSuccess = {
-                                currentScreen = "feed"
-                            }
-                        )
+                        if (currentUser == null) {
+                            LaunchedEffect(Unit) { currentScreen = "welcome" }
+                        } else {
+                            UploadScreen(
+                                repository = repository,
+                                onUploadSuccess = {
+                                    currentScreen = "feed"
+                                }
+                            )
+                        }
                     }
 
                     "inbox" -> {
@@ -407,15 +418,29 @@ fun TokPulseApp() {
                                 legalType = type
                                 currentScreen = "legal"
                             },
-                            onLoggedOut = { goWelcome() }
+                            onLoggedOut = { goWelcome() },
+                            onChangePassword = { currentScreen = "change_password" }
+                        )
+                    }
+
+                    "change_password" -> {
+                        ChangePasswordScreen(
+                            repository = repository,
+                            onBack = { currentScreen = "settings" },
+                            onChanged = { currentScreen = "settings" }
                         )
                     }
 
                     "admin" -> {
-                        AdminDashboardScreen(
-                            repository = repository,
-                            onBackToFeed = { currentScreen = "feed" }
-                        )
+                        // Defense in depth: server also enforces ADMIN on every call.
+                        if (currentUser?.role == "admin") {
+                            AdminDashboardScreen(
+                                repository = repository,
+                                onBackToFeed = { currentScreen = "feed" }
+                            )
+                        } else {
+                            LaunchedEffect(Unit) { currentScreen = "feed" }
+                        }
                     }
 
                     "legal" -> {
@@ -437,7 +462,12 @@ fun TokPulseApp() {
                         if (screen == "profile") {
                             viewingProfileUserId = null
                         }
-                        currentScreen = screen
+                        // Guests browse feed/friends; account areas need a login.
+                        if (currentUser == null && screen in listOf("upload", "inbox", "profile")) {
+                            currentScreen = "welcome"
+                        } else {
+                            currentScreen = screen
+                        }
                     },
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )

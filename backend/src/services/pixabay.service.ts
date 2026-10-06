@@ -161,16 +161,19 @@ export class PixabayService {
           videoUrl: best.url,
           thumbnailUrl: thumb,
           musicTitle: `Pixabay Audio • ${creator}`,
-          likesCount: 120 + seed * 3,
-          commentsCount: 15 + (seed % 40),
-          sharesCount: 8 + (seed % 25),
-          viewsCount: 1500 + seed * 12,
+          // Providers do not report engagement: zeros are honest, never fabricated.
+          likesCount: 0,
+          commentsCount: 0,
+          sharesCount: 0,
+          viewsCount: 0,
           aspectRatio: `${best.width}:${best.height}`,
           source: 'pixabay',
           provider: 'pixabay',
           attributionUrl: v.pageURL || 'https://pixabay.com',
           photographerUrl: v.pageURL || 'https://pixabay.com',
-          createdAt: Date.now() - (seed % 86400000),
+          // Ranking hint only (Pixabay reports no publish date): aged 7-37 days
+          // so fresh user uploads always outrank licensed backfill.
+          createdAt: Date.now() - 7 * 86400000 - ((seed * 7919) % (30 * 86400000)),
         });
       }
 

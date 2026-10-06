@@ -21,6 +21,7 @@ import com.example.data.remote.ApiLoginRecord
 import com.example.data.remote.ApiSession
 import com.example.data.remote.AuthResponse
 import com.example.data.remote.ApiUser
+import com.example.data.remote.ApiVideo
 import com.example.data.remote.CompleteUploadRequest
 import com.example.data.remote.FacebookAuth
 import com.example.data.remote.FirebaseService
@@ -36,6 +37,8 @@ import com.example.data.remote.NotificationsReadRequest
 import com.example.data.remote.OAuthFacebookRequest
 import com.example.data.remote.OAuthGoogleRequest
 import com.example.data.remote.OtpResponse
+import com.example.data.remote.ChangePasswordRequest
+import com.example.data.remote.UpdateUserRequest
 import com.example.data.remote.PhoneRequestBody
 import com.example.data.remote.PhoneVerifyRequest
 import com.example.data.remote.RecoverConfirmRequest
@@ -47,6 +50,7 @@ import com.example.data.remote.ShareRequest
 import com.example.data.remote.TokPulseApiClient
 import com.example.data.remote.UploadTicketRequest
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -62,6 +66,7 @@ import okio.BufferedSink
 import org.json.JSONObject
 import java.io.InputStream
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 class TokPulseRepository(private val context: Context) {
 
@@ -107,6 +112,13 @@ class TokPulseRepository(private val context: Context) {
             if (!savedToken.isNullOrBlank()) {
                 TokPulseApiClient.setAuthToken(savedToken)
             }
+            // Expired/revoked token observed by the HTTP layer: forget the saved
+            // token so the next launch returns to login instead of failing silently.
+            TokPulseApiClient.onUnauthorized = {
+                try {
+                    sharedPrefs.edit().remove("auth_token").apply()
+                } catch (_: Exception) {}
+            }
 
             if (!savedUserId.isNullOrBlank()) {
                 val savedUser = dao.getUserByIdSync(savedUserId)
@@ -116,42 +128,19 @@ class TokPulseRepository(private val context: Context) {
                 }
             }
 
-            // Fallback to active creator user if no saved session
-            if (_currentUser.value == null) {
-                val existingMe = dao.getUserByIdSync("user_me")
-                    ?: dao.getUserByEmail("ahmedbecetti41@gmail.com")
-                    ?: dao.getUserByEmail("ahmedbecetti35@gmail.com")
-                    ?: dao.getUserByIdSync("user_admin")
-
-                if (existingMe != null) {
-                    _currentUserId.value = existingMe.id
-                    _currentUser.value = existingMe
-                } else {
-                    val initialUser = UserEntity(
-                        id = "user_me",
-                        username = "ahmed_creator",
-                        displayName = "Ahmed Becetti",
-                        email = "ahmedbecetti41@gmail.com",
-                        passwordHash = "INITIAL_ACTIVE",
-                        avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
-                        bio = "thileli dz Creator & Developer 🎬",
-                        followersCount = 0,
-                        followingCount = 0,
-                        totalLikes = 0,
-                        role = "admin",
-                        status = "active",
-                        createdAt = System.currentTimeMillis()
-                    )
-                    dao.insertUser(initialUser)
-                    _currentUserId.value = initialUser.id
-                    _currentUser.value = initialUser
-                }
-            }
+            // No saved session -> stay logged OUT (guest browsing). Never fabricate
+            // a local user, and never auto-grant admin: identity comes only
+            // from a real login whose session restores above.
 
             // Sync video feed from Vercel API and Database
             syncWithCloud()
         }
     }
+
+    // Feed pagination state: the server cursor + hasMore from the last page.
+    private var feedCursor: String? = null
+    private var feedHasMore: Boolean = true
+    private var feedPaging: Boolean = false
 
     suspend fun syncWithCloud() = withContext(Dispatchers.IO) {
         // Clean any invalid/dummy test videos that cannot be resolved and stale external cached videos
@@ -164,6 +153,8 @@ class TokPulseRepository(private val context: Context) {
 
         // 1. Fetch real feed from Vercel API (with primary -> fallback failover)
         var syncedCount = 0
+        feedCursor = null
+        feedHasMore = true
         try {
             var feedResponse = try {
                 TokPulseApiClient.api.getFeed()
@@ -228,6 +219,8 @@ class TokPulseRepository(private val context: Context) {
                     dao.insertVideos(entities)
                     syncedCount = entities.size
                 }
+                feedCursor = feedBody.nextCursor
+                feedHasMore = feedBody.hasMore
                 Log.i(TAG, "Successfully synced ${entities.size} valid videos from Vercel API")
             } else {
                 Log.w(TAG, "Feed response empty or unsuccessful across clusters")
@@ -286,6 +279,88 @@ class TokPulseRepository(private val context: Context) {
             dao.updateVideo(existing.copy(videoUrl = canonicalUrl))
         }
         canonicalUrl
+    }
+
+/**
+     * Fetches the NEXT feed page with the stored server cursor plus the ids
+     * already on device (seen), appends only genuinely new videos, and stores
+     * the following cursor. This is what ends the same-first-page loop.
+     */
+    suspend fun loadMoreFeed(): Result<Int> = withContext(Dispatchers.IO) {
+        if (feedPaging) return@withContext Result.success(0)
+        if (!feedHasMore || feedCursor.isNullOrBlank()) return@withContext Result.success(0)
+        feedPaging = true
+        try {
+            val seenIds = try {
+                dao.getAllActiveVideosSync().map { it.id }.take(300)
+            } catch (_: Exception) { emptyList() }
+            val resp = try {
+                TokPulseApiClient.api.getFeed(cursor = feedCursor, limit = 20, seen = seenIds.joinToString(","))
+            } catch (e: Exception) {
+                Log.w(TAG, "loadMoreFeed network error: ${e.message}")
+                return@withContext Result.failure(e)
+            }
+            if (!resp.isSuccessful || resp.body() == null) {
+                return@withContext Result.failure(Exception("Feed page failed (${resp.code()})"))
+            }
+            val body = resp.body()!!
+            val fresh = body.videos.filter { apiVid ->
+                val url = (apiVid.videoUrl ?: apiVid.streamUrl ?: "").trim()
+                url.isNotBlank() &&
+                    !url.contains("test.com") &&
+                    !url.contains("example.com") &&
+                    !url.startsWith("http://localhost") &&
+                    (url.startsWith("http://") || url.startsWith("https://"))
+            }
+            val existingIds = seenIds.toSet()
+            val entities = fresh
+                .filter { !existingIds.contains(it.id) }
+                .map { apiVid -> apiVideoToEntity(apiVid) }
+            if (entities.isNotEmpty()) dao.insertVideos(entities)
+            feedCursor = body.nextCursor
+            feedHasMore = body.hasMore
+            Log.i(TAG, "loadMoreFeed appended ${entities.size} new videos (hasMore=$feedHasMore)")
+            Result.success(entities.size)
+        } catch (e: Exception) {
+            Log.e(TAG, "loadMoreFeed failed: ${e.message}", e)
+            Result.failure(e)
+        } finally {
+            feedPaging = false
+        }
+    }
+
+    /** Shared API-video -> Room-entity mapping (first page and appended pages). */
+    private fun apiVideoToEntity(apiVid: ApiVideo): VideoEntity {
+        val directStream = TokPulseApiClient.getCanonicalStreamUrl(apiVid.id)
+        val url = (apiVid.videoUrl ?: apiVid.streamUrl ?: directStream).trim()
+        val thumb = apiVid.thumbnailUrl?.takeIf { it.isNotBlank() && !it.contains("#t=") }
+            ?: "${TokPulseApiClient.BASE_URL}api/v1/videos/${apiVid.id}/thumbnail"
+        val isExt = apiVid.id.startsWith("pex_") ||
+            apiVid.id.startsWith("cov_") ||
+            apiVid.id.startsWith("pix_") ||
+            apiVid.source?.lowercase() == "pexels" ||
+            apiVid.provider?.lowercase() == "pexels"
+        return VideoEntity(
+            id = apiVid.id,
+            creatorId = apiVid.creatorId,
+            creatorUsername = apiVid.creatorUsername,
+            creatorAvatar = apiVid.creatorAvatar ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+            videoUrl = url,
+            thumbnailUrl = thumb,
+            caption = apiVid.caption,
+            musicTitle = apiVid.musicTitle ?: "Original Audio",
+            tags = if (isExt) "#licensed,#stock" else "#thileli dz,#fyp,#viral",
+            likesCount = apiVid.likesCount,
+            commentsCount = apiVid.commentsCount,
+            sharesCount = apiVid.sharesCount,
+            viewsCount = apiVid.viewsCount,
+            source = apiVid.source ?: if (isExt) "licensed" else "thileli dz",
+            provider = apiVid.provider ?: if (isExt) "licensed" else "thileli dz",
+            isExternal = isExt,
+            attributionUrl = apiVid.attributionUrl ?: "",
+            photographerUrl = apiVid.photographerUrl ?: "",
+            createdAt = if (apiVid.createdAt > 0) apiVid.createdAt else System.currentTimeMillis()
+        )
     }
 
     suspend fun logout() = withContext(Dispatchers.IO) {
@@ -356,7 +431,7 @@ class TokPulseRepository(private val context: Context) {
                         followersCount = apiUser.followersCount ?: 0,
                         followingCount = apiUser.followingCount ?: 0,
                         totalLikes = 0,
-                        role = apiUser.role ?: "user",
+                        role = (apiUser.role ?: "user").lowercase(),
                         status = "active",
                         createdAt = System.currentTimeMillis()
                     )
@@ -424,7 +499,7 @@ class TokPulseRepository(private val context: Context) {
                         followersCount = apiUser.followersCount ?: 0,
                         followingCount = apiUser.followingCount ?: 0,
                         totalLikes = 0,
-                        role = apiUser.role ?: "user",
+                        role = (apiUser.role ?: "user").lowercase(),
                         status = "active",
                         createdAt = System.currentTimeMillis()
                     )
@@ -1181,6 +1256,11 @@ class TokPulseRepository(private val context: Context) {
 
     // --- VIDEO UPLOAD PIPELINE ---
 
+    /**
+     * Real upload: ticket -> PUT bytes -> complete. Returns failure (never a
+     * phantom local video) unless the server actually stored the publish, and
+     * binds the EXACT server record returned by complete-upload.
+     */
     suspend fun uploadVideo(
         videoUrl: String,
         caption: String,
@@ -1188,66 +1268,86 @@ class TokPulseRepository(private val context: Context) {
         musicTitle: String,
         videoUri: Uri? = null,
         onProgress: ((Float) -> Unit)? = null
-    ): VideoEntity = withContext(Dispatchers.IO) {
+    ): Result<VideoEntity> = withContext(Dispatchers.IO) {
         val user = _currentUser.value
         val creatorId = user?.id ?: "creator_guest"
         val creatorName = user?.username ?: "creator"
         val creatorAvatar = user?.avatarUrl ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
 
-        var finalVideoUrl = videoUrl
-        var videoId = "vid_${UUID.randomUUID().toString().take(8)}"
-        var realThumbUrl: String? = null
-
-        // 1. Request upload ticket from Vercel API
         try {
-            val ticketResp = TokPulseApiClient.api.requestUploadUrl(
-                UploadTicketRequest(
-                    filename = "video_${System.currentTimeMillis()}.mp4",
-                    contentType = "video/mp4",
-                    userId = creatorId
+            // 1. Upload ticket: the server mints the videoId + storage keys.
+            val ticketResp = try {
+                TokPulseApiClient.api.requestUploadUrl(
+                    UploadTicketRequest(
+                        filename = "video_${System.currentTimeMillis()}.mp4",
+                        contentType = "video/mp4",
+                        userId = creatorId
+                    )
                 )
-            )
+            } catch (e: Exception) {
+                return@withContext Result.failure(Exception("Could not reach the upload server: ${e.message}"))
+            }
+            if (!ticketResp.isSuccessful || ticketResp.body() == null) {
+                return@withContext Result.failure(
+                    Exception(backendError(ticketResp.errorBody()?.string(), ticketResp.code(), "Upload ticket rejected"))
+                )
+            }
+            val ticket = ticketResp.body()!!
+            val videoId = ticket.videoId
+            var finalVideoUrl = ticket.streamUrl
+            var objectKey: String? = ticket.objectKey
+            val realThumbUrl: String? = ticket.thumbnailUrl
 
-            if (ticketResp.isSuccessful && ticketResp.body() != null) {
-                val ticket = ticketResp.body()!!
-                videoId = ticket.videoId
-                finalVideoUrl = ticket.streamUrl
-                realThumbUrl = ticket.thumbnailUrl
-
-                // 2. Direct binary upload to S3/Cloud Storage presigned URL if device video selected
-                if (videoUri != null) {
-                    onProgress?.invoke(0.10f)
-                    val uploadSuccess = uploadBinaryToUrl(ticket.uploadUrl, videoUri, onProgress)
-                    if (!uploadSuccess && firebaseService.isFirebaseAvailable) {
-                        val fbRes = firebaseService.uploadVideoToStorage(videoUri, videoId, onProgress)
-                        if (fbRes.isSuccess) {
-                            finalVideoUrl = fbRes.getOrThrow()
-                        }
+            if (videoUri != null) {
+                // 2. PUT the actual bytes (streamed, never fully in memory).
+                onProgress?.invoke(0.10f)
+                val uploadSuccess = uploadBinaryToUrl(ticket.uploadUrl, videoUri, onProgress)
+                if (!uploadSuccess) {
+                    // Firebase fallback hosts bytes outside S3: send NO objectKey so the
+                    // server verifies the Firebase URL itself instead of a missing S3 key.
+                    if (!firebaseService.isFirebaseAvailable) {
+                        return@withContext Result.failure(Exception("Video upload to storage failed. Check your connection and retry."))
                     }
-
-                    // Extract REAL video thumbnail frame using MediaMetadataRetriever
-                    try {
-                        val retriever = MediaMetadataRetriever()
-                        retriever.setDataSource(context, videoUri)
-                        val frameBitmap = retriever.getFrameAtTime(1000000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                            ?: retriever.frameAtTime
-                        if (frameBitmap != null) {
-                            val stream = ByteArrayOutputStream()
-                            frameBitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
-                            val thumbBytes = stream.toByteArray()
-                            stream.close()
-
-                            if (!ticket.thumbnailUploadUrl.isNullOrBlank() && thumbBytes.isNotEmpty()) {
-                                uploadByteArrayToUrl(ticket.thumbnailUploadUrl, thumbBytes, "image/jpeg")
-                            }
-                        }
-                        retriever.release()
-                    } catch (thumbEx: Exception) {
-                        Log.w(TAG, "Frame extraction notice: ${thumbEx.message}")
+                    val fbRes = firebaseService.uploadVideoToStorage(videoUri, videoId, onProgress)
+                    if (fbRes.isFailure) {
+                        return@withContext Result.failure(Exception("Video upload to storage failed: ${fbRes.exceptionOrNull()?.message}"))
                     }
+                    finalVideoUrl = fbRes.getOrThrow()
+                    objectKey = null
                 }
 
-                // 3. Complete upload in PostgreSQL via Vercel API
+                // Extract REAL video thumbnail frame (best effort, never fatal).
+                try {
+                    val retriever = MediaMetadataRetriever()
+                    retriever.setDataSource(context, videoUri)
+                    val frameBitmap = retriever.getFrameAtTime(1000000L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                        ?: retriever.frameAtTime
+                    if (frameBitmap != null) {
+                        val stream = ByteArrayOutputStream()
+                        frameBitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+                        val thumbBytes = stream.toByteArray()
+                        stream.close()
+
+                        if (!ticket.thumbnailUploadUrl.isNullOrBlank() && thumbBytes.isNotEmpty()) {
+                            uploadByteArrayToUrl(ticket.thumbnailUploadUrl, thumbBytes, "image/jpeg")
+                        }
+                    }
+                    retriever.release()
+                } catch (thumbEx: Exception) {
+                    Log.w(TAG, "Frame extraction notice: ${thumbEx.message}")
+                }
+            } else {
+                // No device file: only an externally-hosted https file can publish.
+                if (videoUrl.startsWith("https://")) {
+                    finalVideoUrl = videoUrl
+                    objectKey = null
+                } else {
+                    return@withContext Result.failure(Exception("Select a video file from your device first."))
+                }
+            }
+
+            // 3. Complete in Postgres — the response carries the EXACT stored record.
+            val completeResp = try {
                 TokPulseApiClient.api.completeUpload(
                     CompleteUploadRequest(
                         videoId = videoId,
@@ -1257,45 +1357,46 @@ class TokPulseRepository(private val context: Context) {
                         thumbnailUrl = realThumbUrl ?: "${TokPulseApiClient.BASE_URL}api/v1/videos/$videoId/thumbnail",
                         musicTitle = musicTitle,
                         aspectRatio = "9:16",
-                        objectKey = ticket.objectKey
+                        objectKey = objectKey
                     )
                 )
+            } catch (e: Exception) {
+                return@withContext Result.failure(Exception("Publish failed: ${e.message}"))
             }
+            if (!completeResp.isSuccessful || completeResp.body()?.video == null) {
+                return@withContext Result.failure(
+                    Exception(backendError(completeResp.errorBody()?.string(), completeResp.code(), "Publish rejected by server"))
+                )
+            }
+            val serverVideo = completeResp.body()!!.video!!
+
+            val newVideo = VideoEntity(
+                id = serverVideo.id,
+                creatorId = serverVideo.creatorId,
+                creatorUsername = serverVideo.creatorUsername,
+                creatorAvatar = serverVideo.creatorAvatar ?: creatorAvatar,
+                videoUrl = (serverVideo.videoUrl ?: serverVideo.streamUrl ?: finalVideoUrl).trim(),
+                thumbnailUrl = serverVideo.thumbnailUrl?.takeIf { it.isNotBlank() && !it.contains("#t=") }
+                    ?: "${TokPulseApiClient.BASE_URL}api/v1/videos/${serverVideo.id}/thumbnail",
+                caption = serverVideo.caption,
+                musicTitle = serverVideo.musicTitle ?: musicTitle.ifBlank { "Original Sound - $creatorName" },
+                tags = tags,
+                likesCount = serverVideo.likesCount,
+                commentsCount = serverVideo.commentsCount,
+                sharesCount = serverVideo.sharesCount,
+                viewsCount = serverVideo.viewsCount,
+                createdAt = if (serverVideo.createdAt > 0) serverVideo.createdAt else System.currentTimeMillis()
+            )
+
+            dao.insertVideo(newVideo)
+            if (firebaseService.isFirebaseAvailable) {
+                try { firebaseService.publishVideoToFirestore(newVideo) } catch (e: Exception) {}
+            }
+            Result.success(newVideo)
         } catch (e: Exception) {
-            Log.w(TAG, "Vercel upload ticket error: ${e.message}")
-            if (videoUri != null && firebaseService.isFirebaseAvailable) {
-                val storageResult = firebaseService.uploadVideoToStorage(videoUri, videoId, onProgress)
-                if (storageResult.isSuccess) {
-                    finalVideoUrl = storageResult.getOrThrow()
-                }
-            }
+            Log.e(TAG, "uploadVideo failed", e)
+            Result.failure(Exception(e.message ?: "Upload failed"))
         }
-
-        val effectiveThumbnail = realThumbUrl?.takeIf { it.isNotBlank() && !it.contains("#t=") }
-            ?: "${TokPulseApiClient.BASE_URL}api/v1/videos/$videoId/thumbnail"
-
-        val newVideo = VideoEntity(
-            id = videoId,
-            creatorId = creatorId,
-            creatorUsername = creatorName,
-            creatorAvatar = creatorAvatar,
-            videoUrl = finalVideoUrl,
-            thumbnailUrl = effectiveThumbnail,
-            caption = caption,
-            musicTitle = musicTitle.ifBlank { "Original Sound - $creatorName" },
-            tags = tags,
-            likesCount = 0,
-            commentsCount = 0,
-            sharesCount = 0,
-            viewsCount = 1,
-            createdAt = System.currentTimeMillis()
-        )
-
-        dao.insertVideo(newVideo)
-        if (firebaseService.isFirebaseAvailable) {
-            try { firebaseService.publishVideoToFirestore(newVideo) } catch (e: Exception) {}
-        }
-        newVideo
     }
 
     private fun uploadByteArrayToUrl(uploadUrl: String, bytes: ByteArray, contentType: String): Boolean {
@@ -1320,26 +1421,39 @@ class TokPulseRepository(private val context: Context) {
         }
     }
 
+    /**
+     * Streams the file to the presigned PUT URL in 256KB chunks. Never loads
+     * the whole video into memory (large files used to OOM and report errors).
+     */
     private fun uploadBinaryToUrl(uploadUrl: String, videoUri: Uri, onProgress: ((Float) -> Unit)?): Boolean {
         return try {
-            val contentResolver = context.contentResolver
-            val inputStream: InputStream = contentResolver.openInputStream(videoUri) ?: return false
-            val bytes = inputStream.readBytes()
-            inputStream.close()
+            val total = try {
+                context.contentResolver.openAssetFileDescriptor(videoUri, "r")?.use { it.length } ?: -1L
+            } catch (_: Exception) { -1L }
 
-            val client = OkHttpClient()
+            val client = OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(10, TimeUnit.MINUTES)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .build()
             val requestBody = object : RequestBody() {
                 override fun contentType() = "video/mp4".toMediaTypeOrNull()
-                override fun contentLength() = bytes.size.toLong()
+                override fun contentLength() = total
                 override fun writeTo(sink: BufferedSink) {
-                    val total = bytes.size
-                    var written = 0
-                    val chunkSize = 8192
-                    while (written < total) {
-                        val len = minOf(chunkSize, total - written)
-                        sink.write(bytes, written, len)
-                        written += len
-                        onProgress?.invoke(written.toFloat() / total.toFloat())
+                    val input = context.contentResolver.openInputStream(videoUri)
+                        ?: throw IOException("Cannot open video file")
+                    input.use { stream ->
+                        val buffer = ByteArray(256 * 1024)
+                        var written = 0L
+                        while (true) {
+                            val read = stream.read(buffer)
+                            if (read == -1) break
+                            sink.write(buffer, 0, read)
+                            written += read
+                            if (total > 0) {
+                                onProgress?.invoke((0.10f + 0.85f * written.toFloat() / total).coerceIn(0f, 1f))
+                            }
+                        }
                     }
                 }
             }
@@ -1349,8 +1463,7 @@ class TokPulseRepository(private val context: Context) {
                 .put(requestBody)
                 .build()
 
-            val response = client.newCall(request).execute()
-            response.isSuccessful
+            client.newCall(request).execute().use { response -> response.isSuccessful }
         } catch (e: Exception) {
             Log.w(TAG, "uploadBinaryToUrl error: ${e.message}")
             false
@@ -1423,16 +1536,38 @@ class TokPulseRepository(private val context: Context) {
         displayName: String,
         username: String,
         bio: String,
-        avatarUri: Uri? = null
-    ) = withContext(Dispatchers.IO) {
-        val user = _currentUser.value ?: return@withContext
-        var avatarUrl = user.avatarUrl
+        avatarUri: Uri? = null,
+        avatarUrlOverride: String? = null
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        val user = _currentUser.value ?: return@withContext Result.failure(Exception("Log in first"))
+        var avatarUrl = avatarUrlOverride?.takeIf { it.isNotBlank() } ?: user.avatarUrl
 
         if (avatarUri != null && firebaseService.isFirebaseAvailable) {
             val storageResult = firebaseService.uploadAvatarToStorage(avatarUri, user.id)
             if (storageResult.isSuccess) {
                 avatarUrl = storageResult.getOrThrow()
             }
+        }
+
+        // Server first: the database owns username uniqueness + the canonical copy.
+        var serverOk = false
+        try {
+            val resp = TokPulseApiClient.api.updateUser(
+                user.id,
+                UpdateUserRequest(
+                    username = username.trim().takeIf { it.isNotBlank() },
+                    displayName = displayName.trim().takeIf { it.isNotBlank() },
+                    bio = bio.trim(),
+                    avatarUrl = avatarUrl.takeIf { it.isNotBlank() && it.startsWith("http") }
+                )
+            )
+            if (resp.isSuccessful && resp.body()?.user != null) {
+                serverOk = true
+            } else if (resp.code() == 409) {
+                return@withContext Result.failure(Exception("That username is already taken"))
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Profile server sync failed, keeping local edit: ${e.message}")
         }
 
         val updated = user.copy(
@@ -1446,6 +1581,47 @@ class TokPulseRepository(private val context: Context) {
 
         if (firebaseService.isFirebaseAvailable) {
             firebaseService.createOrUpdateUserSnapshot(updated)
+        }
+        if (!serverOk) {
+            Log.w(TAG, "Profile saved on device; server sync pending")
+        }
+        Result.success(Unit)
+    }
+
+    /** Change the account password (server verifies the current one). */
+    suspend fun changePassword(currentPassword: String, newPassword: String): Result<String> =
+        withContext(Dispatchers.IO) {
+            if (newPassword.length < 6 || newPassword.length > 100) {
+                return@withContext Result.failure(Exception("New password must be 6-100 characters"))
+            }
+            try {
+                val resp = TokPulseApiClient.api.changePassword(ChangePasswordRequest(currentPassword, newPassword))
+                if (resp.isSuccessful && resp.body()?.changed == true) {
+                    Result.success("Password changed. Other devices were signed out.")
+                } else {
+                    Result.failure(Exception(backendError(resp.errorBody()?.string(), resp.code(), "Password change failed")))
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Password change failed"))
+            }
+        }
+
+    /** Permanently delete the account server-side, then wipe the device session. */
+    suspend fun deleteAccount(): Result<String> = withContext(Dispatchers.IO) {
+        val user = _currentUser.value ?: return@withContext Result.failure(Exception("Log in first"))
+        try {
+            val resp = TokPulseApiClient.api.deleteUser(user.id)
+            if (!resp.isSuccessful) {
+                return@withContext Result.failure(
+                    Exception(backendError(resp.errorBody()?.string(), resp.code(), "Account deletion failed"))
+                )
+            }
+            val removed = resp.body()?.videosRemoved ?: 0
+            try { dao.deleteUser(user.id) } catch (_: Exception) {}
+            logout()
+            Result.success("Your account and $removed video(s) were permanently deleted.")
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Account deletion failed"))
         }
     }
 
@@ -1662,7 +1838,12 @@ class TokPulseRepository(private val context: Context) {
         Result.success("Account deletion request submitted. An administrator will review and purge your data within 48 hours.")
     }
 
-    suspend fun resetPassword(email: String): Result<String> = withContext(Dispatchers.IO) {
-        Result.success("Password reset instructions sent to $email")
+    /** Real reset entry-point: phone numbers trigger an SMS/OTP recovery code. */
+    suspend fun resetPassword(account: String): Result<OtpResponse> = withContext(Dispatchers.IO) {
+        val clean = account.trim()
+        if (clean.startsWith("+")) {
+            return@withContext requestRecoveryOtp(clean)
+        }
+        Result.failure(Exception("Password reset uses your verified phone number. Enter it in +213… format."))
     }
 }

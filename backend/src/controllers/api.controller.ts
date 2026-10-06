@@ -916,6 +916,130 @@ export class ApiController {
     }
   }
 
+  // --- PASSWORD CHANGE (authenticated, inside the app) ---
+  static async changePassword(req: Request, res: Response) {
+    try {
+      const me = (req as any).user;
+      if (!me?.userId) return res.status(401).json({ error: 'Authentication required' });
+      const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'currentPassword and newPassword are required' });
+      }
+      if (newPassword.length < 6 || newPassword.length > 100) {
+        return res.status(400).json({ error: 'New password must be 6-100 characters' });
+      }
+      await ensureDatabaseSchema();
+      const user = await prisma.user.findUnique({ where: { id: me.userId }, select: { id: true, passwordHash: true } });
+      if (!user) return res.status(404).json({ error: 'Account not found' });
+      if (!user.passwordHash || user.passwordHash === 'OAUTH_OR_SESSION') {
+        return res.status(409).json({ error: 'This account uses Google/Facebook/phone sign-in. Use phone recovery to set a password.' });
+      }
+      const ok = await bcrypt.compare(String(currentPassword), user.passwordHash);
+      if (!ok) return res.status(403).json({ error: 'Current password is incorrect' });
+      await prisma.user.update({ where: { id: me.userId }, data: { passwordHash: await bcrypt.hash(newPassword, 10) } });
+      // Invalidate every other session; keep the current one alive.
+      try {
+        await prisma.session.deleteMany({ where: { userId: me.userId, NOT: { token: me.jti || '__none__' } } });
+      } catch {}
+      return res.status(200).json({ changed: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // --- USER PROFILE UPDATE (self or admin) ---
+  static async updateUser(req: Request, res: Response) {
+    try {
+      const me = (req as any).user;
+      const { userId } = req.params;
+      if (!me?.userId) return res.status(401).json({ error: 'Authentication required' });
+      if (me.userId !== userId && me.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'You can only edit your own profile' });
+      }
+      const { username, displayName, bio, avatarUrl, bannerUrl } = (req.body || {}) as Record<string, string | undefined>;
+      if (!username && !displayName && bio === undefined && !avatarUrl && !bannerUrl) {
+        return res.status(400).json({ error: 'Nothing to update' });
+      }
+      await ensureDatabaseSchema();
+      const user = await prisma.user.findUnique({ where: { id: userId }, include: { profile: true } });
+      if (!user) return res.status(404).json({ error: 'Account not found' });
+      if (username && username.toLowerCase() !== user.username.toLowerCase()) {
+        const taken = await prisma.user.findUnique({ where: { username: username.toLowerCase() } }).catch(() => null);
+        if (taken) return res.status(409).json({ error: 'That username is already taken' });
+      }
+      const updated = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...(username ? { username: username.toLowerCase() } : {}),
+          profile: {
+            upsert: {
+              create: {
+                displayName: displayName || user.username,
+                bio: bio ?? '',
+                avatarUrl: avatarUrl ?? null,
+                bannerUrl: bannerUrl ?? null,
+              },
+              update: {
+                ...(displayName ? { displayName } : {}),
+                ...(bio !== undefined ? { bio } : {}),
+                ...(avatarUrl ? { avatarUrl } : {}),
+                ...(bannerUrl ? { bannerUrl } : {}),
+              },
+            },
+          },
+        },
+        include: { profile: true },
+      });
+      return res.status(200).json({
+        user: {
+          id: updated.id,
+          username: updated.username,
+          email: updated.email,
+          displayName: updated.profile?.displayName,
+          bio: updated.profile?.bio,
+          avatarUrl: updated.profile?.avatarUrl,
+          bannerUrl: updated.profile?.bannerUrl,
+        },
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // --- ACCOUNT DELETION (self or admin; cascades videos, likes, comments…) ---
+  static async deleteUserAccount(req: Request, res: Response) {
+    try {
+      const me = (req as any).user;
+      const { userId } = req.params;
+      if (!me?.userId) return res.status(401).json({ error: 'Authentication required' });
+      if (me.userId !== userId && me.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'You can only delete your own account' });
+      }
+      await ensureDatabaseSchema();
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, videos: { select: { id: true, originalKey: true } } },
+      });
+      if (!user) return res.status(404).json({ error: 'Account not found' });
+      // Best-effort storage cleanup (DB delete proceeds regardless).
+      if (isStorageConfigured()) {
+        const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+        for (const v of user.videos) {
+          for (const key of [v.originalKey, `thumbnails/${v.id}.jpg`]) {
+            if (!key || key.startsWith('external/')) continue;
+            try {
+              await s3Client.send(new DeleteObjectCommand({ Bucket: config.s3.bucket, Key: key }));
+            } catch {}
+          }
+        }
+      }
+      await prisma.user.delete({ where: { id: userId } });
+      return res.status(200).json({ deleted: true, videosRemoved: user.videos.length });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   // --- SOCIAL GRAPH ---
   static async followUser(req: Request, res: Response) {
     try {

@@ -159,8 +159,8 @@ fun ProfileScreen(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // If current user is Admin, show quick access to Admin Moderation Dashboard
-                if (loggedInUser?.role == "admin" || isMyProfile) {
+                // Server-verified admins only (role comes from the login response).
+                if (loggedInUser?.role == "admin") {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
@@ -230,7 +230,7 @@ fun ProfileScreen(
                         )
                         if (isMyProfile) {
                             DropdownMenuItem(
-                                text = { Text("Request Account Deletion", color = StatusBanned) },
+                                text = { Text("Delete Account", color = StatusBanned) },
                                 leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = StatusBanned) },
                                 onClick = {
                                     showMenu = false
@@ -558,6 +558,7 @@ fun ProfileScreen(
     // Edit Profile Dialog
     if (showEditProfileDialog) {
         var editDisplayName by remember { mutableStateOf(profileUser?.displayName ?: "") }
+        var editUsername by remember { mutableStateOf(profileUser?.username ?: "") }
         var editBio by remember { mutableStateOf(profileUser?.bio ?: "") }
         var editAvatarUrl by remember { mutableStateOf(profileUser?.avatarUrl ?: "") }
 
@@ -589,6 +590,22 @@ fun ProfileScreen(
                             focusedBorderColor = TokCyan,
                             unfocusedBorderColor = TokBorder
                         ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text("Username", color = TextMuted, fontSize = 12.sp)
+                    OutlinedTextField(
+                        value = editUsername,
+                        onValueChange = { editUsername = it },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedBorderColor = TokCyan,
+                            unfocusedBorderColor = TokBorder
+                        ),
+                        singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -641,9 +658,18 @@ fun ProfileScreen(
                         Button(
                             onClick = {
                                 scope.launch {
-                                    repository.updateProfile(editDisplayName, editBio, editAvatarUrl)
-                                    showEditProfileDialog = false
-                                    Toast.makeText(context, "Profile updated!", Toast.LENGTH_SHORT).show()
+                                    val res = repository.updateProfile(
+                                        displayName = editDisplayName.trim(),
+                                        username = editUsername.trim(),
+                                        bio = editBio.trim(),
+                                        avatarUrlOverride = editAvatarUrl.trim().takeIf { it.isNotBlank() }
+                                    )
+                                    if (res.isSuccess) {
+                                        showEditProfileDialog = false
+                                        Toast.makeText(context, "Profile updated!", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, res.exceptionOrNull()?.message ?: "Update failed", Toast.LENGTH_LONG).show()
+                                    }
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = TokCyan),
@@ -659,7 +685,6 @@ fun ProfileScreen(
 
     // Account Deletion Dialog
     if (showDeleteAccountDialog) {
-        var deletionReason by remember { mutableStateOf("") }
         Dialog(onDismissRequest = { showDeleteAccountDialog = false }) {
             Card(
                 shape = RoundedCornerShape(20.dp),
@@ -670,32 +695,17 @@ fun ProfileScreen(
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = "Request Account Deletion",
+                        text = "Delete Account?",
                         color = StatusBanned,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Under GDPR & CCPA privacy regulations, submitting this request schedules your personal information, videos, and interactions for permanent deletion. Our data compliance officer will process your request.",
+                        text = "This permanently deletes your account, videos, likes and comments from thileli dz servers right now. This cannot be undone.",
                         color = TextSecondary,
                         fontSize = 12.5.sp,
                         lineHeight = 17.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-                    OutlinedTextField(
-                        value = deletionReason,
-                        onValueChange = { deletionReason = it },
-                        placeholder = { Text("Reason for deletion (optional)...", color = TextMuted, fontSize = 12.sp) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            focusedBorderColor = StatusBanned,
-                            unfocusedBorderColor = TokBorder
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(modifier = Modifier.height(18.dp))
@@ -710,18 +720,27 @@ fun ProfileScreen(
                             Text("Cancel", color = TextSecondary)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
+                        var isDeleting by remember { mutableStateOf(false) }
                         Button(
                             onClick = {
                                 scope.launch {
-                                    repository.requestAccountDeletion(deletionReason)
+                                    isDeleting = true
+                                    val res = repository.deleteAccount()
+                                    isDeleting = false
                                     showDeleteAccountDialog = false
-                                    Toast.makeText(context, "Account deletion request submitted for moderation review.", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(
+                                        context,
+                                        res.getOrNull() ?: res.exceptionOrNull()?.message ?: "Deletion failed",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    if (res.isSuccess) onRequireLogin()
                                 }
                             },
+                            enabled = !isDeleting,
                             colors = ButtonDefaults.buttonColors(containerColor = StatusBanned),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Confirm Request", color = Color.White, fontWeight = FontWeight.Bold)
+                            Text(if (isDeleting) "Deleting…" else "Delete Forever", color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

@@ -47,6 +47,7 @@ apiRouter.post('/auth/phone/request', otpLimiter, validateBody('phoneRequest'), 
 apiRouter.post('/auth/phone/verify', otpLimiter, validateBody('phoneVerify'), ApiController.phoneVerify);
 apiRouter.post('/auth/recover/request', otpLimiter, validateBody('recoverRequest'), ApiController.recoverRequest);
 apiRouter.post('/auth/recover/confirm', otpLimiter, validateBody('recoverConfirm'), ApiController.recoverConfirm);
+apiRouter.post('/auth/password/change', authLimiter, validateBody('changePassword'), ApiController.changePassword);
 apiRouter.get('/auth/providers', ApiController.myProviders);
 apiRouter.post('/auth/link', authLimiter, ApiController.linkProvider);
 
@@ -78,6 +79,8 @@ apiRouter.get('/hashtags/:tag/videos', ApiController.getHashtagVideos);
 
 // User Profile & Social Graph
 apiRouter.get('/users/:userId/profile', ApiController.getUserProfile);
+apiRouter.patch('/users/:userId', validateBody('updateUser'), ApiController.updateUser);
+apiRouter.delete('/users/:userId', ApiController.deleteUserAccount);
 apiRouter.post('/users/:userId/follow', ApiController.followUser);
 apiRouter.delete('/users/:userId/follow', ApiController.unfollowUser);
 apiRouter.get('/users/:userId/follow-state', ApiController.followState);

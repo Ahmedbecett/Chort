@@ -12,6 +12,7 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -295,6 +296,8 @@ data class OtpResponse(
     val expiresInSeconds: Int = 600,
     val resendCooldownSeconds: Int = 60,
     val accountFound: Boolean? = null,
+    // Setup-mode only: present while no SMS provider is configured server-side.
+    val devOtp: String? = null,
     val error: String? = null
 )
 
@@ -342,6 +345,40 @@ data class SessionsResponse(
 @JsonClass(generateAdapter = true)
 data class RevokeResponse(
     val revoked: Boolean = false,
+    val error: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class ChangePasswordRequest(
+    val currentPassword: String,
+    val newPassword: String
+)
+
+@JsonClass(generateAdapter = true)
+data class ChangePasswordResponse(
+    val changed: Boolean = false,
+    val error: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class UpdateUserRequest(
+    val username: String? = null,
+    val displayName: String? = null,
+    val bio: String? = null,
+    val avatarUrl: String? = null,
+    val bannerUrl: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class UpdateUserResponse(
+    val user: ApiUser? = null,
+    val error: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class DeleteUserResponse(
+    val deleted: Boolean = false,
+    val videosRemoved: Int = 0,
     val error: String? = null
 )
 
@@ -532,7 +569,8 @@ interface TokPulseApiService {
     @GET("api/v1/feed")
     suspend fun getFeed(
         @Query("cursor") cursor: String? = null,
-        @Query("limit") limit: Int = 20
+        @Query("limit") limit: Int = 20,
+        @Query("seen") seen: String? = null
     ): Response<FeedResponse>
 
     @GET("api/v1/external/videos")
@@ -581,6 +619,18 @@ interface TokPulseApiService {
     @DELETE("api/v1/videos/{videoId}")
     suspend fun deleteVideo(@Path("videoId") videoId: String): Response<GenericActionResponse>
 
+    @POST("api/v1/auth/password/change")
+    suspend fun changePassword(@Body req: ChangePasswordRequest): Response<ChangePasswordResponse>
+
+    @PATCH("api/v1/users/{userId}")
+    suspend fun updateUser(
+        @Path("userId") userId: String,
+        @Body req: UpdateUserRequest
+    ): Response<UpdateUserResponse>
+
+    @DELETE("api/v1/users/{userId}")
+    suspend fun deleteUser(@Path("userId") userId: String): Response<DeleteUserResponse>
+
     @GET("api/v1/search")
     suspend fun search(@Query("q") query: String): Response<SearchResponse>
 
@@ -603,6 +653,9 @@ object TokPulseApiClient {
         authToken = token
     }
 
+    /** Fired when an authenticated non-auth call gets 401 (expired/revoked token). */
+    var onUnauthorized: (() -> Unit)? = null
+
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
         .build()
@@ -619,6 +672,19 @@ object TokPulseApiClient {
                 requestBuilder.addHeader("Authorization", "Bearer $token")
             }
             chain.proceed(requestBuilder.build())
+        }
+        .addInterceptor { chain ->
+            val request = chain.request()
+            val response = chain.proceed(request)
+            // Expired/revoked token: drop it so the next launch re-authenticates.
+            // Auth endpoints are excluded (their 401s mean wrong password/code).
+            if (response.code == 401 && authToken != null &&
+                !request.url.encodedPath.contains("/auth/")
+            ) {
+                authToken = null
+                try { onUnauthorized?.invoke() } catch (_: Exception) {}
+            }
+            response
         }
         .addInterceptor(HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.HEADERS

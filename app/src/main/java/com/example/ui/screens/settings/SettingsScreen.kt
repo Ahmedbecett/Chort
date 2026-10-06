@@ -106,7 +106,8 @@ fun SettingsScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToInbox: () -> Unit,
     onNavigateToLegal: (String) -> Unit,
-    onLoggedOut: () -> Unit
+    onLoggedOut: () -> Unit,
+    onChangePassword: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -268,6 +269,12 @@ fun SettingsScreen(
                     SessionsSection(repository = repository)
                 }
                 SettingRow(
+                    icon = Icons.Default.Lock,
+                    title = "Change password",
+                    subtitle = "Update your account password",
+                    onClick = onChangePassword
+                )
+                SettingRow(
                     icon = Icons.Default.Share,
                     title = "Share profile",
                     onClick = {
@@ -369,7 +376,7 @@ fun SettingsScreen(
                 SettingRow(
                     icon = Icons.Default.Info,
                     title = "About thileli dz",
-                    subtitle = "Version 2.4.2",
+                    subtitle = "Version 2.4.3",
                     onClick = { onNavigateToLegal("terms") }
                 )
                 SettingRow(

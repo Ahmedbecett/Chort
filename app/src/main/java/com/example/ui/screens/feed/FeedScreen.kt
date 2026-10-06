@@ -129,6 +129,16 @@ fun FeedScreen(
 
     val pagerState = rememberPagerState(pageCount = { displayedVideos.size })
 
+    // Endless feed: when the viewer nears the end, append the next server page
+    // (cursor + seen ids) instead of looping the same first page forever.
+    LaunchedEffect(pagerState.currentPage, displayedVideos.size) {
+        if (displayedVideos.size >= 5 &&
+            pagerState.currentPage >= displayedVideos.size - 3
+        ) {
+            repository.loadMoreFeed()
+        }
+    }
+
     // Active bottom sheet & report dialog state
     var activeCommentVideo by remember { mutableStateOf<VideoEntity?>(null) }
     var activeShareVideo by remember { mutableStateOf<VideoEntity?>(null) }

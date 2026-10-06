@@ -34,7 +34,10 @@ export const config = {
     apiKey: process.env.PIXABAY_API_KEY || '',
   },
   google: {
-    clientId: process.env.GOOGLE_CLIENT_ID || '',
+    // Public OAuth web-client ID shipped in the Android app (strings.xml).
+    // Safe as a default: it only identifies the audience; every token is
+    // still cryptographically verified with Google before any login.
+    clientId: process.env.GOOGLE_CLIENT_ID || '40606023128-ib7uarp2ei0opl4ekh0b2ghfj6oof1ca.apps.googleusercontent.com',
   },
   facebook: {
     appId: process.env.FACEBOOK_APP_ID || '',

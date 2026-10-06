@@ -85,6 +85,17 @@ export const schemas = {
     code: z.string().trim().regex(/^\d{4,8}$/, 'code must be digits'),
     newPassword: z.string().min(6).max(100).optional(),
   }),
+  changePassword: z.object({
+    currentPassword: z.string().min(1).max(100),
+    newPassword: z.string().min(6).max(100),
+  }),
+  updateUser: z.object({
+    username: z.string().trim().min(3).max(30).regex(/^[a-zA-Z0-9_.]+$/, 'letters, numbers, _ and . only').optional(),
+    displayName: z.string().trim().min(1).max(50).optional(),
+    bio: z.string().trim().max(300).optional(),
+    avatarUrl: z.string().trim().url().max(2000).optional(),
+    bannerUrl: z.string().trim().url().max(2000).optional(),
+  }),
 };
 
 export type SchemaName = keyof typeof schemas;

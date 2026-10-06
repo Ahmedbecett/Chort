@@ -98,7 +98,7 @@ fun PhoneAuthScreen(
     mode: String = "register",
     title: String = "Enter your phone number",
     subtitle: String = "We'll text you a 6-digit code to confirm it's really you.",
-    onCodeSent: (phone: String, cooldownSeconds: Int, expiresInSeconds: Int) -> Unit,
+    onCodeSent: (phone: String, cooldownSeconds: Int, expiresInSeconds: Int, devOtp: String?) -> Unit,
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -255,7 +255,7 @@ fun PhoneAuthScreen(
                     isLoading = false
                     if (result.isSuccess) {
                         val otp = result.getOrThrow()
-                        onCodeSent(fullPhone, otp.resendCooldownSeconds, otp.expiresInSeconds)
+                        onCodeSent(fullPhone, otp.resendCooldownSeconds, otp.expiresInSeconds, otp.devOtp)
                     } else {
                         errorMessage = result.exceptionOrNull()?.message
                     }
