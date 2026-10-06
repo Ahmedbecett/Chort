@@ -412,14 +412,15 @@ export class AuthService {
    * itself implies an account exists on non-production deploys; the echo
    * dies automatically once Twilio is configured.)
    */
-  static async requestRecovery(phoneRaw: string): Promise<OtpRequestResult & { accountFound: boolean }> {
+  static async requestRecovery(phoneRaw: string): Promise<OtpRequestResult> {
     const phone = normalizePhone(phoneRaw);
     const owner = await prisma.user.findFirst({ where: { phone, phoneVerified: true }, select: { id: true } }).catch(() => null);
     if (!owner) {
-      return { sent: true, via: 'sms', expiresInSeconds: config.otp.ttlSeconds, resendCooldownSeconds: config.otp.cooldownSeconds, accountFound: false };
+      // Generic shape, identical to a real send: unknown numbers are
+      // indistinguishable from the outside (no enumeration oracle).
+      return { sent: true, via: 'sms', expiresInSeconds: config.otp.ttlSeconds, resendCooldownSeconds: config.otp.cooldownSeconds };
     }
-    const result = await AuthService.requestOtp(phone, 'recovery');
-    return { ...result, accountFound: true };
+    return AuthService.requestOtp(phone, 'recovery');
   }
 
   /**
