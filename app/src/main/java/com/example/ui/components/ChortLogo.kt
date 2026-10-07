@@ -142,3 +142,15 @@ private fun DrawScope.drawNoteMark(color: Color, ox: Float, oy: Float, s: Float,
         color = color
     )
 }
+
+
+/** Legacy source aliases kept temporarily so unchanged feature modules compile. */
+@Deprecated("Use ZevoraLogo")
+@Composable
+fun ChortLogo(size: Dp = 88.dp, showWordmark: Boolean = true, tagline: String? = null, modifier: Modifier = Modifier) =
+    ZevoraLogo(size = size, showWordmark = showWordmark, tagline = tagline, modifier = modifier)
+
+@Deprecated("Use ZevoraMark")
+@Composable
+fun ChortMark(size: Dp = 40.dp, modifier: Modifier = Modifier) =
+    ZevoraMark(size = size, modifier = modifier)
