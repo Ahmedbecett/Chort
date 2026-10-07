@@ -297,6 +297,24 @@ const DDL_STATEMENTS: string[] = [
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "PhoneOtp_pkey" PRIMARY KEY ("id")
   );`,
+
+  `CREATE TABLE IF NOT EXISTS "CoinWallet" (
+    "userId" TEXT NOT NULL,
+    "balance" INTEGER NOT NULL DEFAULT 0,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "CoinWallet_pkey" PRIMARY KEY ("userId")
+  );`,
+
+  `CREATE TABLE IF NOT EXISTS "CoinLedger" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "amount" INTEGER NOT NULL,
+    "reason" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "CoinLedger_pkey" PRIMARY KEY ("id")
+  );`,
+
+  `CREATE INDEX IF NOT EXISTS "CoinLedger_userId_createdAt_idx" ON "CoinLedger"("userId", "createdAt");`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "PhoneOtp_phone_purpose_key" ON "PhoneOtp"("phone", "purpose");`,
   `CREATE INDEX IF NOT EXISTS "PhoneOtp_phone_idx" ON "PhoneOtp"("phone");`,
   `CREATE INDEX IF NOT EXISTS "Report_status_idx" ON "Report"("status");`,
@@ -430,6 +448,8 @@ export async function ensureDatabaseSchema(force = false): Promise<{
       'ExternalSeen',
       'Account',
       'PhoneOtp',
+      'CoinWallet',
+      'CoinLedger',
     ];
 
     const allTablesExist = requiredTables.every((t) => existingTables.has(t));

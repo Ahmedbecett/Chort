@@ -101,3 +101,7 @@ apiRouter.get('/admin/logins', ApiController.listLogins);
 apiRouter.get('/admin/overview', ApiController.adminOverview);
 apiRouter.get('/admin/users', ApiController.listUsers);
 apiRouter.post('/admin/users/:userId/status', validateBody('setUserStatus'), ApiController.setUserStatus);
+apiRouter.post('/admin/users/:userId/coins', validateBody('adjustCoins'), ApiController.adjustUserCoins);
+apiRouter.get('/wallet', ApiController.getMyCoins);
+apiRouter.post('/wallet/earn', validateBody('walletEarn'), ApiController.earnCoins);
+apiRouter.post('/wallet/spend', validateBody('walletSpend'), ApiController.spendCoins);

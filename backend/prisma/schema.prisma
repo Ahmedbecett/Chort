@@ -66,8 +66,30 @@ model User {
   // Linked auth identities (google / facebook / phone)
   accounts      Account[]
 
+  // Coin economy (server-authoritative; devices cache + queue offline earns)
+  wallet        CoinWallet?
+  coinLedger    CoinLedger[]
+
   @@index([email])
   @@index([username])
+}
+
+model CoinWallet {
+  userId    String   @id
+  balance   Int      @default(0)
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CoinLedger {
+  id        String   @id @default(cuid())
+  userId    String
+  amount    Int
+  reason    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model Profile {
@@ -78,6 +100,7 @@ model Profile {
   avatarUrl   String?
   bannerUrl   String?
   isVerified  Boolean  @default(false)
+  isPrivate   Boolean  @default(false)
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   followersCount Int   @default(0)

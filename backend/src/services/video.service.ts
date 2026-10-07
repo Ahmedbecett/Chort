@@ -173,6 +173,7 @@ export class VideoService {
     musicTitle?: string;
     aspectRatio?: string;
     objectKey?: string;
+    visibility?: string;
   }) {
     const { videoId, userId, caption, videoUrl, thumbnailUrl, musicTitle, aspectRatio } = params;
 
@@ -253,7 +254,7 @@ export class VideoService {
         streamUrl: isExternalBytes ? clientVideoUrl : canonicalStreamUrl,
         thumbnailUrl: realThumbnail,
         status: 'READY',
-        visibility: 'PUBLIC',
+        visibility: params.visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC',
         musicTitle: musicTitle || 'Original Audio',
         aspectRatio: aspectRatio || '9:16',
         viewsCount: 0,

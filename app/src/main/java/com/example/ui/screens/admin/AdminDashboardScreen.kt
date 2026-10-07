@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -75,6 +77,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -88,6 +91,7 @@ import com.example.data.local.entities.UserEntity
 import com.example.data.local.entities.VideoEntity
 import com.example.data.local.entities.ViolationEntity
 import com.example.data.remote.AdminOverviewResponse
+import com.example.data.remote.ApiAdminUser
 import com.example.data.repository.ZevoraRepository
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.AccentGreen
@@ -316,6 +320,7 @@ fun AdminDashboardScreen(
                 }
             )
             2 -> AdminUsersTab(
+                repository = repository,
                 users = allUsers,
                 onBanUser = { user ->
                     scope.launch {
@@ -931,13 +936,20 @@ private fun ReportCard(
 // --- USERS TAB ---
 @Composable
 private fun AdminUsersTab(
+    repository: ZevoraRepository,
     users: List<UserEntity>,
     onBanUser: (UserEntity) -> Unit,
     onUnbanUser: (UserEntity) -> Unit,
     onSuspendUser: (UserEntity) -> Unit,
     onDeleteUser: (UserEntity) -> Unit
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var searchQuery by remember { mutableStateOf("") }
+    var lookupQuery by remember { mutableStateOf("") }
+    var lookupResults by remember { mutableStateOf<List<ApiAdminUser>?>(null) }
+    var lookupLoading by remember { mutableStateOf(false) }
+    var adjustTarget by remember { mutableStateOf<ApiAdminUser?>(null) }
 
     val filtered = remember(users, searchQuery) {
         if (searchQuery.isBlank()) users else users.filter {
@@ -947,11 +959,98 @@ private fun AdminUsersTab(
         }
     }
 
+    fun runLookup() {
+        val q = lookupQuery.trim()
+        if (q.length < 2) {
+            Toast.makeText(context, "Type at least 2 characters", Toast.LENGTH_SHORT).show()
+            return
+        }
+        scope.launch {
+            lookupLoading = true
+            repository.adminSearchUsers(q)
+                .onSuccess { lookupResults = it }
+                .onFailure { e ->
+                    Toast.makeText(context, e.message ?: "Lookup failed", Toast.LENGTH_LONG).show()
+                }
+            lookupLoading = false
+        }
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
+        // Server-side lookup (searches the whole user base, not just the cached list).
+        Text(
+            "Server lookup",
+            color = TextPrimary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedTextField(
+                value = lookupQuery,
+                onValueChange = { lookupQuery = it },
+                placeholder = { Text("username, email or name…", color = TextMuted, fontSize = 12.sp) },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    focusedBorderColor = ZevoraCyan,
+                    unfocusedBorderColor = ZevoraBorder
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp)
+            )
+            Button(
+                onClick = { runLookup() },
+                enabled = !lookupLoading,
+                colors = ButtonDefaults.buttonColors(containerColor = ZevoraCyan),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.height(48.dp)
+            ) {
+                Text(if (lookupLoading) "…" else "Find", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        lookupResults?.let { results ->
+            if (results.isEmpty()) {
+                Text(
+                    "No server users match \"$lookupQuery\"",
+                    color = TextMuted,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                )
+            } else {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    results.take(5).forEach { entry ->
+                        AdminLookupCard(
+                            entry = entry,
+                            onAdjustCoins = { adjustTarget = entry }
+                        )
+                    }
+                }
+            }
+        }
+        Text(
+            "On-device list (${filtered.size})",
+            color = TextPrimary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+        )
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search users by handle, email...", color = TextMuted, fontSize = 12.sp) },
+            placeholder = { Text("Filter cached users by handle, email...", color = TextMuted, fontSize = 12.sp) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp)) },
             shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
@@ -983,6 +1082,140 @@ private fun AdminUsersTab(
             }
         }
     }
+
+    adjustTarget?.let { target ->
+        AdminAdjustCoinsDialog(
+            username = target.username,
+            currentBalance = target.wallet?.balance ?: 0,
+            onDismiss = { adjustTarget = null },
+            onConfirm = { amount, reason ->
+                scope.launch {
+                    repository.adminAdjustCoins(target.id, amount, reason)
+                        .onSuccess { balance ->
+                            Toast.makeText(context, "@${target.username} balance: $balance", Toast.LENGTH_LONG).show()
+                            adjustTarget = null
+                            runLookup()
+                        }
+                        .onFailure { e ->
+                            Toast.makeText(context, e.message ?: "Adjust failed", Toast.LENGTH_LONG).show()
+                        }
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun AdminLookupCard(
+    entry: ApiAdminUser,
+    onAdjustCoins: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, ZevoraCyan.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "@${entry.username}",
+                    color = TextPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "${entry.profile?.displayName ?: ""} • ${entry.wallet?.balance ?: 0} coins".trim(),
+                    color = TextMuted,
+                    fontSize = 11.5.sp,
+                    maxLines = 1
+                )
+            }
+            Button(
+                onClick = onAdjustCoins,
+                colors = ButtonDefaults.buttonColors(containerColor = AccentGold),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.height(34.dp)
+            ) {
+                Text("Coins", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdminAdjustCoinsDialog(
+    username: String,
+    currentBalance: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (amount: Int, reason: String) -> Unit
+) {
+    var amountText by remember { mutableStateOf("") }
+    var reason by remember { mutableStateOf("admin_adjust") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = ZevoraDarkSurface,
+        title = { Text("Adjust @${username} coins", color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Current balance: $currentBalance", color = TextSecondary, fontSize = 12.5.sp)
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it.filter { c -> c.isDigit() || c == '-' }.take(7) },
+                    placeholder = { Text("+100 or -50", color = TextMuted, fontSize = 12.sp) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = AccentGold,
+                        unfocusedBorderColor = ZevoraBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = reason,
+                    onValueChange = { reason = it.take(48) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedBorderColor = AccentGold,
+                        unfocusedBorderColor = ZevoraBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amount = amountText.toIntOrNull() ?: 0
+                    if (amount != 0) onConfirm(amount, reason.ifBlank { "admin_adjust" })
+                },
+                enabled = (amountText.toIntOrNull() ?: 0) != 0,
+                colors = ButtonDefaults.buttonColors(containerColor = AccentGold),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("Apply", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            }
+        },
+        dismissButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("Cancel", color = TextSecondary, fontSize = 12.sp)
+            }
+        }
+    )
 }
 
 @Composable

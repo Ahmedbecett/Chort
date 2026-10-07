@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.local.entities.NotificationEntity
 import com.example.data.repository.ZevoraRepository
+import com.example.util.AppPrefs
 import com.example.ui.components.StoriesRow
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.AccentGreen
@@ -87,6 +88,7 @@ fun InboxScreen(
     val userId = currentUser?.id ?: "user_me"
     val notifications by repository.getNotifications(userId).collectAsState(initial = emptyList())
     val unreadCount by repository.getUnreadCount(userId).collectAsState(initial = 0)
+    val followingIds by repository.getFollowingIds(userId).collectAsState(initial = emptyList())
 
     var selectedFilter by remember { mutableStateOf("All") }
     var isSyncing by remember { mutableStateOf(false) }
@@ -105,15 +107,34 @@ fun InboxScreen(
         }
     }
 
-    LaunchedEffect(userId) { sync() }
+    LaunchedEffect(userId) {
+        // Push master switch: off = local inbox only, no background sync.
+        if (AppPrefs.isPushEnabled()) sync()
+    }
 
     val filteredNotifications = remember(notifications, selectedFilter) {
-        when (selectedFilter) {
+        val base = when (selectedFilter) {
             "Likes" -> notifications.filter { it.type == "like" }
             "Comments" -> notifications.filter { it.type == "comment" }
             "Followers" -> notifications.filter { it.type == "follow" }
             "System" -> notifications.filter { it.type == "system" }
             else -> notifications
+        }
+        // Real enforcement of Settings → Notifications + Mentions choices.
+        base.filter { n ->
+            when (n.type) {
+                "like" -> AppPrefs.isNotifTypeEnabled("like")
+                "comment" -> AppPrefs.isNotifTypeEnabled("comment")
+                "follow" -> AppPrefs.isNotifTypeEnabled("follow")
+                "mention" -> {
+                    if (!AppPrefs.isNotifTypeEnabled("mention")) false
+                    else when (AppPrefs.getMentionMode()) {
+                        "followers" -> n.actorId in followingIds
+                        else -> true
+                    }
+                }
+                else -> AppPrefs.isNotifTypeEnabled("system")
+            }
         }
     }
 

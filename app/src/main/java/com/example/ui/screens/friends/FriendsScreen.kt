@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.local.entities.CommentEntity
 import com.example.data.local.entities.VideoEntity
 import com.example.data.repository.ZevoraRepository
+import com.example.util.AppPrefs
 import com.example.ui.components.CommentBottomSheet
 import com.example.ui.components.ReportDialog
 import com.example.ui.components.ShareBottomSheet
@@ -73,7 +74,8 @@ fun FriendsScreen(
     onNavigateToSearch: () -> Unit,
     onNavigateToProfile: (String) -> Unit,
     onNavigateToCreate: () -> Unit,
-    onNavigateToSound: (String) -> Unit = {}
+    onNavigateToSound: (String) -> Unit = {},
+    onRemixVideo: (android.net.Uri) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val allVideos by repository.getActiveVideos().collectAsState(initial = emptyList())
@@ -81,13 +83,23 @@ fun FriendsScreen(
     val likedVideoIds by repository.getUserLikedVideoIds(currentUser?.id ?: "").collectAsState(initial = emptyList())
     val savedVideoIds by repository.savedVideoIds.collectAsState(initial = emptySet())
     val followingIds by repository.getFollowingIds(currentUser?.id ?: "").collectAsState(initial = emptyList())
+    val restrictedMode by AppPrefs.restrictedMode.collectAsState()
 
     var storyFilterUserId by remember { mutableStateOf<String?>(null) }
-    var isMuted by remember { mutableStateOf(false) }
+    var isMuted by remember { mutableStateOf(AppPrefs.feedMuted.value || AppPrefs.dataSaver.value) }
 
-    val friendsVideos = remember(allVideos, followingIds, storyFilterUserId) {
+    val friendsVideosRaw = remember(allVideos, followingIds, storyFilterUserId) {
         val base = allVideos.filter { it.creatorId in followingIds }
         if (storyFilterUserId != null) base.filter { it.creatorId == storyFilterUserId } else base
+    }
+    val friendsVideos = remember(friendsVideosRaw, restrictedMode) {
+        val blocked = AppPrefs.getBlockedIds()
+        val hidden = AppPrefs.getHiddenVideoIds()
+        friendsVideosRaw.filter { video ->
+            video.creatorId !in blocked &&
+                video.id !in hidden &&
+                (!restrictedMode || !AppPrefs.isRestrictedCaption(video.caption, video.tags))
+        }
     }
     val pagerState = rememberPagerState(pageCount = { friendsVideos.size })
 
@@ -222,7 +234,12 @@ fun FriendsScreen(
                     val isCurrent = (pagerState.currentPage == page)
 
                     LaunchedEffect(isCurrent) {
-                        if (isCurrent) repository.recordVideoView(video.id)
+                        if (isCurrent) {
+                            repository.recordVideoView(video.id)
+                            AppPrefs.recordWatch(video.id, video.caption, video.creatorUsername)
+                            val total = AppPrefs.incrementWatchedTotal()
+                            if (total % 10L == 0L) repository.earnCoins(1, "watch_reward")
+                        }
                     }
 
                     VideoFeedItem(
@@ -256,7 +273,8 @@ fun FriendsScreen(
                         },
                         onOpenProfile = { onNavigateToProfile(video.creatorId) },
                         onOpenSound = { onNavigateToSound(video.musicTitle) },
-                        onReport = { activeReportTarget = Triple("video", video.id, video.caption) }
+                        onReport = { activeReportTarget = Triple("video", video.id, video.caption) },
+                        autoPlay = AppPrefs.autoplay.value && !AppPrefs.dataSaver.value,
                     )
                 }
             }
@@ -266,6 +284,8 @@ fun FriendsScreen(
             CommentBottomSheet(
                 sheetState = commentSheetState,
                 comments = activeComments,
+                commentsAllowed = activeCommentVideo?.creatorId != currentUser?.id ||
+                    AppPrefs.allowComments.value != "none",
                 onDismiss = {
                     scope.launch {
                         commentSheetState.hide()
@@ -292,6 +312,7 @@ fun FriendsScreen(
                         activeShareVideo = null
                     }
                 },
+                onRemixVideo = onRemixVideo,
                 onReport = {
                     activeReportTarget = Triple("video", activeShareVideo!!.id, activeShareVideo!!.caption)
                 }

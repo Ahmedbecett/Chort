@@ -83,6 +83,7 @@ fun VideoPlayerView(
     isCurrentPage: Boolean,
     videoId: String? = null,
     isMuted: Boolean = false,
+    autoPlay: Boolean = true,
     onToggleMute: (() -> Unit)? = null,
     onRetry: (() -> Unit)? = null,
     onSkip: (() -> Unit)? = null,
@@ -91,7 +92,7 @@ fun VideoPlayerView(
 ) {
     val context = LocalContext.current
 
-    var isPlaying by remember { mutableStateOf(true) }
+    var isPlaying by remember(autoPlay) { mutableStateOf(autoPlay) }
     var isBuffering by remember { mutableStateOf(true) }
     var isPrepared by remember { mutableStateOf(false) }
     var hasError by remember { mutableStateOf(false) }

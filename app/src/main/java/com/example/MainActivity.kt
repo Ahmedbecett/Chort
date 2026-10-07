@@ -1,7 +1,10 @@
 package com.example
 
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -46,6 +49,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -64,9 +68,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.local.entities.VideoEntity
 import com.example.data.remote.FacebookAuth
 import com.example.ui.components.ZevoraMark
+import com.example.ui.screens.activity.ActivityCenterScreen
 import com.example.ui.screens.admin.AdminDashboardScreen
+import com.example.ui.screens.create.CameraCaptureScreen
+import com.example.ui.screens.create.MediaPickerScreen
 import com.example.ui.screens.auth.AuthScreen
 import com.example.ui.screens.auth.OtpMode
 import com.example.ui.screens.auth.OtpScreen
@@ -85,11 +93,22 @@ import com.example.ui.screens.settings.ChangePasswordScreen
 import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.sound.SoundDetailScreen
 import com.example.ui.screens.tracking.ExternalTrackingCenterScreen
+import com.example.ui.screens.offline.OfflineVideosScreen
+import com.example.ui.screens.promote.PromoteScreen
+import com.example.ui.screens.qr.ProfileQrScreen
+import com.example.ui.screens.studio.CreatorStudioScreen
 import com.example.ui.screens.upload.UploadScreen
+import com.example.ui.screens.viewer.VideoViewerScreen
+import com.example.ui.screens.wallet.WalletScreen
+import com.example.util.AppPrefs
 import com.example.ui.theme.ZevoraTheme
 import com.example.ui.theme.ZevoraRed
 
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppPrefs.wrapLocale(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -121,12 +140,61 @@ fun ZevoraApp() {
     val isOnline by connectivityMonitor.isOnline.collectAsState(initial = true)
 
     // Screens: "splash" | auth: "welcome","email","phone","otp","recover" |
-    // main: "feed","friends","upload","inbox","profile" | sub: "discover","settings",
-    // "admin","legal","live","sound","tracking"
+    // main: "feed","friends","inbox","profile" | create: "create","camera","upload" |
+    // sub: "discover","viewer","settings","admin","legal","live","sound","tracking",
+    // "wallet","activity","offline","qr","studio","promote","change_password"
     var currentScreen by remember { mutableStateOf("splash") }
     var viewingProfileUserId by remember { mutableStateOf<String?>(null) }
     var selectedSoundTitle by remember { mutableStateOf("Original Sound") }
     var legalType by remember { mutableStateOf("terms") } // "terms" or "privacy"
+
+    // Create-flow handoff: picker/camera/remix -> publish queue (+ optional sound).
+    var pendingUploadUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var pendingAudioUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingAudioTitle by remember { mutableStateOf("") }
+    var viewingVideo by remember { mutableStateOf<VideoEntity?>(null) }
+    var viewerReturn by remember { mutableStateOf("feed") }
+    var drawerReturn by remember { mutableStateOf("profile") }
+    var settingsStartPage by remember { mutableStateOf<String?>(null) }
+
+    // Screen-time tracking: flushed every minute plus the tail on exit.
+    val fgSessionStart = remember { System.currentTimeMillis() }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(60_000)
+            AppPrefs.addForegroundTime(60_000)
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            AppPrefs.addForegroundTime((System.currentTimeMillis() - fgSessionStart) % 60_000)
+        }
+    }
+
+    fun resolveAudioTitle(uri: Uri): String {
+        return try {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex >= 0 && cursor.moveToFirst()) {
+                    cursor.getString(nameIndex)?.substringBeforeLast(".") ?: ""
+                } else ""
+            } ?: ""
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
+    fun openUpload(uris: List<Uri>, audio: Uri?) {
+        pendingUploadUris = uris.take(10)
+        pendingAudioUri = audio
+        pendingAudioTitle = audio?.let { resolveAudioTitle(it) } ?: ""
+        currentScreen = "upload"
+    }
+
+    fun openDrawerScreen(screen: String, from: String) {
+        drawerReturn = from
+        currentScreen = screen
+    }
 
     // OTP handoff state (phone flow)
     var otpPhone by remember { mutableStateOf("") }
@@ -147,13 +215,19 @@ fun ZevoraApp() {
     BackHandler(enabled = currentScreen != "feed" && currentScreen != "splash" && currentScreen != "welcome") {
         if (currentScreen == "profile" && viewingProfileUserId != null) {
             viewingProfileUserId = null
-        } else if (currentScreen in listOf("live", "sound", "tracking", "discover")) {
+        } else if (currentScreen in listOf("live", "sound", "tracking", "discover", "create")) {
             currentScreen = "feed"
+        } else if (currentScreen == "camera" || currentScreen == "upload") {
+            currentScreen = "create"
+        } else if (currentScreen == "viewer") {
+            currentScreen = viewerReturn
         } else if (currentScreen == "change_password") {
             currentScreen = "settings"
         } else if (currentScreen == "settings" || currentScreen == "admin") {
             viewingProfileUserId = null
             currentScreen = "profile"
+        } else if (currentScreen in listOf("wallet", "activity", "offline", "qr", "studio", "promote")) {
+            currentScreen = drawerReturn
         } else if (currentScreen == "legal") {
             currentScreen = "profile"
         } else if (currentScreen in listOf("email", "phone", "otp", "recover")) {
@@ -163,7 +237,7 @@ fun ZevoraApp() {
         }
     }
 
-    val showBottomNav = currentScreen in listOf("feed", "friends", "upload", "inbox", "profile") && (currentScreen != "profile" || viewingProfileUserId == null)
+    val showBottomNav = currentScreen in listOf("feed", "friends", "inbox", "profile") && (currentScreen != "profile" || viewingProfileUserId == null)
     val navBarBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     Scaffold(
@@ -281,13 +355,14 @@ fun ZevoraApp() {
                                 viewingProfileUserId = creatorId
                                 currentScreen = "profile"
                             },
-                            onNavigateToCreate = { currentScreen = "upload" },
+                            onNavigateToCreate = { currentScreen = "create" },
                             onNavigateToLive = { currentScreen = "live" },
                             onNavigateToSound = { title ->
                                 selectedSoundTitle = title
                                 currentScreen = "sound"
                             },
-                            onNavigateToTracking = { currentScreen = "tracking" }
+                            onNavigateToTracking = { currentScreen = "tracking" },
+                            onRemixVideo = { uri -> openUpload(listOf(uri), null) }
                         )
                     }
 
@@ -299,11 +374,12 @@ fun ZevoraApp() {
                                 viewingProfileUserId = creatorId
                                 currentScreen = "profile"
                             },
-                            onNavigateToCreate = { currentScreen = "upload" },
+                            onNavigateToCreate = { currentScreen = "create" },
                             onNavigateToSound = { title ->
                                 selectedSoundTitle = title
                                 currentScreen = "sound"
-                            }
+                            },
+                            onRemixVideo = { uri -> openUpload(listOf(uri), null) }
                         )
                     }
 
@@ -314,8 +390,10 @@ fun ZevoraApp() {
                                 viewingProfileUserId = creatorId
                                 currentScreen = "profile"
                             },
-                            onSelectVideo = { _ ->
-                                currentScreen = "feed"
+                            onSelectVideo = { video ->
+                                viewingVideo = video
+                                viewerReturn = "discover"
+                                currentScreen = "viewer"
                             },
                             onNavigateToSound = { title ->
                                 selectedSoundTitle = title
@@ -325,6 +403,34 @@ fun ZevoraApp() {
                         )
                     }
 
+                    "create" -> {
+                        if (currentUser == null) {
+                            LaunchedEffect(Unit) { currentScreen = "welcome" }
+                        } else {
+                            MediaPickerScreen(
+                                repository = repository,
+                                onMediaConfirmed = { uris, audio -> openUpload(uris, audio) },
+                                onOpenCamera = { currentScreen = "camera" },
+                                onGoLive = { currentScreen = "live" },
+                                onClose = { currentScreen = "feed" }
+                            )
+                        }
+                    }
+
+                    "camera" -> {
+                        if (currentUser == null) {
+                            LaunchedEffect(Unit) { currentScreen = "welcome" }
+                        } else {
+                            CameraCaptureScreen(
+                                repository = repository,
+                                onVideoConfirmed = { uri, audio -> openUpload(listOf(uri), audio) },
+                                onOpenPicker = { currentScreen = "create" },
+                                onGoLive = { currentScreen = "live" },
+                                onClose = { currentScreen = "create" }
+                            )
+                        }
+                    }
+
                     "upload" -> {
                         if (currentUser == null) {
                             LaunchedEffect(Unit) { currentScreen = "welcome" }
@@ -332,8 +438,88 @@ fun ZevoraApp() {
                             UploadScreen(
                                 repository = repository,
                                 onUploadSuccess = {
+                                    pendingUploadUris = emptyList()
+                                    pendingAudioUri = null
+                                    pendingAudioTitle = ""
                                     currentScreen = "feed"
-                                }
+                                },
+                                initialUris = pendingUploadUris,
+                                initialAudioUri = pendingAudioUri,
+                                initialAudioTitle = pendingAudioTitle,
+                                onBack = { currentScreen = "create" }
+                            )
+                        }
+                    }
+
+                    "viewer" -> {
+                        val video = viewingVideo
+                        if (video == null) {
+                            LaunchedEffect(Unit) { currentScreen = viewerReturn }
+                        } else {
+                            VideoViewerScreen(
+                                repository = repository,
+                                video = video,
+                                onViewProfile = { creatorId ->
+                                    viewingProfileUserId = creatorId
+                                    currentScreen = "profile"
+                                },
+                                onRemixVideo = { uri -> openUpload(listOf(uri), null) },
+                                onClose = { currentScreen = viewerReturn }
+                            )
+                        }
+                    }
+
+                    "wallet" -> {
+                        WalletScreen(
+                            repository = repository,
+                            onOpenPromote = { openDrawerScreen("promote", drawerReturn) },
+                            onBack = { currentScreen = drawerReturn }
+                        )
+                    }
+
+                    "activity" -> {
+                        ActivityCenterScreen(
+                            repository = repository,
+                            onSelectVideo = { video ->
+                                viewingVideo = video
+                                viewerReturn = "activity"
+                                currentScreen = "viewer"
+                            },
+                            onBack = { currentScreen = drawerReturn }
+                        )
+                    }
+
+                    "offline" -> {
+                        OfflineVideosScreen(
+                            onBack = { currentScreen = drawerReturn }
+                        )
+                    }
+
+                    "qr" -> {
+                        if (currentUser == null) {
+                            LaunchedEffect(Unit) { currentScreen = "welcome" }
+                        } else {
+                            ProfileQrScreen(
+                                repository = repository,
+                                onBack = { currentScreen = drawerReturn }
+                            )
+                        }
+                    }
+
+                    "studio" -> {
+                        CreatorStudioScreen(
+                            repository = repository,
+                            onBack = { currentScreen = drawerReturn }
+                        )
+                    }
+
+                    "promote" -> {
+                        if (currentUser == null) {
+                            LaunchedEffect(Unit) { currentScreen = "welcome" }
+                        } else {
+                            PromoteScreen(
+                                repository = repository,
+                                onBack = { currentScreen = drawerReturn }
                             )
                         }
                     }
@@ -346,7 +532,7 @@ fun ZevoraApp() {
                                 currentScreen = "profile"
                             },
                             onNavigateToSearch = { currentScreen = "discover" },
-                            onNavigateToCreate = { currentScreen = "upload" }
+                            onNavigateToCreate = { currentScreen = "create" }
                         )
                     }
 
@@ -362,7 +548,7 @@ fun ZevoraApp() {
                             soundTitle = selectedSoundTitle,
                             repository = repository,
                             onBack = { currentScreen = "feed" },
-                            onUseSound = { currentScreen = "upload" },
+                            onUseSound = { currentScreen = "create" },
                             onSelectVideo = { _ -> currentScreen = "feed" }
                         )
                     }
@@ -383,13 +569,37 @@ fun ZevoraApp() {
                                 legalType = type
                                 currentScreen = "legal"
                             },
-                            onSelectVideo = { _ ->
-                                currentScreen = "feed"
+                            onSelectVideo = { video ->
+                                viewingVideo = video
+                                viewerReturn = "profile"
+                                currentScreen = "viewer"
                             },
                             onRequireLogin = {
                                 goWelcome()
                             },
-                            onNavigateToSettings = { currentScreen = "settings" }
+                            onNavigateToSettings = {
+                                settingsStartPage = null
+                                currentScreen = "settings"
+                            },
+                            onViewProfile = { userId ->
+                                viewingProfileUserId = userId.ifBlank { null }
+                            },
+                            onOpenWallet = { openDrawerScreen("wallet", "profile") },
+                            onOpenActivity = { openDrawerScreen("activity", "profile") },
+                            onOpenOffline = { openDrawerScreen("offline", "profile") },
+                            onOpenQr = { openDrawerScreen("qr", "profile") },
+                            onOpenStudio = { openDrawerScreen("studio", "profile") },
+                            onOpenPromote = { openDrawerScreen("promote", "profile") },
+                            onEditProfile = {
+                                settingsStartPage = "account"
+                                currentScreen = "settings"
+                            },
+                            onOpenContacts = {
+                                settingsStartPage = "contacts"
+                                currentScreen = "settings"
+                            },
+                            onOpenInbox = { currentScreen = "inbox" },
+                            onOpenCreate = { currentScreen = "create" }
                         )
                     }
 
@@ -398,6 +608,7 @@ fun ZevoraApp() {
                             repository = repository,
                             onBack = {
                                 viewingProfileUserId = null
+                                settingsStartPage = null
                                 currentScreen = "profile"
                             },
                             onNavigateToProfile = {
@@ -410,7 +621,14 @@ fun ZevoraApp() {
                                 currentScreen = "legal"
                             },
                             onLoggedOut = { goWelcome() },
-                            onChangePassword = { currentScreen = "change_password" }
+                            onChangePassword = { currentScreen = "change_password" },
+                            onOpenWallet = { openDrawerScreen("wallet", "settings") },
+                            onOpenActivity = { openDrawerScreen("activity", "settings") },
+                            onOpenOffline = { openDrawerScreen("offline", "settings") },
+                            onOpenQr = { openDrawerScreen("qr", "settings") },
+                            onOpenStudio = { openDrawerScreen("studio", "settings") },
+                            onOpenPromote = { openDrawerScreen("promote", "settings") },
+                            startPage = settingsStartPage
                         )
                     }
 
@@ -448,13 +666,13 @@ fun ZevoraApp() {
                 ZevoraBottomNavigation(
                     currentScreen = currentScreen,
                     isFeedScreen = (currentScreen == "feed"),
-                    unreadBadgeCount = unreadNotifications,
+                    unreadBadgeCount = if (AppPrefs.isPushEnabled()) unreadNotifications else 0,
                     onNavigate = { screen ->
                         if (screen == "profile") {
                             viewingProfileUserId = null
                         }
                         // Guests browse feed/friends; account areas need a login.
-                        if (currentUser == null && screen in listOf("upload", "inbox", "profile")) {
+                        if (currentUser == null && screen in listOf("create", "inbox", "profile")) {
                             currentScreen = "welcome"
                         } else {
                             currentScreen = screen
@@ -530,7 +748,7 @@ fun ZevoraBottomNavigation(
 
             // Distinctive ZEVORA Center Create '+' Button
             ZevoraCenterCreateButton(
-                onClick = { onNavigate("upload") }
+                onClick = { onNavigate("create") }
             )
 
             // Inbox

@@ -20,6 +20,9 @@ import com.example.data.remote.AddCommentRequest
 import com.example.data.remote.ApiLoginRecord
 import com.example.data.remote.ApiSession
 import com.example.data.remote.AuthResponse
+import com.example.data.remote.ApiAdminUser
+import com.example.data.remote.WalletAmountRequest
+import com.example.data.remote.WalletResponse
 import com.example.data.remote.ApiUser
 import com.example.data.remote.ApiVideo
 import com.example.data.remote.CompleteUploadRequest
@@ -49,6 +52,13 @@ import com.example.data.remote.ResolveReportResponse
 import com.example.data.remote.ShareRequest
 import com.example.data.remote.ZevoraApiClient
 import com.example.data.remote.UploadTicketRequest
+import com.example.data.remote.AdminUsersResponse
+import com.example.data.remote.ApiUserSummary
+import com.example.data.remote.FollowStateResponse
+import com.example.data.remote.SaveVideoRequest
+import com.example.data.remote.SetUserStatusRequest
+import com.example.data.remote.SetUserStatusResponse
+import com.example.data.remote.SubmitReportRequest
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
@@ -99,6 +109,14 @@ class ZevoraRepository(private val context: Context) {
         }
         _savedVideoIds.value = currentSet
         sharedPrefs.edit().putStringSet("saved_videos", currentSet).apply()
+        try {
+            val me = _currentUser.value
+            if (me != null) {
+                ZevoraApiClient.api.toggleSaveVideo(videoId, SaveVideoRequest(userId = me.id))
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "save remote failed (kept locally): ${e.message}")
+        }
         !isSaved
     }
 
@@ -340,6 +358,12 @@ class ZevoraRepository(private val context: Context) {
     }
 
     suspend fun logout() = withContext(Dispatchers.IO) {
+        try {
+            _currentUser.value?.let {
+                com.example.util.AppPrefs.recordLastAccount(it.id, it.username)
+            }
+        } catch (_: Exception) {
+        }
         try {
             ZevoraApiClient.api.logout()
         } catch (_: Exception) {
@@ -1079,6 +1103,142 @@ class ZevoraRepository(private val context: Context) {
             }
         }
 
+    /**
+     * Coin economy: local receipt first (instant UI + guest/offline support),
+     * then server ledger when logged in; failures queue for later sync.
+     */
+    suspend fun earnCoins(amount: Int, reason: String): Result<Int> =
+        withContext(Dispatchers.IO) {
+            com.example.util.AppPrefs.addCoins(amount, reason)
+            val userId = _currentUser.value?.id
+            if (userId.isNullOrBlank()) return@withContext Result.success(-1)
+            try {
+                val response = ZevoraApiClient.api.earnCoins(WalletAmountRequest(amount, reason))
+                if (response.isSuccessful && response.body() != null) {
+                    syncPendingEarns()
+                    Result.success(response.body()!!.balance)
+                } else {
+                    com.example.util.AppPrefs.queuePendingEarn(amount, reason)
+                    Result.failure(Exception("sync_pending"))
+                }
+            } catch (e: Exception) {
+                com.example.util.AppPrefs.queuePendingEarn(amount, reason)
+                Result.failure(e)
+            }
+        }
+
+    /**
+     * Server leg only (for callers that already recorded the local receipt,
+     * e.g. daily check-in). Queues for later when offline.
+     */
+    suspend fun earnServerOnly(amount: Int, reason: String) = withContext(Dispatchers.IO) {
+        if (_currentUser.value?.id.isNullOrBlank()) return@withContext
+        try {
+            val response = ZevoraApiClient.api.earnCoins(WalletAmountRequest(amount, reason))
+            if (response.isSuccessful) syncPendingEarns()
+            else com.example.util.AppPrefs.queuePendingEarn(amount, reason)
+        } catch (_: Exception) {
+            com.example.util.AppPrefs.queuePendingEarn(amount, reason)
+        }
+    }
+
+    /** Flush offline-queued earns; returns remaining pending count. */
+    suspend fun syncPendingEarns(): Int = withContext(Dispatchers.IO) {
+        if (_currentUser.value?.id.isNullOrBlank()) {
+            return@withContext com.example.util.AppPrefs.pendingEarnCount()
+        }
+        val pending = com.example.util.AppPrefs.takePendingEarns()
+        var failed = 0
+        for ((amount, reason) in pending) {
+            try {
+                val response = ZevoraApiClient.api.earnCoins(WalletAmountRequest(amount, reason))
+                if (!response.isSuccessful) {
+                    com.example.util.AppPrefs.queuePendingEarn(amount, reason)
+                    failed++
+                }
+            } catch (_: Exception) {
+                com.example.util.AppPrefs.queuePendingEarn(amount, reason)
+                failed++
+            }
+        }
+        com.example.util.AppPrefs.pendingEarnCount()
+    }
+
+    suspend fun getWalletBalance(): Result<WalletResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = ZevoraApiClient.api.getWallet()
+                if (response.isSuccessful && response.body() != null) {
+                    Result.success(response.body()!!)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(response.errorBody()?.string(), response.code(), "Wallet unavailable")
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Wallet unavailable."))
+            }
+        }
+
+    suspend fun spendCoins(amount: Int, reason: String): Result<Int> =
+        withContext(Dispatchers.IO) {
+            if (_currentUser.value?.id.isNullOrBlank()) {
+                return@withContext Result.failure(Exception("Login required"))
+            }
+            try {
+                val response = ZevoraApiClient.api.spendCoins(WalletAmountRequest(amount, reason))
+                if (response.isSuccessful && response.body() != null) {
+                    Result.success(response.body()!!.balance)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(response.errorBody()?.string(), response.code(), "Not enough coins")
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Spend failed."))
+            }
+        }
+
+    suspend fun adminSearchUsers(query: String): Result<List<ApiAdminUser>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = ZevoraApiClient.api.adminUsers(page = 1, limit = 20, search = query)
+                if (response.isSuccessful && response.body() != null) {
+                    Result.success(response.body()!!.items)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(response.errorBody()?.string(), response.code(), "Lookup failed")
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Lookup failed."))
+            }
+        }
+
+    suspend fun adminAdjustCoins(userId: String, amount: Int, reason: String): Result<Int> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = ZevoraApiClient.api.adjustUserCoins(userId, WalletAmountRequest(amount, reason))
+                if (response.isSuccessful && response.body() != null) {
+                    Result.success(response.body()!!.balance)
+                } else {
+                    Result.failure(
+                        Exception(
+                            backendError(response.errorBody()?.string(), response.code(), "Adjust failed")
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(Exception(e.message ?: "Adjust failed."))
+            }
+        }
+
     suspend fun resolveAdminReport(reportId: String, action: String): Result<ResolveReportResponse> =
         withContext(Dispatchers.IO) {
             try {
@@ -1261,6 +1421,11 @@ class ZevoraRepository(private val context: Context) {
         val following = dao.countFollow(user.id, targetUserId) > 0
         if (following) {
             dao.deleteFollow(user.id, targetUserId)
+            try {
+                ZevoraApiClient.api.unfollowUser(targetUserId)
+            } catch (e: Exception) {
+                Log.w(TAG, "unfollow remote failed (kept locally): ${e.message}")
+            }
             if (firebaseService.isFirebaseAvailable) {
                 firebaseService.recordUnfollowInFirestore(user.id, targetUserId)
             }
@@ -1272,6 +1437,11 @@ class ZevoraRepository(private val context: Context) {
                 followingId = targetUserId
             )
             dao.insertFollow(follow)
+            try {
+                ZevoraApiClient.api.followUser(targetUserId)
+            } catch (e: Exception) {
+                Log.w(TAG, "follow remote failed (kept locally): ${e.message}")
+            }
             if (firebaseService.isFirebaseAvailable) {
                 firebaseService.recordFollowInFirestore(user.id, targetUserId, user)
             }
@@ -1303,7 +1473,8 @@ class ZevoraRepository(private val context: Context) {
         tags: String,
         musicTitle: String,
         videoUri: Uri? = null,
-        onProgress: ((Float) -> Unit)? = null
+        onProgress: ((Float) -> Unit)? = null,
+        visibility: String = "PUBLIC"
     ): Result<VideoEntity> = withContext(Dispatchers.IO) {
         val user = _currentUser.value
         val creatorId = user?.id ?: "creator_guest"
@@ -1393,7 +1564,8 @@ class ZevoraRepository(private val context: Context) {
                         thumbnailUrl = realThumbUrl ?: "${ZevoraApiClient.BASE_URL}api/v1/videos/$videoId/thumbnail",
                         musicTitle = musicTitle,
                         aspectRatio = "9:16",
-                        objectKey = objectKey
+                        objectKey = objectKey,
+                        visibility = if (visibility == "PRIVATE") "PRIVATE" else "PUBLIC"
                     )
                 )
             } catch (e: Exception) {
@@ -1721,6 +1893,16 @@ class ZevoraRepository(private val context: Context) {
             status = "pending"
         )
         dao.insertReport(report)
+        try {
+            val reasonText = "$reason — $description".take(500).ifBlank { reason }
+            val req = when (targetType.lowercase()) {
+                "user", "account" -> SubmitReportRequest(targetUserId = targetId, reason = reasonText)
+                else -> SubmitReportRequest(videoId = targetId, reason = reasonText)
+            }
+            ZevoraApiClient.api.submitReport(req)
+        } catch (e: Exception) {
+            Log.w(TAG, "report remote failed (kept locally): ${e.message}")
+        }
         if (firebaseService.isFirebaseAvailable) {
             firebaseService.submitReportToFirestore(report)
         }
@@ -1858,6 +2040,18 @@ class ZevoraRepository(private val context: Context) {
                 }
             }
         }
+        // Push the account status to the backend server too (best-effort offline).
+        val serverStatus = when (actionTaken) {
+            "permanent_ban" -> "BANNED"
+            "temporary_suspension" -> "SUSPENDED"
+            "unban" -> "ACTIVE"
+            else -> null
+        }
+        if (serverStatus != null) {
+            try {
+                ZevoraApiClient.api.setAdminUserStatus(userId, SetUserStatusRequest(serverStatus))
+            } catch (_: Exception) { }
+        }
     }
 
     suspend fun processPrivacyRequest(requestId: String, newStatus: String) = withContext(Dispatchers.IO) {
@@ -1898,6 +2092,320 @@ class ZevoraRepository(private val context: Context) {
             firebaseService.submitPrivacyRequestToFirestore(req)
         }
         Result.success("Account deletion request submitted. An administrator will review and purge your data within 48 hours.")
+    }
+
+    // --- SOCIAL SYNC (3.1.0): Room stays the offline source of truth; every
+    // method below ALSO synchronizes with the production backend. ---
+
+    /** Server follow state + reconcile of the local follow row and counters. */
+    suspend fun fetchFollowState(targetUserId: String): Result<FollowStateResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val resp = ZevoraApiClient.api.followState(targetUserId)
+                val body = resp.body()
+                if (!resp.isSuccessful || body == null) {
+                    return@withContext Result.failure(Exception("Follow state failed (${resp.code()})"))
+                }
+                val me = _currentUser.value
+                if (me != null) {
+                    val localFollowing = dao.countFollow(me.id, targetUserId) > 0
+                    if (body.following && !localFollowing) {
+                        dao.insertFollow(
+                            FollowEntity(
+                                id = "${me.id}_$targetUserId",
+                                followerId = me.id,
+                                followingId = targetUserId
+                            )
+                        )
+                    } else if (!body.following && localFollowing) {
+                        dao.deleteFollow(me.id, targetUserId)
+                    }
+                }
+                val cached = dao.getUserByIdSync(targetUserId)
+                if (cached != null) {
+                    dao.updateUser(
+                        cached.copy(
+                            followersCount = body.followersCount,
+                            followingCount = body.followingCount
+                        )
+                    )
+                }
+                Result.success(body)
+            } catch (e: Exception) {
+                Log.w(TAG, "fetchFollowState failed: ${e.message}")
+                Result.failure(e)
+            }
+        }
+
+    /** Full remote profile (user row + their videos) merged into Room. */
+    suspend fun syncProfileFromServer(userId: String): Result<UserEntity> =
+        withContext(Dispatchers.IO) {
+            try {
+                val resp = ZevoraApiClient.api.getUserProfile(userId)
+                val remote = resp.body()?.user
+                if (!resp.isSuccessful || remote == null) {
+                    return@withContext Result.failure(Exception("Profile unavailable (${resp.code()})"))
+                }
+                val previous = dao.getUserByIdSync(remote.id)
+                val entity = UserEntity(
+                    id = remote.id,
+                    username = remote.username,
+                    displayName = remote.displayName ?: remote.username,
+                    email = previous?.email ?: "",
+                    passwordHash = previous?.passwordHash ?: "REMOTE",
+                    avatarUrl = remote.avatarUrl ?: "",
+                    bio = remote.bio ?: "",
+                    followersCount = remote.followersCount,
+                    followingCount = remote.followingCount,
+                    totalLikes = remote.likesReceived,
+                    role = previous?.role ?: "user",
+                    status = previous?.status ?: "active"
+                )
+                dao.insertUser(entity)
+                try {
+                    com.example.util.AppPrefs.setUserPrivate(remote.id, remote.isPrivate == true)
+                } catch (_: Exception) {
+                }
+                val vids = remote.videos.map { apiVideoToEntity(it) }
+                if (vids.isNotEmpty()) dao.insertVideos(vids)
+                Result.success(entity)
+            } catch (e: Exception) {
+                Log.w(TAG, "syncProfileFromServer failed: ${e.message}")
+                Result.failure(e)
+            }
+        }
+
+    private fun userSummaryToEntity(s: ApiUserSummary, previous: UserEntity?): UserEntity {
+        return UserEntity(
+            id = s.id,
+            username = s.username,
+            displayName = s.displayName ?: s.username,
+            email = previous?.email ?: "",
+            passwordHash = previous?.passwordHash ?: "REMOTE",
+            avatarUrl = s.avatarUrl ?: "",
+            bio = s.bio ?: "",
+            role = previous?.role ?: "user",
+            status = previous?.status ?: "active"
+        )
+    }
+
+    suspend fun fetchFollowers(userId: String): Result<List<UserEntity>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val resp = ZevoraApiClient.api.getFollowers(userId)
+                val users = resp.body()?.users
+                if (!resp.isSuccessful || users == null) {
+                    return@withContext Result.failure(Exception("Followers unavailable (${resp.code()})"))
+                }
+                val entities = users.map {
+                    userSummaryToEntity(it, dao.getUserByIdSync(it.id))
+                }
+                if (entities.isNotEmpty()) dao.insertUsers(entities)
+                Result.success(entities)
+            } catch (e: Exception) {
+                Log.w(TAG, "fetchFollowers failed: ${e.message}")
+                Result.failure(e)
+            }
+        }
+
+    suspend fun fetchFollowing(userId: String): Result<List<UserEntity>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val resp = ZevoraApiClient.api.getFollowing(userId)
+                val users = resp.body()?.users
+                if (!resp.isSuccessful || users == null) {
+                    return@withContext Result.failure(Exception("Following list unavailable (${resp.code()})"))
+                }
+                val entities = users.map {
+                    userSummaryToEntity(it, dao.getUserByIdSync(it.id))
+                }
+                if (entities.isNotEmpty()) dao.insertUsers(entities)
+                // Reconcile my local follow rows with the server list.
+                val me = _currentUser.value
+                if (me != null && userId == me.id) {
+                    entities.forEach { u ->
+                        try {
+                            if (dao.countFollow(me.id, u.id) == 0) {
+                                dao.insertFollow(
+                                    FollowEntity(
+                                        id = "${me.id}_${u.id}",
+                                        followerId = me.id,
+                                        followingId = u.id
+                                    )
+                                )
+                            }
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+                Result.success(entities)
+            } catch (e: Exception) {
+                Log.w(TAG, "fetchFollowing failed: ${e.message}")
+                Result.failure(e)
+            }
+        }
+
+    /** Server-saved videos merged into Room + the local saved set. */
+    suspend fun fetchSavedVideos(userId: String): Result<List<VideoEntity>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val resp = ZevoraApiClient.api.getSavedVideos(userId)
+                val videos = resp.body()?.videos
+                if (!resp.isSuccessful || videos == null) {
+                    return@withContext Result.failure(Exception("Saved videos unavailable (${resp.code()})"))
+                }
+                val entities = videos.map { apiVideoToEntity(it) }
+                if (entities.isNotEmpty()) dao.insertVideos(entities)
+                val me = _currentUser.value
+                if (me != null && userId == me.id) {
+                    val merged = _savedVideoIds.value.toMutableSet()
+                    merged.addAll(entities.map { it.id })
+                    _savedVideoIds.value = merged
+                    sharedPrefs.edit().putStringSet("saved_videos", merged).apply()
+                }
+                Result.success(entities)
+            } catch (e: Exception) {
+                Log.w(TAG, "fetchSavedVideos failed: ${e.message}")
+                Result.failure(e)
+            }
+        }
+
+    /** Server-liked videos merged into Room + the local like rows. */
+    suspend fun fetchLikedVideos(userId: String): Result<List<VideoEntity>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val resp = ZevoraApiClient.api.getLikedVideos(userId)
+                val videos = resp.body()?.videos
+                if (!resp.isSuccessful || videos == null) {
+                    return@withContext Result.failure(Exception("Liked videos unavailable (${resp.code()})"))
+                }
+                val entities = videos.map { apiVideoToEntity(it) }
+                if (entities.isNotEmpty()) dao.insertVideos(entities)
+                val me = _currentUser.value
+                if (me != null && userId == me.id) {
+                    entities.forEach { v ->
+                        try {
+                            if (dao.countLike(v.id, me.id) == 0) {
+                                dao.insertLike(
+                                    LikeEntity(
+                                        id = "${v.id}_${me.id}",
+                                        videoId = v.id,
+                                        userId = me.id
+                                    )
+                                )
+                            }
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+                Result.success(entities)
+            } catch (e: Exception) {
+                Log.w(TAG, "fetchLikedVideos failed: ${e.message}")
+                Result.failure(e)
+            }
+        }
+
+    /** Hashtag videos merged into Room (powers Discover tag filters). */
+    suspend fun getHashtagVideos(tag: String): Result<List<VideoEntity>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val clean = tag.trim().removePrefix("#")
+                val resp = ZevoraApiClient.api.hashtagVideos(clean)
+                val videos = resp.body()?.videos
+                if (!resp.isSuccessful || videos == null) {
+                    return@withContext Result.failure(Exception("Hashtag unavailable (${resp.code()})"))
+                }
+                val entities = videos.map { apiVideoToEntity(it) }
+                if (entities.isNotEmpty()) dao.insertVideos(entities)
+                Result.success(entities)
+            } catch (e: Exception) {
+                Log.w(TAG, "getHashtagVideos failed: ${e.message}")
+                Result.failure(e)
+            }
+        }
+
+    suspend fun getAdminUsers(page: Int = 1): Result<AdminUsersResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val resp = ZevoraApiClient.api.adminUsers(page = page)
+                val body = resp.body()
+                if (!resp.isSuccessful || body == null) {
+                    return@withContext Result.failure(Exception("Admin users failed (${resp.code()})"))
+                }
+                Result.success(body)
+            } catch (e: Exception) {
+                Log.w(TAG, "getAdminUsers failed: ${e.message}")
+                Result.failure(e)
+            }
+        }
+
+    /**
+     * Server user status (ACTIVE|SUSPENDED|BANNED) + local Room mirror so the
+     * admin console stays consistent offline.
+     */
+    suspend fun setAdminUserStatus(userId: String, status: String): Result<SetUserStatusResponse> =
+        withContext(Dispatchers.IO) {
+            try {
+                val resp = ZevoraApiClient.api.setAdminUserStatus(
+                    userId,
+                    SetUserStatusRequest(status = status.uppercase())
+                )
+                val body = resp.body()
+                if (!resp.isSuccessful || body == null) {
+                    return@withContext Result.failure(
+                        Exception(body?.error ?: "Status change failed (${resp.code()})")
+                    )
+                }
+                val localStatus = when (body.user?.status?.uppercase()) {
+                    "BANNED" -> "banned"
+                    "SUSPENDED" -> "suspended"
+                    else -> "active"
+                }
+                try {
+                    dao.updateUserStatus(userId, localStatus)
+                } catch (_: Exception) {
+                }
+                Result.success(body)
+            } catch (e: Exception) {
+                Log.w(TAG, "setAdminUserStatus failed: ${e.message}")
+                Result.failure(e)
+            }
+        }
+
+    /**
+     * Private account end-to-end: PATCHed to the server (enforced on lists)
+     * and mirrored locally so the UI stays instant and works offline.
+     */
+    suspend fun setPrivateAccount(enabled: Boolean): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            val user = _currentUser.value
+                ?: return@withContext Result.failure(Exception("Log in first"))
+            try {
+                com.example.util.AppPrefs.setPrivateAccount(enabled)
+                com.example.util.AppPrefs.setUserPrivate(user.id, enabled)
+                val resp = ZevoraApiClient.api.updateUser(
+                    user.id,
+                    UpdateUserRequest(isPrivate = enabled)
+                )
+                if (!resp.isSuccessful) {
+                    return@withContext Result.failure(
+                        Exception("Server sync failed (${resp.code()}) — kept on this device")
+                    )
+                }
+                Result.success(enabled)
+            } catch (e: Exception) {
+                Result.failure(Exception("Server sync failed — kept on this device"))
+            }
+        }
+
+    /** Real connectivity probe for Settings → About (production /health). */
+    suspend fun pingServer(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val resp = ZevoraApiClient.api.healthCheck()
+            resp.isSuccessful
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /** Real reset entry-point: phone numbers trigger an SMS/OTP recovery code. */

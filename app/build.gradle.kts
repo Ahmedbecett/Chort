@@ -32,14 +32,14 @@ android {
     targetSdk = 36
 
     // ------------------------------------------------------------------
-    // ZEVORA 3.0.0 REBUILD (was versionCode 20501 / versionName "2.5.1").
+    // ZEVORA 3.1.0 — TikTok-style create flow, drawer, settings overhaul (was 3.0.0 / 30000).
     // Full rebuild from the ZEVORA source: production cleanup merged in,
     // mock screens/data removed, identity rebranded to ZEVORA, stable
     // production signing. Bump BOTH on every release so a stale APK can
     // never be mistaken for the current build on-device.
     // ------------------------------------------------------------------
-    versionCode = 30000
-    versionName = "3.0.0"
+    versionCode = 31000
+    versionName = "3.1.0"
 
     // Commit stamp compiled into BuildConfig.GIT_COMMIT so any APK can be
     // traced back to the exact git revision it was built from.
@@ -109,10 +109,12 @@ dependencies {
   implementation(platform(libs.firebase.bom))
   // implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
-  // implementation(libs.androidx.camera.camera2)
-  // implementation(libs.androidx.camera.core)
-  // implementation(libs.androidx.camera.lifecycle)
-  // implementation(libs.androidx.camera.view)
+  implementation(libs.androidx.camera.camera2)
+  implementation(libs.androidx.camera.core)
+  implementation(libs.androidx.camera.lifecycle)
+  implementation(libs.androidx.camera.view)
+  implementation(libs.androidx.camera.video)
+  implementation(libs.zxing.core)
   implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
   implementation(libs.androidx.compose.material3)

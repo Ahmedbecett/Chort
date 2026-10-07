@@ -87,7 +87,7 @@ fun AuthScreen(
     val scope = rememberCoroutineScope()
 
     var selectedTab by remember { mutableIntStateOf(0) } // 0: Sign In, 1: Create Account
-    var email by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf(com.example.util.AppPrefs.getLastAccount()?.username ?: "") }
     var password by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }

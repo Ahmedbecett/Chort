@@ -8,15 +8,22 @@ import coil.decode.VideoFrameDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.example.data.repository.ZevoraRepository
+import com.example.util.AppPrefs
 
 class ZevoraApplication : Application(), ImageLoaderFactory {
 
     lateinit var repository: ZevoraRepository
         private set
 
+    override fun attachBaseContext(base: android.content.Context) {
+        AppPrefs.init(base)
+        super.attachBaseContext(AppPrefs.wrapLocale(base))
+    }
+
     override fun onCreate() {
         super.onCreate()
         instance = this
+        AppPrefs.init(this)
         repository = ZevoraRepository(this)
     }
 

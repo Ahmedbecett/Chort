@@ -51,6 +51,35 @@ export class ApiController {
     return true;
   }
 
+  /**
+   * Private-account gate for follower/following/liked lists: the owner, their
+   * followers and admins may view; anyone else gets 403 with { private: true }.
+   */
+  private static async privateListBlocked(req: Request, res: Response, userId: string): Promise<boolean> {
+    const viewer = (req as any).user?.userId as string | undefined;
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, profile: { select: { isPrivate: true } } },
+    });
+    if (!target) {
+      res.status(404).json({ error: 'User not found' });
+      return true;
+    }
+    if (!target.profile?.isPrivate) return false;
+    if (viewer && viewer === userId) return false;
+    if ((req as any).user?.role === 'ADMIN') return false;
+    if (viewer) {
+      const rel = await prisma.follow
+        .findUnique({
+          where: { followerId_followingId: { followerId: viewer, followingId: userId } },
+        })
+        .catch(() => null);
+      if (rel) return false;
+    }
+    res.status(403).json({ error: 'This account is private', private: true });
+    return true;
+  }
+
   private static async issueSession(user: any, req: Request): Promise<{ token: string; user: any }> {
     const jti = randomUUID();
     const token = jwt.sign(
@@ -511,7 +540,7 @@ export class ApiController {
 
   static async completeUpload(req: Request, res: Response) {
     try {
-      const { videoId, userId, caption, videoUrl, thumbnailUrl, musicTitle, aspectRatio, objectKey } = req.body;
+      const { videoId, userId, caption, videoUrl, thumbnailUrl, musicTitle, aspectRatio, objectKey, visibility } = req.body;
       const activeUserId = userId || (req as any).user?.userId || 'user_guest';
 
       if (!videoId || !videoUrl) {
@@ -530,6 +559,7 @@ export class ApiController {
         musicTitle,
         aspectRatio,
         objectKey,
+        visibility: visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC',
       });
 
       return res.status(201).json({
@@ -630,12 +660,15 @@ export class ApiController {
       const limit = clampLimit(q.limit, 20, 50);
       const page = clampPage(q.page);
       await ensureDatabaseSchema();
+      const viewerId = ApiController.actorId(req);
       const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
           profile: true,
           videos: {
-            where: { status: 'READY' },
+            where: viewerId === userId
+              ? { status: 'READY' }
+              : { status: 'READY', visibility: 'PUBLIC' },
             orderBy: { createdAt: 'desc' },
             skip: (page - 1) * limit,
             take: limit + 1,
@@ -661,6 +694,7 @@ export class ApiController {
           followersCount: user.profile?.followersCount || 0,
           followingCount: user.profile?.followingCount || 0,
           likesReceived: user.profile?.likesReceived || 0,
+          isPrivate: user.profile?.isPrivate || false,
           videos,
           videosPage: page,
           videosHasMore: hasMore,
@@ -948,8 +982,8 @@ export class ApiController {
       if (me.userId !== userId && me.role !== 'ADMIN') {
         return res.status(403).json({ error: 'You can only edit your own profile' });
       }
-      const { username, displayName, bio, avatarUrl, bannerUrl } = (req.body || {}) as Record<string, string | undefined>;
-      if (!username && !displayName && bio === undefined && !avatarUrl && !bannerUrl) {
+      const { username, displayName, bio, avatarUrl, bannerUrl, isPrivate } = (req.body || {}) as Record<string, any>;
+      if (!username && !displayName && bio === undefined && !avatarUrl && !bannerUrl && isPrivate === undefined) {
         return res.status(400).json({ error: 'Nothing to update' });
       }
       await ensureDatabaseSchema();
@@ -970,12 +1004,14 @@ export class ApiController {
                 bio: bio ?? '',
                 avatarUrl: avatarUrl ?? null,
                 bannerUrl: bannerUrl ?? null,
+                isPrivate: isPrivate === true,
               },
               update: {
                 ...(displayName ? { displayName } : {}),
                 ...(bio !== undefined ? { bio } : {}),
                 ...(avatarUrl ? { avatarUrl } : {}),
                 ...(bannerUrl ? { bannerUrl } : {}),
+                ...(isPrivate !== undefined ? { isPrivate: isPrivate === true } : {}),
               },
             },
           },
@@ -991,6 +1027,7 @@ export class ApiController {
           bio: updated.profile?.bio,
           avatarUrl: updated.profile?.avatarUrl,
           bannerUrl: updated.profile?.bannerUrl,
+          isPrivate: updated.profile?.isPrivate || false,
         },
       });
     } catch (err: any) {
@@ -1076,6 +1113,7 @@ export class ApiController {
       const { userId } = req.params;
       const q = (req.query || {}) as Record<string, unknown>;
       await ensureDatabaseSchema();
+      if (await ApiController.privateListBlocked(req, res, userId)) return;
       const result = await SocialService.getFollowers(userId, clampPage(q.page), clampLimit(q.limit, 20, 50));
       return res.status(200).json(result);
     } catch (err: any) {
@@ -1088,6 +1126,7 @@ export class ApiController {
       const { userId } = req.params;
       const q = (req.query || {}) as Record<string, unknown>;
       await ensureDatabaseSchema();
+      if (await ApiController.privateListBlocked(req, res, userId)) return;
       const result = await SocialService.getFollowing(userId, clampPage(q.page), clampLimit(q.limit, 20, 50));
       return res.status(200).json(result);
     } catch (err: any) {
@@ -1113,6 +1152,7 @@ export class ApiController {
       const { userId } = req.params;
       const q = (req.query || {}) as Record<string, unknown>;
       await ensureDatabaseSchema();
+      if (await ApiController.privateListBlocked(req, res, userId)) return;
       const result = await SocialService.getLikedVideos(userId, clampPage(q.page), clampLimit(q.limit, 20, 50));
       return res.status(200).json(result);
     } catch (err: any) {
@@ -1335,6 +1375,104 @@ export class ApiController {
   }
 
   // --- ADMIN: registered users (powers AdminPanel users table + ban/unban) ---
+  /**
+   * Coin economy: server-authoritative wallet. Devices record local receipts
+   * for instant UI and queue offline earns; this ledger is the source of truth.
+   */
+  private static async applyCoins(userId: string, amount: number, reason: string): Promise<number> {
+    return prisma.$transaction(async (tx) => {
+      const wallet = await tx.coinWallet.upsert({
+        where: { userId },
+        create: { userId, balance: Math.max(0, amount) },
+        update: { balance: { increment: amount } },
+        select: { balance: true },
+      });
+      await tx.coinLedger.create({ data: { userId, amount, reason } });
+      return wallet.balance;
+    });
+  }
+
+  static async getMyCoins(req: Request, res: Response) {
+    try {
+      const userId = ApiController.actorId(req);
+      if (!userId) return res.status(401).json({ error: 'Login required' });
+      await ensureDatabaseSchema();
+      const [wallet, recent] = await Promise.all([
+        prisma.coinWallet.findUnique({ where: { userId } }),
+        prisma.coinLedger.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          select: { id: true, amount: true, reason: true, createdAt: true },
+        }),
+      ]);
+      return res.status(200).json({ balance: wallet?.balance || 0, recent });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  static async earnCoins(req: Request, res: Response) {
+    try {
+      const userId = ApiController.actorId(req);
+      if (!userId) return res.status(401).json({ error: 'Login required' });
+      const amount = Math.trunc(Number((req.body as any)?.amount || 0));
+      const reason = String((req.body as any)?.reason || 'reward').slice(0, 48);
+      if (!Number.isFinite(amount) || amount < 1 || amount > 500) {
+        return res.status(400).json({ error: 'Invalid amount' });
+      }
+      await ensureDatabaseSchema();
+      const balance = await ApiController.applyCoins(userId, amount, reason);
+      return res.status(200).json({ balance });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  static async spendCoins(req: Request, res: Response) {
+    try {
+      const userId = ApiController.actorId(req);
+      if (!userId) return res.status(401).json({ error: 'Login required' });
+      const amount = Math.trunc(Number((req.body as any)?.amount || 0));
+      const reason = String((req.body as any)?.reason || 'spend').slice(0, 48);
+      if (!Number.isFinite(amount) || amount < 1 || amount > 100000) {
+        return res.status(400).json({ error: 'Invalid amount' });
+      }
+      await ensureDatabaseSchema();
+      const wallet = await prisma.coinWallet.findUnique({ where: { userId } });
+      if (!wallet || wallet.balance < amount) {
+        return res.status(402).json({ error: 'Not enough coins', balance: wallet?.balance || 0 });
+      }
+      const balance = await ApiController.applyCoins(userId, -amount, reason);
+      return res.status(200).json({ balance });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  static async adjustUserCoins(req: Request, res: Response) {
+    try {
+      if (!ApiController.requireAdmin(req, res)) return;
+      const userId = String((req.params as any)?.userId || '').trim();
+      const amount = Math.trunc(Number((req.body as any)?.amount || 0));
+      const reason = String((req.body as any)?.reason || 'admin_adjust').slice(0, 48);
+      if (!userId) return res.status(400).json({ error: 'userId is required' });
+      if (!Number.isFinite(amount) || amount === 0 || Math.abs(amount) > 100000) {
+        return res.status(400).json({ error: 'Invalid amount' });
+      }
+      await ensureDatabaseSchema();
+      const target = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      });
+      if (!target) return res.status(404).json({ error: 'User not found' });
+      const balance = await ApiController.applyCoins(userId, amount, reason);
+      return res.status(200).json({ userId, balance });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   static async listUsers(req: Request, res: Response) {
     try {
       if (!ApiController.requireAdmin(req, res)) return;
@@ -1343,9 +1481,20 @@ export class ApiController {
       const page = clampPage(q.page);
       const limit = clampLimit(q.limit, 20, 50);
       const skip = (page - 1) * limit;
+      const search = String(q.search || '').trim();
+      const where = search
+        ? {
+            OR: [
+              { username: { contains: search, mode: 'insensitive' as const } },
+              { email: { contains: search, mode: 'insensitive' as const } },
+              { profile: { displayName: { contains: search, mode: 'insensitive' as const } } },
+            ],
+          }
+        : {};
       const [total, rows] = await Promise.all([
-        prisma.user.count(),
+        prisma.user.count({ where }),
         prisma.user.findMany({
+          where,
           orderBy: { createdAt: 'desc' },
           skip,
           take: limit,
@@ -1359,6 +1508,7 @@ export class ApiController {
             status: true,
             createdAt: true,
             profile: { select: { displayName: true, isVerified: true } },
+            wallet: { select: { balance: true } },
           },
         }),
       ]);

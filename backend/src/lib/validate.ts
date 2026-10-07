@@ -66,6 +66,18 @@ export const schemas = {
   setUserStatus: z.object({
     status: z.enum(['ACTIVE', 'SUSPENDED', 'BANNED']),
   }),
+  walletEarn: z.object({
+    amount: z.number().int().min(1).max(500),
+    reason: z.string().trim().min(1).max(48),
+  }),
+  walletSpend: z.object({
+    amount: z.number().int().min(1).max(100000),
+    reason: z.string().trim().min(1).max(48),
+  }),
+  adjustCoins: z.object({
+    amount: z.number().int().min(-100000).max(100000).refine((v) => v !== 0, 'amount required'),
+    reason: z.string().trim().min(1).max(48),
+  }),
   oauthGoogle: z.object({
     idToken: z.string().trim().min(10).max(4000),
   }),
@@ -98,6 +110,7 @@ export const schemas = {
     bio: z.string().trim().max(300).optional(),
     avatarUrl: z.string().trim().url().max(2000).optional(),
     bannerUrl: z.string().trim().url().max(2000).optional(),
+    isPrivate: z.boolean().optional(),
   }),
 };
 

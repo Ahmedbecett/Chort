@@ -67,7 +67,9 @@ fun CommentBottomSheet(
     onDismiss: () -> Unit,
     onAddComment: (String) -> Unit,
     onLikeComment: (String) -> Unit,
-    onReportComment: (CommentEntity) -> Unit
+    onReportComment: (CommentEntity) -> Unit,
+    commentsAllowed: Boolean = true,
+    disabledNotice: String = "Comments are turned off for this video"
 ) {
     var commentText by remember { mutableStateOf("") }
     val quickEmojis = listOf("❤️", "🔥", "👏", "😂", "✨", "🛹", "💯", "🙌")
@@ -172,6 +174,7 @@ fun CommentBottomSheet(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (commentsAllowed) {
                 OutlinedTextField(
                     value = commentText,
                     onValueChange = { commentText = it },
@@ -209,6 +212,17 @@ fun CommentBottomSheet(
                         contentDescription = "Post comment",
                         tint = Color.White,
                         modifier = Modifier.size(20.dp)
+                    )
+                }
+                } else {
+                    Text(
+                        text = disabledNotice,
+                        color = TextMuted,
+                        fontSize = 13.sp,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 12.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
             }

@@ -145,7 +145,8 @@ data class CompleteUploadRequest(
     val thumbnailUrl: String? = null,
     val musicTitle: String? = null,
     val aspectRatio: String? = "9:16",
-    val objectKey: String? = null
+    val objectKey: String? = null,
+    val visibility: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -260,6 +261,7 @@ data class ApiUserProfile(
     val followersCount: Int = 0,
     val followingCount: Int = 0,
     val likesReceived: Int = 0,
+    val isPrivate: Boolean? = false,
     val videos: List<ApiVideo> = emptyList()
 )
 
@@ -364,7 +366,8 @@ data class UpdateUserRequest(
     val displayName: String? = null,
     val bio: String? = null,
     val avatarUrl: String? = null,
-    val bannerUrl: String? = null
+    val bannerUrl: String? = null,
+    val isPrivate: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -478,6 +481,155 @@ data class LoginRecordsResponse(
     val page: Int = 1,
     val limit: Int = 20,
     val total: Int = 0,
+    val hasMore: Boolean = false
+)
+
+
+@JsonClass(generateAdapter = true)
+data class FollowActionResponse(
+    val following: Boolean = false,
+    val already: Boolean = false,
+    val error: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class FollowStateResponse(
+    val following: Boolean = false,
+    val followersCount: Int = 0,
+    val followingCount: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class ApiUserSummary(
+    val id: String,
+    val username: String,
+    val displayName: String? = null,
+    val avatarUrl: String? = null,
+    val bio: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class UserListResponse(
+    val users: List<ApiUserSummary> = emptyList(),
+    val page: Int = 1,
+    val hasMore: Boolean = false
+)
+
+@JsonClass(generateAdapter = true)
+data class SaveVideoRequest(
+    val userId: String
+)
+
+@JsonClass(generateAdapter = true)
+data class SaveVideoResponse(
+    val saved: Boolean = false,
+    val error: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class SubmitReportRequest(
+    val videoId: String? = null,
+    val targetUserId: String? = null,
+    val reason: String,
+    val reporterId: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class SubmitReportResponse(
+    val reportId: String? = null,
+    val status: String? = null,
+    val autoHidden: Boolean = false,
+    val error: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class HashtagVideosResponse(
+    val tag: String? = null,
+    val videos: List<ApiVideo> = emptyList(),
+    val page: Int = 1,
+    val hasMore: Boolean = false
+)
+
+@JsonClass(generateAdapter = true)
+data class ApiAdminUserProfile(
+    val displayName: String? = null,
+    val isVerified: Boolean? = false
+)
+
+@JsonClass(generateAdapter = true)
+data class ApiWalletBalance(
+    val balance: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class CoinLedgerItem(
+    val id: String = "",
+    val amount: Int = 0,
+    val reason: String = "",
+    val createdAt: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class WalletResponse(
+    val balance: Int = 0,
+    val recent: List<CoinLedgerItem> = emptyList()
+)
+
+@JsonClass(generateAdapter = true)
+data class WalletAmountRequest(
+    val amount: Int,
+    val reason: String
+)
+
+@JsonClass(generateAdapter = true)
+data class WalletBalanceResponse(
+    val balance: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class AdjustCoinsResponse(
+    val userId: String = "",
+    val balance: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class ApiAdminUser(
+    val id: String,
+    val username: String,
+    val email: String? = null,
+    val phone: String? = null,
+    val primaryProvider: String? = null,
+    val role: String? = "USER",
+    val status: String? = "ACTIVE",
+    val createdAt: String? = null,
+    val profile: ApiAdminUserProfile? = null,
+    val wallet: ApiWalletBalance? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class AdminUsersResponse(
+    val items: List<ApiAdminUser> = emptyList(),
+    val page: Int = 1,
+    val limit: Int = 20,
+    val total: Int = 0,
+    val hasMore: Boolean = false
+)
+
+@JsonClass(generateAdapter = true)
+data class SetUserStatusRequest(
+    val status: String // "ACTIVE" | "SUSPENDED" | "BANNED"
+)
+
+@JsonClass(generateAdapter = true)
+data class SetUserStatusResponse(
+    val user: ApiAdminUser? = null,
+    val error: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class VideoListResponse(
+    val videos: List<ApiVideo> = emptyList(),
+    val page: Int = 1,
     val hasMore: Boolean = false
 )
 
@@ -634,6 +786,99 @@ interface ZevoraApiService {
 
     @GET("api/v1/users/{userId}/profile")
     suspend fun getUserProfile(@Path("userId") userId: String): Response<UserProfileResponse>
+
+    @POST("api/v1/users/{userId}/follow")
+    suspend fun followUser(@Path("userId") userId: String): Response<FollowActionResponse>
+
+    @DELETE("api/v1/users/{userId}/follow")
+    suspend fun unfollowUser(@Path("userId") userId: String): Response<FollowActionResponse>
+
+    @GET("api/v1/users/{userId}/follow-state")
+    suspend fun followState(@Path("userId") userId: String): Response<FollowStateResponse>
+
+    @GET("api/v1/users/{userId}/followers")
+    suspend fun getFollowers(
+        @Path("userId") userId: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): Response<UserListResponse>
+
+    @GET("api/v1/users/{userId}/following")
+    suspend fun getFollowing(
+        @Path("userId") userId: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): Response<UserListResponse>
+
+    @GET("api/v1/users/{userId}/saved")
+    suspend fun getSavedVideos(
+        @Path("userId") userId: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): Response<VideoListResponse>
+
+    @GET("api/v1/users/{userId}/liked")
+    suspend fun getLikedVideos(
+        @Path("userId") userId: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): Response<VideoListResponse>
+
+    @POST("api/v1/videos/{videoId}/save")
+    suspend fun toggleSaveVideo(
+        @Path("videoId") videoId: String,
+        @Body req: SaveVideoRequest
+    ): Response<SaveVideoResponse>
+
+    @POST("api/v1/reports")
+    suspend fun submitReport(@Body req: SubmitReportRequest): Response<SubmitReportResponse>
+
+    @GET("api/v1/hashtags/{tag}/videos")
+    suspend fun hashtagVideos(
+        @Path("tag") tag: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): Response<HashtagVideosResponse>
+
+    @GET("api/v1/videos")
+    suspend fun listVideos(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): Response<VideoListResponse>
+
+    @GET("api/v1/feed/fyp")
+    suspend fun getFypFeed(
+        @Query("cursor") cursor: String? = null,
+        @Query("limit") limit: Int = 20
+    ): Response<FeedResponse>
+
+    @GET("api/v1/admin/users")
+    suspend fun adminUsers(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20,
+        @Query("search") search: String? = null
+    ): Response<AdminUsersResponse>
+
+    @GET("api/v1/wallet")
+    suspend fun getWallet(): Response<WalletResponse>
+
+    @POST("api/v1/wallet/earn")
+    suspend fun earnCoins(@Body req: WalletAmountRequest): Response<WalletBalanceResponse>
+
+    @POST("api/v1/wallet/spend")
+    suspend fun spendCoins(@Body req: WalletAmountRequest): Response<WalletBalanceResponse>
+
+    @POST("api/v1/admin/users/{userId}/coins")
+    suspend fun adjustUserCoins(
+        @Path("userId") userId: String,
+        @Body req: WalletAmountRequest
+    ): Response<AdjustCoinsResponse>
+
+    @POST("api/v1/admin/users/{userId}/status")
+    suspend fun setAdminUserStatus(
+        @Path("userId") userId: String,
+        @Body req: SetUserStatusRequest
+    ): Response<SetUserStatusResponse>
 }
 
 // -------------------------------------------------------------

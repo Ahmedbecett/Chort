@@ -83,6 +83,7 @@ import com.example.data.repository.ZevoraRepository
 import com.example.ui.components.BurstHeart
 import com.example.ui.components.CommentBottomSheet
 import com.example.ui.components.ReportDialog
+import com.example.util.AppPrefs
 import com.example.ui.components.ShareBottomSheet
 import com.example.ui.components.VideoPlayerView
 import com.example.ui.theme.AccentGold
@@ -102,7 +103,8 @@ fun FeedScreen(
     onNavigateToCreate: () -> Unit = {},
     onNavigateToLive: () -> Unit = {},
     onNavigateToSound: (String) -> Unit = {},
-    onNavigateToTracking: () -> Unit = {}
+    onNavigateToTracking: () -> Unit = {},
+    onRemixVideo: (android.net.Uri) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val feedVideos by repository.feedVideos.collectAsState()
@@ -112,20 +114,29 @@ fun FeedScreen(
     val likedVideoIds by repository.getUserLikedVideoIds(currentUser?.id ?: "").collectAsState(initial = emptyList())
     val savedVideoIds by repository.savedVideoIds.collectAsState(initial = emptySet())
     val followingIds by repository.getFollowingIds(currentUser?.id ?: "").collectAsState(initial = emptyList())
+    val restrictedMode by AppPrefs.restrictedMode.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(1) } // 0 = Following, 1 = For You
-    var isFeedMuted by remember { mutableStateOf(false) }
+    var isFeedMuted by remember { mutableStateOf(AppPrefs.feedMuted.value || AppPrefs.dataSaver.value) }
 
     LaunchedEffect(Unit) {
         repository.syncWithCloud()
     }
 
-    val displayedVideos = remember(effectiveVideos, selectedTab, followingIds) {
-        if (selectedTab == 0) {
+    val displayedVideos = remember(effectiveVideos, selectedTab, followingIds, restrictedMode) {
+        val base = if (selectedTab == 0) {
             val followed = effectiveVideos.filter { it.creatorId in followingIds }
             if (followed.isEmpty()) effectiveVideos else followed
         } else {
             effectiveVideos
+        }
+        // Real enforcement: blocked creators + "not interested" + restricted filter.
+        val blocked = AppPrefs.getBlockedIds()
+        val hidden = AppPrefs.getHiddenVideoIds()
+        base.filter { video ->
+            video.creatorId !in blocked &&
+                video.id !in hidden &&
+                (!restrictedMode || !AppPrefs.isRestrictedCaption(video.caption, video.tags))
         }
     }
 
@@ -231,6 +242,9 @@ fun FeedScreen(
                 LaunchedEffect(isCurrent) {
                     if (isCurrent) {
                         repository.recordVideoView(video.id)
+                        AppPrefs.recordWatch(video.id, video.caption, video.creatorUsername)
+                        val total = AppPrefs.incrementWatchedTotal()
+                        if (total % 10L == 0L) repository.earnCoins(1, "watch_reward")
                     }
                 }
 
@@ -279,7 +293,8 @@ fun FeedScreen(
                     },
                     onReport = {
                         activeReportTarget = Triple("video", video.id, video.caption)
-                    }
+                    },
+                    autoPlay = AppPrefs.autoplay.value && !AppPrefs.dataSaver.value
                 )
             }
         }
@@ -301,6 +316,8 @@ fun FeedScreen(
             CommentBottomSheet(
                 sheetState = commentSheetState,
                 comments = activeComments,
+                commentsAllowed = activeCommentVideo?.creatorId != currentUser?.id ||
+                    AppPrefs.allowComments.value != "none",
                 onDismiss = {
                     scope.launch {
                         commentSheetState.hide()
@@ -332,6 +349,7 @@ fun FeedScreen(
                         activeShareVideo = null
                     }
                 },
+                onRemixVideo = onRemixVideo,
                 onReport = {
                     activeReportTarget = Triple("video", activeShareVideo!!.id, activeShareVideo!!.caption)
                 }
@@ -516,7 +534,8 @@ fun VideoFeedItem(
     onOpenShare: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenSound: () -> Unit,
-    onReport: () -> Unit
+    onReport: () -> Unit,
+    autoPlay: Boolean = true
 ) {
     var heartTrigger by remember { mutableLongStateOf(0L) }
     var isCaptionExpanded by remember { mutableStateOf(false) }
@@ -560,6 +579,7 @@ fun VideoFeedItem(
             isCurrentPage = isCurrentPage,
             videoId = video.id,
             isMuted = isMuted,
+            autoPlay = autoPlay,
             onToggleMute = onToggleMute,
             onRetry = onRetry,
             onSkip = onSkip,
@@ -660,10 +680,17 @@ fun VideoFeedItem(
 
             // Caption text with Expand / Collapse toggle
             Column {
+                val captionSp = remember {
+                    when (AppPrefs.getCaptionSize()) {
+                        "small" -> 12.5.sp
+                        "large" -> 17.sp
+                        else -> 14.5.sp
+                    }
+                }
                 Text(
                     text = video.caption,
                     color = Color.White,
-                    fontSize = 14.5.sp,
+                    fontSize = captionSp,
                     lineHeight = 20.sp,
                     maxLines = if (isCaptionExpanded) 12 else 2,
                     overflow = TextOverflow.Ellipsis
