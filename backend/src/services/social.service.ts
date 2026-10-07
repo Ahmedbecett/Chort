@@ -18,18 +18,11 @@ function actorName(userId: string): Promise<string> {
 
 export class SocialService {
   private static async ensureUser(userId: string) {
-    let user = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
+    const user = await prisma.user.findUnique({ where: { id: userId } }).catch(() => null);
     if (!user) {
-      const safe = userId.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase() || 'user';
-      user = await prisma.user.create({
-        data: {
-          id: userId,
-          email: `${safe}@chort.app`,
-          username: safe,
-          passwordHash: 'OAUTH_OR_SESSION',
-          profile: { create: { displayName: userId } },
-        },
-      });
+      const err = new Error('Authenticated user not found');
+      (err as any).statusCode = 401;
+      throw err;
     }
     return user;
   }

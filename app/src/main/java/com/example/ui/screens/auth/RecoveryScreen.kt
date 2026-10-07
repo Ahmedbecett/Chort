@@ -73,7 +73,6 @@ fun RecoveryScreen(
     var phone by remember { mutableStateOf("") }
     var cooldown by remember { mutableStateOf(60) }
     var expiresIn by remember { mutableStateOf(600) }
-    var devOtp by remember { mutableStateOf<String?>(null) }
     var newPassword by remember { mutableStateOf("") }
 
     when (step) {
@@ -86,7 +85,6 @@ fun RecoveryScreen(
                 phone = sentPhone
                 cooldown = sentCooldown
                 expiresIn = sentExpires
-                devOtp = sentDevOtp
                 step = 1
             },
             onBack = onBack
@@ -106,7 +104,6 @@ fun RecoveryScreen(
             phone = phone,
             cooldownSeconds = cooldown,
             expiresInSeconds = expiresIn,
-            devOtp = devOtp,
             newPassword = newPassword.ifBlank { null },
             onSuccess = onRecovered,
             onBack = { step = 1 }
