@@ -245,12 +245,10 @@ fun TokPulseApp() {
                     "phone" -> {
                         PhoneAuthScreen(
                             repository = repository,
-                            onCodeSent = { phone, cooldown, expires, devOtp ->
+                            onCodeSent = { phone, cooldown, expires ->
                                 otpPhone = phone
                                 otpCooldown = cooldown
-                                otpExpiresIn = expires
-                                otpDevCode = devOtp
-                                currentScreen = "otp"
+                                otpExpiresIn = expires                                currentScreen = "otp"
                             },
                             onBack = { goWelcome() }
                         )
@@ -263,7 +261,6 @@ fun TokPulseApp() {
                             phone = otpPhone,
                             cooldownSeconds = otpCooldown,
                             expiresInSeconds = otpExpiresIn,
-                            devOtp = otpDevCode,
                             onSuccess = { goHome() },
                             onBack = { currentScreen = "phone" }
                         )
