@@ -81,6 +81,7 @@ const DDL_STATEMENTS: string[] = [
     "avatarUrl" TEXT,
     "bannerUrl" TEXT,
     "isVerified" BOOLEAN NOT NULL DEFAULT false,
+    "isPrivate" BOOLEAN NOT NULL DEFAULT false,
     "followersCount" INTEGER NOT NULL DEFAULT 0,
     "followingCount" INTEGER NOT NULL DEFAULT 0,
     "likesReceived" INTEGER NOT NULL DEFAULT 0,
@@ -504,6 +505,35 @@ export async function checkDatabaseConnection(): Promise<{
 }> {
   if (!isDbConfigured()) {
     return {
+      connected: false,
+      error: 'DATABASE_URL environment variable is not configured on Vercel',
+    };
+  }
+  const start = Date.now();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    const latency = Date.now() - start;
+
+    // Self-healing: automatically ensure schema exists
+    const schemaStatus = await ensureDatabaseSchema();
+    const verifiedList = schemaStatus.tablesVerified || verifiedTablesCache;
+
+    return {
+      connected: true,
+      latencyMs: latency,
+      schemaReady: schemaStatus.success,
+      tablesCount: verifiedList.length,
+      tablesVerified: verifiedList,
+      error: schemaStatus.success ? undefined : schemaStatus.error,
+    };
+  } catch (err: any) {
+    return {
+      connected: false,
+      error: err?.message || 'Database connection error',
+    };
+  }
+}
+turn {
       connected: false,
       error: 'DATABASE_URL environment variable is not configured on Vercel',
     };
