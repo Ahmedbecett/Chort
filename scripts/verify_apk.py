@@ -4,18 +4,22 @@ verify_apk.py - Prove that a built APK really contains the current source code.
 
 Why this exists
 ---------------
-Chort shipped a stale APK: the committed artifact kept versionCode 20200 /
-versionName "2.2.0" identical to the source, so a build made *before* the
-speaker-icon migration was indistinguishable from a fresh one and kept being
+ZEVORA (previously Chort) once shipped a stale APK: the committed artifact
+kept the exact versionCode/versionName of the source, so a build made
+*before* a fix was indistinguishable from a fresh one and kept being
 installed on-device.
 
 This script performs binary-level verification of the APK against the source
 tree, so "the APK reflects the latest source" is a checked fact, not a claim:
 
   1. Manifest identity      - versionCode / versionName / package / minSdk.
-  2. Signature              - signature schemes + signer certificate.
+  2. Signature              - signature schemes + signer certificate; the
+                              signer must be the stable production key (never
+                              the Android debug key nor a per-build key).
   3. Global DEX string scan - strings that only exist in the *current* source
-                              must be present in the APK.
+                              must be present in the APK, while pre-rebuild
+                              markers (old brand, removed mocks/backdoors)
+                              must be absent.
   4. Class-level DEX check  - com.example.ui.components.VideoPlayerViewKt must
                               NOT contain the removed top-end speaker indicator
                               (Alignment.TopEnd + VolumeUp/VolumeOff icons),
@@ -30,8 +34,8 @@ Exit code 0 = every check passed. Non-zero = at least one check failed.
 
 Usage:
   python3 scripts/verify_apk.py \
-      --apk release/Chort-v1.1.0-release.apk \
-      --old-apk /tmp/old/Chort-v2.2.0-release.apk \
+      --apk release/ZEVORA-v3.0.0-release.apk \
+      --old-apk /tmp/old/ZEVORA-v2.5.1-release.apk \
       --report release/VERIFICATION_REPORT.md
 """
 
@@ -59,9 +63,27 @@ REQUIRED_DEX_STRINGS = [
     ("player_retry_button", "VideoPlayerView.kt - real retry UI testTag"),
     ("player_skip_button", "VideoPlayerView.kt - skip control testTag"),
     ("Failed to decode/stream media", "VideoPlayerView.kt - playback error path"),
-    ("Primary API error", "TokPulseRepository.kt - primary cluster fallback"),
-    ("https://chort-nine.vercel.app/", "TokPulseApi.kt - production cluster"),
-    ("thileli dz-Android/", "VideoPlayerView.kt - version-stamped User-Agent"),
+    ("Primary API error", "ZevoraRepository.kt - primary cluster fallback"),
+    ("https://chort-nine.vercel.app/", "ZevoraApi.kt - production cluster"),
+    ("ZEVORA-Android/", "VideoPlayerView.kt - version-stamped User-Agent"),
+    # --- ZEVORA 3.0.0 rebuild identity markers (absent from every 2.x build) ---
+    ("ZevoraRepository", "ZEVORA 3.0.0 class rename (was TokPulseRepository)"),
+    ("ZevoraApiClient", "ZEVORA 3.0.0 class rename (was TokPulseApiClient)"),
+    ("ZEVORA • v3.0.0", "SplashScreen.kt - 3.0.0 splash stamp"),
+    ("live_start_button", "LiveStreamScreen.kt - honest LIVE lobby (replaces simulation)"),
+    ("No fake viewers. No scripted chat. Only real broadcasts.", "LiveStreamScreen.kt - LIVE lobby honesty note"),
+]
+
+# Markers from the OLD builds that must be ABSENT from a 3.0.0 APK.
+# Their presence proves the APK was built from stale / pre-rebuild source.
+FORBIDDEN_DEX_STRINGS = [
+    ("devSwitchToAdmin", "removed admin backdoor (repository)"),
+    ("Enter as Platform Admin", "removed admin backdoor button (AuthScreen)"),
+    ("Pulse Live Studio", "removed simulated LIVE host (old LiveStreamScreen)"),
+    ("Alex Rivera", "removed mock DM recipient (deleted DirectMessageScreen)"),
+    ("Setup mode \u2014 your code is", "removed OTP dev-echo UI (old OtpScreen)"),
+    ("TokPulseRepository", "pre-rebuild class name (renamed to ZevoraRepository)"),
+    ("thileli dz-Android/", "pre-rebuild User-Agent (now ZEVORA-Android/)"),
 ]
 
 # Markers that must be ABSENT from VideoPlayerViewKt: they belonged to the
@@ -235,6 +257,14 @@ def check_signature(sdk: Path, apk: Path) -> str:
         "Android Debug" not in signer and signer != "?",
         signer,
     )
+    # The rebuild workflow used to mint a throwaway key per build
+    # (keytool -dname "CN=ZEVORA Build"). A stable production keystore from
+    # GitHub Secrets is required instead, so that key must never sign a ship.
+    record(
+        "Stable production key (not a per-build isolated key)",
+        "CN=ZEVORA Build" not in signer and signer != "?",
+        signer,
+    )
     return signer
 
 
@@ -258,6 +288,17 @@ def check_dex_strings(apk: Path, source_commit: str | None) -> None:
             present,
             f"{source_commit} {'found' if present else 'NOT found in APK'}",
         )
+
+    offenders = []
+    for needle, origin in FORBIDDEN_DEX_STRINGS:
+        if blob_contains(blob, needle):
+            offenders.append(f"{needle} ({origin})")
+    record(
+        "Pre-rebuild markers absent from DEX (no stale/mock code)",
+        not offenders,
+        f"{len(FORBIDDEN_DEX_STRINGS) - len(offenders)}/{len(FORBIDDEN_DEX_STRINGS)} absent"
+        + (f" | STILL PRESENT: {offenders}" if offenders else ""),
+    )
 
 
 def check_classes(apkanalyzer: Path, apk: Path, label: str) -> None:

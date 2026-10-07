@@ -1,5 +1,5 @@
 {
-  "name": "Chort",
+  "name": "ZEVORA",
   "description": "Short-video social platform with vertical video feed, music discovery, creator profiles, video upload, and real-time interaction.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

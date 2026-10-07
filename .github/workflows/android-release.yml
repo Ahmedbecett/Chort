@@ -1,9 +1,17 @@
 name: Android Release APK
 
+# ZEVORA 3.0.0 rebuild pipeline.
 # Builds, signs and verifies a release APK straight from the pushed commit, then
 # publishes it as a downloadable artifact (and attaches it to the GitHub Release
 # when a v* tag is pushed). This is why a stale APK can no longer be shipped:
 # the artifact is rebuilt from source on every release.
+#
+# Signing policy (strict):
+#   - The APK is ALWAYS signed with the stable production keystore stored in
+#     GitHub Secrets. A per-build throwaway key is FORBIDDEN: it would force
+#     every user to uninstall before each update.
+#   - No private key material is ever committed to this repository.
+#   - The workflow FAILS (no APK shipped) when no production key is configured.
 
 on:
   push:
@@ -64,23 +72,43 @@ jobs:
         id: meta
         run: |
           echo "code=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts | head -1)" >> "$GITHUB_OUTPUT"
-          echo "name=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)" >> "$GITHUB_OUTPUT"
+          echo "name=$(grep -oP 'versionName\s*=\s*\"\K[^\"]+' app/build.gradle.kts | head -1)" >> "$GITHUB_OUTPUT"
           echo "commit=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Configure isolated release signing
+      - name: Configure stable production signing
+        env:
+          KS_PRIMARY: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          SP_PRIMARY: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          AL_PRIMARY: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KP_PRIMARY: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KS_FALLBACK: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          SP_FALLBACK: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          AL_FALLBACK: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          KP_FALLBACK: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          keytool -genkeypair -v \
-            -keystore "$RUNNER_TEMP/zevora-release.jks" \
-            -storepass "zevora-build-only" \
-            -keypass "zevora-build-only" \
-            -alias "zevora" \
-            -keyalg RSA -keysize 4096 -validity 3650 \
-            -dname "CN=ZEVORA Build,O=ZEVORA"
-          echo "KEYSTORE_PATH=$RUNNER_TEMP/zevora-release.jks" >> "$GITHUB_ENV"
-          echo "STORE_PASSWORD=zevora-build-only" >> "$GITHUB_ENV"
-          echo "KEY_ALIAS=zevora" >> "$GITHUB_ENV"
-          echo "KEY_PASSWORD=zevora-build-only" >> "$GITHUB_ENV"
+          if [ -n "${KS_PRIMARY:-}" ] && [ -n "${SP_PRIMARY:-}" ]; then
+            echo "ZEVORA signing: primary production key (ANDROID_KEYSTORE_BASE64)"
+            KS="$KS_PRIMARY"; SP="$SP_PRIMARY"
+            AL="${AL_PRIMARY:-upload}"; KP="${KP_PRIMARY:-$SP_PRIMARY}"
+          elif [ -n "${KS_FALLBACK:-}" ] && [ -n "${SP_FALLBACK:-}" ]; then
+            echo "ZEVORA signing: fallback production key (ANDROID_RELEASE_KEYSTORE_BASE64)"
+            KS="$KS_FALLBACK"; SP="$SP_FALLBACK"
+            AL="${AL_FALLBACK:-upload}"; KP="${KP_FALLBACK:-$SP_FALLBACK}"
+          else
+            echo "::error::No production keystore configured. Set ANDROID_KEYSTORE_BASE64 + ANDROID_STORE_PASSWORD in GitHub Secrets (repository Settings > Secrets and variables > Actions). Refusing to ship an APK signed with any other key."
+            exit 1
+          fi
+          echo "$KS" | base64 --decode > "$RUNNER_TEMP/zevora-production.jks"
+          # Print the public certificate identity (proves WHICH production key signed this build).
+          keytool -list -v -keystore "$RUNNER_TEMP/zevora-production.jks" -storepass "$SP" 2>/dev/null \
+            | grep -E "Alias name|Owner:" || true
+          {
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/zevora-production.jks"
+            echo "STORE_PASSWORD=$SP"
+            echo "KEY_ALIAS=$AL"
+            echo "KEY_PASSWORD=$KP"
+          } >> "$GITHUB_ENV"
 
       - name: Build signed release APK
         run: |
@@ -129,11 +157,11 @@ jobs:
             Built from commit `${{ steps.meta.outputs.commit }}` by this workflow and
             verified against the source tree before publishing (`scripts/verify_apk.py`:
             the top speaker icon is absent from `VideoPlayerViewKt`, the bottom audio
-            control `feed_mute_button` is present, and `BuildConfig.GIT_COMMIT` matches).
+            control `feed_mute_button` is present, the 3.0.0 rebuild markers are in DEX,
+            pre-rebuild mock/backdoor markers are absent, and `BuildConfig.GIT_COMMIT` matches).
 
-            Signed with the production key (`CN=Ahmed Becetti`, APK Signature Scheme v2+v3).
-            If a previous build signed with the debug key is installed, uninstall it once
-            before installing this APK.
+            Signed with the stable production key from GitHub Secrets (APK Signature
+            Scheme v2+v3), so future updates install over this build without uninstall.
           files: |
             release/*.apk
             release/VERIFICATION_REPORT.md

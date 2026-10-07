@@ -14,7 +14,7 @@ source says" in general, not just for the icon fix.
 
 Usage:
   python3 scripts/audit_source_coverage.py \
-      --apk release/Chort-v2.3.0-release.apk --baseline b65c33e
+      --apk release/ZEVORA-v2.3.0-release.apk --baseline b65c33e
 """
 
 from __future__ import annotations

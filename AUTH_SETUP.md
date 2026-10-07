@@ -1,11 +1,10 @@
-# Chort Auth Setup (Google / Facebook / Phone SMS)
+# ZEVORA Auth Setup (Google / Facebook / Phone SMS)
 
-Two commits implement auth end to end (`6769650` backend, `5b226c9` app 2.4.0).
 Nothing here contains secrets — only variable **names** and where they go.
 
 ## 1. Vercel backend variables (required for real OAuth + SMS)
 
-Vercel Dashboard → your `Chort` project → **Settings → Environment Variables**
+Vercel Dashboard → your backend project → **Settings → Environment Variables**
 → add each for **Production** (and Preview if you test previews), then **Redeploy**.
 
 | Variable | Where the value comes from |
@@ -20,7 +19,11 @@ Vercel Dashboard → your `Chort` project → **Settings → Environment Variabl
 
 Optional tuning (defaults work): `OTP_TTL_SECONDS=600`,
 `OTP_RESEND_COOLDOWN_SECONDS=60`, `OTP_MAX_PER_HOUR=5`, `OTP_MAX_ATTEMPTS=5`.
-Kill switch: `OTP_DEV_ECHO=false` (never echo codes, even unconfigured).
+
+> ZEVORA production policy: OTP development echo is permanently disabled in
+> code (`devEchoAllowed()` always returns `false`). There is no setup-mode
+> code path anymore — real SMS via Twilio is the only delivery channel, and
+> the Android app never displays verification codes.
 
 ### Google client ID (must be identical on both sides)
 
@@ -28,7 +31,7 @@ The Android app signs in with the web client ID in
 `app/src/main/res/values/strings.xml` (`default_web_client_id`):
 
 ```text
-40606023128-ib7uarp2ei0opl4ekh0b2ghfj6oof1ca.apps.googleusercontent.com
+358490968062-n584hegcbbavgsbbq621191bfbvo78q1.apps.googleusercontent.com
 ```
 
 Set `GOOGLE_CLIENT_ID` in Vercel to exactly this value (it is a public
@@ -46,9 +49,16 @@ In `app/src/main/res/values/strings.xml`, replace:
 
 Facebook app setup: Developers → your app → **Facebook Login → Settings** →
 add Android platform, package `com.aistudio.tokpulse.social`, and your key
-hash (`keytool -exportcert -alias chort -keystore chort-release.jks | openssl
-sha1 -binary | openssl base64` for the committed dev key; use your Play key
-for production).
+hash derived from the production keystore:
+
+```bash
+keytool -exportcert -alias <KEY_ALIAS> -keystore <production-keystore.jks> \
+  | openssl sha1 -binary | openssl base64
+```
+
+(Use the same production key whose base64 is stored in the
+`ANDROID_KEYSTORE_BASE64` GitHub Secret. No keystore is committed to this
+repository.)
 
 Until these are set, Facebook sign-in shows a clear "not configured" message
 instead of crashing.
@@ -57,14 +67,14 @@ instead of crashing.
 
 | State | Behaviour |
 |---|---|
-| Nothing configured | Email auth works. Google/Facebook show "not configured". Phone OTP API returns a setup-mode code (used by automated tests only — **the app never displays it**), until Twilio is set. |
+| Nothing configured | Email auth works. Google/Facebook show "not configured". Phone OTP requires Twilio (no code is ever echoed). |
 | `GOOGLE_CLIENT_ID` set | Real Google sign-in (account picker → backend verifies with Google). |
 | `FACEBOOK_*` + app strings set | Real Facebook Login (backend verifies via `debug_token`). |
-| `TWILIO_*` set | Real SMS delivery worldwide; setup-mode echo disappears automatically. |
+| `TWILIO_*` set | Real SMS delivery worldwide. |
 
 ## 4. Verify after deploy
 
-- `GET /api/v1/health` shows `googleOAuthConfigured`, `facebookOAuthConfigured`,
-  `smsConfigured`, `otpDevEcho` flags.
+- `GET /api/v1/health` shows `googleOAuthConfigured`, `facebookOAuthConfigured`
+  and `smsConfigured` flags.
 - Admin app → **Logins** tab shows real sign-in records; **Live Reports**
   tab drives the real moderation queue.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# build_release.sh - deterministic, verifiable Chort release build.
+# build_release.sh - deterministic, verifiable ZEVORA release build.
 #
 # Guarantees:
 #   * refuses to build from a dirty working tree (the commit stamped into the
@@ -8,10 +8,17 @@
 #   * deletes every previous build output and every previous APK, so a stale
 #     artifact can never be mistaken for a fresh one;
 #   * builds from scratch with the Gradle wrapper (no cached outputs reused);
-#   * signs with a real release key (never the Android debug key);
+#   * signs ONLY with the stable production key supplied via environment
+#     (never the Android debug key, never a throwaway per-build key);
 #   * verifies the produced APK against the source tree before declaring success.
 #
-# Usage:  scripts/build_release.sh
+# Required environment (same contract as .github/workflows/android-release.yml):
+#   KEYSTORE_PATH   - path to the stable production keystore (outside the repo)
+#   STORE_PASSWORD  - keystore password
+#   KEY_ALIAS       - key alias (default: upload)
+#   KEY_PASSWORD    - key password (default: STORE_PASSWORD)
+#
+# Usage:  KEYSTORE_PATH=/secure/zevora.jks STORE_PASSWORD=... scripts/build_release.sh
 #
 set -euo pipefail
 
@@ -27,16 +34,29 @@ export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 VERSION_CODE="$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts | head -1)"
 VERSION_NAME="$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)"
 GIT_COMMIT="$(git rev-parse --short HEAD)"
-APK_NAME="Chort-v${VERSION_NAME}-release.apk"
+APK_NAME="ZEVORA-v${VERSION_NAME}-release.apk"
 
-echo "=== Chort release build ==="
+echo "=== ZEVORA release build ==="
 echo "versionCode : $VERSION_CODE"
 echo "versionName : $VERSION_NAME"
 echo "commit      : $GIT_COMMIT"
 echo "output      : release/$APK_NAME"
 echo
 
-echo "--- 0. working tree check ---"
+echo "--- 0a. production signing check ---"
+if [ -z "${KEYSTORE_PATH:-}" ] || [ -z "${STORE_PASSWORD:-}" ]; then
+  echo "ERROR: KEYSTORE_PATH and STORE_PASSWORD must be set to the stable" >&2
+  echo "       production keystore. This script refuses to produce an APK" >&2
+  echo "       signed with any other key." >&2
+  exit 1
+fi
+if [ ! -f "$KEYSTORE_PATH" ]; then
+  echo "ERROR: keystore not found: $KEYSTORE_PATH" >&2
+  exit 1
+fi
+echo "OK: production keystore configured ($KEYSTORE_PATH)"
+
+echo "--- 0b. working tree check ---"
 if [ -n "$(git status --porcelain -- app build.gradle.kts settings.gradle.kts gradle)" ]; then
   echo "ERROR: uncommitted changes in app/ or build files." >&2
   echo "       Commit first so BuildConfig.GIT_COMMIT ($GIT_COMMIT) matches the built code." >&2

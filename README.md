@@ -1,24 +1,38 @@
-# 📱 Chort (thileli dz) - Scalable Short-Video Social Platform
+# 📱 ZEVORA — Scalable Short-Video Social Platform
 
-[![Latest Release](https://img.shields.io/badge/Latest%20Release-v2.4.6%20(Build%2020406)-brightgreen.svg?style=for-the-badge&logo=android)](https://github.com/Ahmedbecett/Chort/releases/tag/v2.4.6)
-[![Direct APK Download](https://img.shields.io/badge/Download%20APK-Chort--v2.4.6--release.apk-blue.svg?style=for-the-badge&logo=google-play)](https://github.com/Ahmedbecett/Chort/releases/download/v2.4.6/Chort-v2.4.6-release.apk)
 [![Android Build](https://img.shields.io/badge/Platform-Android%2014%2B%20%7C%20Compose-3DDC84.svg?style=for-the-badge&logo=android)](https://android.com)
+
+> **Current release:** `v3.0.0` · **versionCode:** `30000` · rebuild from the ZEVORA source.
+
+- 📥 **[Latest release (APK)](https://github.com/Ahmedbecett/Chort/releases/latest)** — `ZEVORA-latest.apk`
+- 📦 **[All releases](https://github.com/Ahmedbecett/Chort/releases)**
+- ⚙️ **[Release builds (GitHub Actions)](https://github.com/Ahmedbecett/Chort/actions)**
+
+Every APK is rebuilt from source by CI on each release, signed with the **stable
+production key** (GitHub Secrets — never a per-build key, never committed), and
+verified against the source tree by `scripts/verify_apk.py` before publishing.
 
 ---
 
-## 🚀 روابط التحميل المباشرة وإصدار التطبيق (Direct APK Downloads)
+## 🆕 What changed in v3.0.0 (rebuild)
 
-> **الإصدار الحالي:** `v2.4.6` | **رقم البناء (versionCode):** `20406` | **تاريخ التحديث:** أكتوبر 2026
-
-- 📥 **[تحميل مباشر للإصدار v2.4.6 (Chort-v2.4.6-release.apk)](https://github.com/Ahmedbecett/Chort/releases/download/v2.4.6/Chort-v2.4.6-release.apk)**
-- ⚡ **[رابط دائم لأحدث إصدار (Always Latest APK): Chort-latest.apk](https://github.com/Ahmedbecett/Chort/releases/latest/download/Chort-latest.apk)**
-- 📦 **[جميع الإصدارات وسجلات البناء (Releases Page)](https://github.com/Ahmedbecett/Chort/releases)**
-- ⚙️ **[متابعة بناء الـ APK عبر GitHub Actions](https://github.com/Ahmedbecett/Chort/actions)**
-
-### 🛠️ التحديثات المطبقة في الإصدار v2.4.6:
-1. **تشغيل ورفع الفيديو:** دعم كامل لتشغيل الفيديوهات المختارة من الهاتف محلياً (`content://` و `file://`) وإصلاح خطأ `تعذر تشغيل الفيديو - Invalid or empty video URL`.
-2. **رسائل التحقق للهاتف (SMS):** إرسال رمز التحقق كرسالة SMS حقيقية إلى رقم الهاتف عبر Firebase Phone Auth بدلاً من إظهاره على الشاشة.
-3. **تسجيل الدخول بجيميل (Google):** تحديث معرّف العميل ومطابقة مشروع Firebase (`shortvideoapp-6b870`) لمنع الرجوع للشاشة السابقة.
+1. **Production cleanup merged in** — OTP dev-echo removed end to end, fabricated
+   profile media/avatars/bios removed, backend rejects unknown users instead of
+   inventing `@chort.app` accounts, web demo seeds removed.
+2. **Mock screens removed** — the simulated DM chat and the fake admin backdoor
+   (`devSwitchToAdmin` + "Enter as Platform Admin" button) are gone; the LIVE
+   screen is now an honest lobby wired to the real signed-in account (no fake
+   viewers, no scripted chat) until the streaming server rolls out.
+3. **ZEVORA identity** — app name, logo wordmark, theme, strings (EN/AR) and docs
+   rebranded; `applicationId` stays `com.aistudio.tokpulse.social` and local
+   data (Room DB, sessions, preferences) is preserved so updates install cleanly.
+4. **Stable signing** — the release workflow fails loudly unless the production
+   keystore from Secrets is present; `verify_apk.py` additionally rejects the
+   debug key and any per-build isolated key, and asserts 3.0.0 DEX markers while
+   asserting pre-rebuild markers are absent.
+5. **Backend fix** — the missing `ai-moderation.service` module is implemented as
+   an honest baseline publish gate (input validation + blocked-term screening),
+   documented for a future ML-provider upgrade; backend `tsc --noEmit` is clean.
 
 ---
 
@@ -26,7 +40,7 @@
 
 ```
                           ┌───────────────────────────┐
-                          │     Chort Mobile App      │
+                          │     ZEVORA Mobile App     │
                           │   (Kotlin / Compose M3)   │
                           └─────────────┬─────────────┘
                                         │
@@ -52,60 +66,42 @@
 
 ## ⚙️ Backend Services (`/backend`)
 
-The repository includes a production-grade backend server located in the `/backend` folder:
+Real production services — no demo data paths remain:
 
-### 1. Database (PostgreSQL 16 via Prisma ORM)
-- Models: `Users`, `Profiles`, `Videos`, `VideoMetadata`, `Comments`, `Likes`, `Follows`, `Views`, `Shares`, `SavedVideos`, `Hashtags`, `Notifications`, `Reports`, and `Sessions`.
-- Optimized indexes on `[status, visibility, createdAt]` and `[viewsCount, likesCount]` for sub-50ms Feed queries.
-
-### 2. High-Performance Caching & Queues (Redis 7 + BullMQ)
-- **Feed Cache:** Redis cache-aside pattern serves dynamic FYP recommendations instantly.
-- **View Deduplication:** Anti-fraud view counter with 60-second sliding deduplication window.
-- **BullMQ Workers:** Asynchronous video transcoding queue preventing API CPU bottlenecks.
-
-### 3. Video Transcoding Pipeline (FFmpeg HLS Worker)
-- Multi-bitrate Adaptive Bitrate Streaming (ABR):
-  - **1080p:** 4500 kbps (1920x1080)
-  - **720p:** 2500 kbps (1280x720)
-  - **480p:** 1200 kbps (854x480)
-  - **360p:** 800 kbps (640x360)
-- Master HLS playlist (`master.m3u8`) with automatic client-side bandwidth switching.
-- Automatic HD thumbnail extraction at keyframe intervals.
-
-### 4. Direct Cloud Upload Pipeline
-- Client requests pre-signed PUT URLs from the backend API.
-- The mobile app uploads directly to Cloud Storage / S3 / MinIO, offloading high bandwidth traffic from API servers.
-- Live byte progress listener shows real-time upload percentage (0% to 100%).
-
----
-
-## 🐳 Quick Start: Running the Entire Backend with Docker
-
-To run the complete backend stack (PostgreSQL, Redis, MinIO S3, API Server, FFmpeg Transcoder):
+- **PostgreSQL 16 (Prisma)** — `Users`, `Profiles`, `Videos`, `Comments`,
+  `Likes`, `Follows`, `Views`, `Notifications`, `Reports`, `Sessions`, …
+- **Redis 7 + BullMQ** — feed cache-aside, 60s view dedup window, async
+  transcode queue.
+- **FFmpeg HLS worker** — 1080p/720p/480p/360p ABR + master playlist.
+- **Direct cloud upload** — presigned PUT URLs, real byte-progress in-app.
+- **Auth** — Google/Facebook OAuth verification, Twilio SMS OTP (dev echo
+  permanently disabled), JWT sessions. See [AUTH_SETUP.md](AUTH_SETUP.md).
 
 ```bash
 cd backend
 docker compose up -d
+# API: http://localhost:4000/api/v1 · MinIO: http://localhost:9001
 ```
-
-Services will be accessible at:
-- **API Server:** `http://localhost:4000/api/v1`
-- **Health Check:** `http://localhost:4000/api/v1/health`
-- **MinIO Storage Console:** `http://localhost:9001` (User: `minio_admin` / Pass: `minio_secure_password`)
-- **PostgreSQL:** `localhost:5432`
-- **Redis:** `localhost:6379`
 
 ---
 
-## 📱 Android Client Features (`/app`)
+## 📱 Android Client (`/app`)
 
-- **Vertical Video Feed:** Smooth full-screen TikTok-style swipe gestures with seamless looping and pre-caching.
-- **Real-Time Byte Progress Upload:** Direct upload with progress percentage bar from camera or gallery.
-- **Interactions:** Live comments, likes, shares, user profiles, and follow system.
-- **Bottom Audio Control:** The mute/unmute speaker control lives in the lower audio bar (`feed_mute_button`); the old top-end speaker icon was removed.
-- **Admin Moderation Portal:** Dedicated dashboard for reviewing user reports, account status management, and policy compliance.
-- **Signed Release:** Signed with a 30-year production certificate (`CN=Ahmed Becetti`, `chort-release.jks`) supporting APK Signature Schemes v1/v2/v3.
-- **Verifiable Builds:** `versionCode`/`versionName` are bumped on every release, the source commit is stamped into `BuildConfig.GIT_COMMIT` and displayed in Profile, and `scripts/verify_apk.py` proves the APK matches the source tree.
+- **Vertical video feed** — TikTok-style pager, ExoPlayer, bottom audio control.
+- **Real upload flow** — camera/gallery → presigned PUT → moderation gate.
+- **Real accounts** — email, Google, Facebook, phone OTP (Firebase + backend);
+  admin role strictly by owner Firebase UID.
+- **Notifications / comments / likes / follows / profiles** — synced with server.
+- **Admin moderation portal** — reports queue, logins, violation actions.
+- **Verifiable builds** — `versionCode`/`versionName` bumped every release,
+  `BuildConfig.GIT_COMMIT` stamped + shown in Profile, APK proven against
+  source by `scripts/verify_apk.py`.
+
+Build locally (production keystore required):
+
+```bash
+KEYSTORE_PATH=/secure/zevora.jks STORE_PASSWORD=... scripts/build_release.sh
+```
 
 ---
 
@@ -118,4 +114,4 @@ Services will be accessible at:
 
 ---
 
-© 2026 Chort Video Social Platform. All rights reserved. Developed by Ahmed Becetti.
+© 2026 ZEVORA Video Social Platform. All rights reserved. Developed by Ahmed Becetti.
