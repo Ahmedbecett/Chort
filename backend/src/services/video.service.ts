@@ -233,6 +233,32 @@ export class VideoService {
       }
     }
 
+    let cloudflareStreamUid: string | undefined;
+    let cloudflareStreamHls: string | undefined;
+
+    if (!isExternalBytes && CloudflareStreamService.isConfigured() && isStorageConfigured()) {
+      try {
+        const sourceUrl = await getSignedUrl(
+          s3Client,
+          new GetObjectCommand({
+            Bucket: config.s3.bucket,
+            Key: storedKey,
+            ResponseContentType: 'video/mp4',
+          }),
+          { expiresIn: 3600 }
+        );
+        const imported = await CloudflareStreamService.importFromUrl({
+          url: sourceUrl,
+          name: caption || videoId,
+          creator: userId,
+        });
+        cloudflareStreamUid = imported.uid;
+        cloudflareStreamHls = imported.hlsUrl;
+      } catch (err: any) {
+        console.warn('Cloudflare Stream import notice:', err?.message || err);
+      }
+    }
+
     // Production publish gate: content must pass moderation before it can become READY/PUBLIC.
     // If moderation is unavailable and fail-closed is enabled, no production post is created.
     const moderation = await AIModerationService.moderateVideo({
@@ -253,7 +279,8 @@ export class VideoService {
         userId,
         caption: caption || 'New Rivo Video',
         originalKey: storedKey,
-        streamUrl: isExternalBytes ? clientVideoUrl : canonicalStreamUrl,
+        streamUrl: isExternalBytes ? clientVideoUrl : (cloudflareStreamHls || canonicalStreamUrl),
+        streamUid: cloudflareStreamUid,
         thumbnailUrl: realThumbnail,
         status: 'READY',
         visibility: params.visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC',
