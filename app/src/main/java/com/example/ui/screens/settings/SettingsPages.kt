@@ -606,7 +606,7 @@ fun ScreenTimePage(onBack: () -> Unit) {
                         Box(
                             modifier = Modifier
                                 .width(26.dp)
-                                .height((12 + 88 * minutes / maxDay).dp)
+                                .height((12 + 88 * minutes / maxDay).toInt().dp)
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(if (minutes >= reminder && reminder > 0) PageAccent else PageInk)
                         )
@@ -1049,16 +1049,16 @@ fun SecurityPage(repository: ZevoraRepository, onBack: () -> Unit, onChangePassw
         }
         PrefSectionTitle("App permissions")
         PrefCard {
-            PermissionRow("Camera", Manifest.permission.CAMERA, hasPermission, permissionLauncher)
-            PermissionRow("Microphone", Manifest.permission.RECORD_AUDIO, hasPermission, permissionLauncher)
+            PermissionRow("Camera", Manifest.permission.CAMERA, ::hasPermission, permissionLauncher)
+            PermissionRow("Microphone", Manifest.permission.RECORD_AUDIO, ::hasPermission, permissionLauncher)
             val storagePermission = if (android.os.Build.VERSION.SDK_INT >= 33) {
                 Manifest.permission.READ_MEDIA_VIDEO
             } else {
                 Manifest.permission.READ_EXTERNAL_STORAGE
             }
-            PermissionRow("Photos & videos", storagePermission, hasPermission, permissionLauncher)
+            PermissionRow("Photos & videos", storagePermission, ::hasPermission, permissionLauncher)
             if (android.os.Build.VERSION.SDK_INT >= 33) {
-                PermissionRow("Notifications", Manifest.permission.POST_NOTIFICATIONS, hasPermission, permissionLauncher)
+                PermissionRow("Notifications", Manifest.permission.POST_NOTIFICATIONS, ::hasPermission, permissionLauncher)
             }
             PrefRow(null, "Open system settings", "Manage every permission in one place") {
                 try {

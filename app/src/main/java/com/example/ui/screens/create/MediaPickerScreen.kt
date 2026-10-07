@@ -703,7 +703,7 @@ private fun ModeTab(label: String, active: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PermissionRationale(onGrant: () -> Unit, onOpenSettings: () -> Unit) {
+private fun androidx.compose.foundation.layout.ColumnScope.PermissionRationale(onGrant: () -> Unit, onOpenSettings: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -747,7 +747,7 @@ private fun PermissionRationale(onGrant: () -> Unit, onOpenSettings: () -> Unit)
 }
 
 @Composable
-private fun EmptyMediaPanel(onOpenCamera: () -> Unit) {
+private fun androidx.compose.foundation.layout.ColumnScope.EmptyMediaPanel(onOpenCamera: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -772,7 +772,7 @@ private fun EmptyMediaPanel(onOpenCamera: () -> Unit) {
 }
 
 @Composable
-private fun LiveSetupPanel(
+private fun androidx.compose.foundation.layout.ColumnScope.LiveSetupPanel(
     liveTitle: String,
     onTitleChange: (String) -> Unit,
     displayName: String,

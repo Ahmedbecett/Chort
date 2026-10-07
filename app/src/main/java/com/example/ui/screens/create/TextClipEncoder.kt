@@ -43,7 +43,7 @@ object TextClipEncoder {
         val clean = text.trim().ifBlank { "ZEVORA" }.take(280)
         val bitmap = renderTextBitmap(clean, styleIndex.coerceIn(0, 2), 720, 1280)
         val totalFrames = (durationSec.coerceIn(2, 5)) * 30
-        return encodeBitmapClip(bitmap, totalFrames, 30, outFile)
+        return@withContext encodeBitmapClip(bitmap, totalFrames, 30, outFile)
     }
 
     /** Encodes a still photo into a real H.264 MP4 clip (photo posts). */
