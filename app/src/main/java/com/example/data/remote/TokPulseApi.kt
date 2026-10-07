@@ -296,8 +296,6 @@ data class OtpResponse(
     val expiresInSeconds: Int = 600,
     val resendCooldownSeconds: Int = 60,
     val accountFound: Boolean? = null,
-    // Setup-mode only: present while no SMS provider is configured server-side.
-    val devOtp: String? = null,
     val error: String? = null
 )
 
