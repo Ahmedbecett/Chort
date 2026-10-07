@@ -36,3 +36,5 @@ jobs:
           git add ZEVORA-production-source.zip
           git commit -m "chore: package ZEVORA source" || exit 0
           git push origin HEAD:main
+
+# packaging enabled
