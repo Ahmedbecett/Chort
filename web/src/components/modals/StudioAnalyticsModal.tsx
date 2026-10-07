@@ -1,3 +1,4 @@
+===== ZEVORA_BUNDLE_PATH: web/src/components/modals/StudioAnalyticsModal.tsx =====
 import React, { useState } from 'react';
 import { X, BarChart3, TrendingUp, Users, Eye, Sparkles, MapPin } from 'lucide-react';
 
@@ -34,7 +35,7 @@ export const StudioAnalyticsModal: React.FC<StudioAnalyticsModalProps> = ({ isOp
               <BarChart3 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-base">استوديو Chort للتحليلات</h3>
+              <h3 className="font-bold text-white text-base">استوديو ZEVORA للتحليلات</h3>
               <p className="text-[11px] text-zinc-400">بيانات الأداء ونمو الحساب في الوقت الفعلي</p>
             </div>
           </div>
@@ -140,3 +141,5 @@ export const StudioAnalyticsModal: React.FC<StudioAnalyticsModalProps> = ({ isOp
     </div>
   );
 };
+
+===== END ZEVORA_BUNDLE_FILE =====
