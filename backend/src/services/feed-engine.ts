@@ -293,7 +293,7 @@ export class FeedEngine {
     message?: string;
   }> {
     const limit = Math.min(30, Math.max(1, input.limit || 20));
-    const includeExternal = input.includeExternal !== false;
+    const includeExternal = config.feed.allowExternalVideos && input.includeExternal === true;
     const mode: FeedMode = input.mode || 'recommended';
     const userId = input.userId?.trim() || undefined;
     const userKey = userKeyFor({ userId, deviceId: input.deviceId, ip: input.ip });
