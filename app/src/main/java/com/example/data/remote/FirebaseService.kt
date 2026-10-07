@@ -83,11 +83,7 @@ class FirebaseService(private val context: Context) {
 
     // --- AUTHENTICATION & USER SNAPSHOT CREATION ---
 
-    fun isAdminEmail(email: String): Boolean {
-        return email.equals("ahmedbecetti35@gmail.com", ignoreCase = true) ||
-            email.equals("ahmedbecetti41@gmail.com", ignoreCase = true) ||
-            email.contains("admin", ignoreCase = true)
-    }
+    fun isAdminUid(uid: String): Boolean = uid == "E9RrifJxb2QboG6kdQjqUfomEkQ2"
 
     suspend fun createOrUpdateUserSnapshot(user: UserEntity): Result<UserEntity> {
         val db = firestore ?: return Result.success(user)
@@ -131,7 +127,7 @@ class FirebaseService(private val context: Context) {
             val username = rawUsername.trim().ifEmpty { email.substringBefore("@").lowercase().replace(".", "_") }
             val displayName = rawDisplayName.trim().ifEmpty { username }
             val photoUrl = ""
-            val isAdmin = isAdminEmail(email)
+            val isAdmin = isAdminUid(uid)
 
             val newUser = UserEntity(
                 id = uid,
@@ -171,7 +167,7 @@ class FirebaseService(private val context: Context) {
                     passwordHash = "AUTH_SECURE",
                     avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
                     bio = "Welcome to my thileli dz profile! 🎬",
-                    role = if (isAdminEmail(email)) "admin" else "user",
+                    role = if (isAdminUid(uid)) "admin" else "user",
                     status = "active"
                 )
             Result.success(profile)
@@ -212,7 +208,7 @@ class FirebaseService(private val context: Context) {
 
                 val userDocRef = db.collection("users").document(uid)
                 val existingDoc = userDocRef.get().await()
-                val isAdmin = isAdminEmail(email)
+                val isAdmin = isAdminUid(uid)
 
                 val userEntity = if (existingDoc.exists()) {
                     val status = existingDoc.getString("status")?.takeIf { it.isNotBlank() } ?: "active"
@@ -319,7 +315,7 @@ class FirebaseService(private val context: Context) {
                 followersCount = 0,
                 followingCount = 0,
                 totalLikes = 0,
-                role = if (isAdminEmail(email)) "admin" else "user",
+                role = if (isAdminUid(uid)) "admin" else "user",
                 status = "active",
                 createdAt = System.currentTimeMillis()
             )
