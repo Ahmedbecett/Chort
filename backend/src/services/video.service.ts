@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { v4 as uuidv4 } from 'uuid';
 import { isExternalId, recordWatchHistory, userKeyFor } from './feed-history';
 import { AIModerationService } from './ai-moderation.service';
+import { CloudflareStreamService } from './cloudflare-stream.service';
 
 export interface CreateUploadUrlInput {
   userId: string;
