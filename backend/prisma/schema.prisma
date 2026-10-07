@@ -117,7 +117,8 @@ model Video {
 
   caption       String
   originalKey   String       // Object storage key for raw video
-  streamUrl     String?      // Master HLS CDN URL (e.g., https://cdn.tokpulse.com/videos/{id}/master.m3u8)
+  streamUrl     String?      // Master HLS CDN URL from Cloudflare Stream or fallback delivery URL
+  streamUid      String?      // Cloudflare Stream video UID when Stream processing is enabled
   thumbnailUrl  String?      // CDN URL for video cover
   status        VideoStatus  @default(PROCESSING)
   visibility    Visibility   @default(PUBLIC)
