@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: web/src/App.tsx =====
 import React, { useState, useEffect } from 'react';
 import { api } from './services/api';
 import { UserProfile, VideoItem } from './types';
@@ -343,4 +342,3 @@ export default function App() {
   );
 }
 
-===== END ZEVORA_BUNDLE_FILE =====
