@@ -111,7 +111,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * ZEVORA 3.1.0 — real CameraX capture screen in the reference layout:
+ * Rivo 3.1.0 — real CameraX capture screen in the reference layout:
  * right toolbar (flip / flash / timer / grid / mic), durations 15s-60s-10m,
  * PHOTO + TEXT modes, Add-sound, live preview with retake/next, and a
  * thumbnail shortcut back to the gallery.
@@ -1109,12 +1109,12 @@ private fun TextComposerPanel(
 /** Copies a captured JPEG into the public gallery, returning its MediaStore Uri. */
 private fun saveImageToGallery(context: android.content.Context, file: File): Uri? {
     return try {
-        val name = "ZEVORA_${System.currentTimeMillis()}.jpg"
+        val name = "Rivo_${System.currentTimeMillis()}.jpg"
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, name)
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/ZEVORA")
+                put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/Rivo")
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }
         }

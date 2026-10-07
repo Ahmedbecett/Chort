@@ -86,7 +86,7 @@ import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 
 /**
- * ZEVORA 3.1.0 — TikTok-style create entry: Recents/albums, All/Videos/Photos
+ * Rivo 3.1.0 — TikTok-style create entry: Recents/albums, All/Videos/Photos
  * tabs, Camera tile first, multi-select, Add-sound, and POST/CREATE/LIVE modes.
  * Everything is backed by real MediaStore queries — no placeholders.
  */
@@ -722,7 +722,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.PermissionRationale(o
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            "ZEVORA needs media permission to show your gallery.",
+            "Rivo needs media permission to show your gallery.",
             color = TextSecondary,
             fontSize = 13.sp
         )
@@ -760,7 +760,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.EmptyMediaPanel(onOpe
         Spacer(Modifier.height(12.dp))
         Text("No media here yet", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         Spacer(Modifier.height(6.dp))
-        Text("Record your first clip with the ZEVORA camera.", color = TextSecondary, fontSize = 13.sp)
+        Text("Record your first clip with the Rivo camera.", color = TextSecondary, fontSize = 13.sp)
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = onOpenCamera,

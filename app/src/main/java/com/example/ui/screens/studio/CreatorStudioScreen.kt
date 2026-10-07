@@ -53,7 +53,7 @@ import com.example.ui.theme.ZevoraRed
 import com.example.util.AppPrefs
 
 /**
- * ZEVORA 3.1.0 — Creator Studio: genuine analytics computed from the local
+ * Rivo 3.1.0 — Creator Studio: genuine analytics computed from the local
  * database (synced with the server): totals, engagement rate, top video and
  * a per-video breakdown. Zeros are real zeros, never placeholders.
  */
@@ -90,7 +90,7 @@ fun CreatorStudioScreen(
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
             }
-            Text("ZEVORA Studio", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("Rivo Studio", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             item {

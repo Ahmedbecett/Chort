@@ -48,7 +48,7 @@ import com.example.ui.theme.ZevoraDarkElevated
 import com.example.ui.theme.ZevoraRed
 
 /**
- * ZEVORA LIVE lobby.
+ * Rivo LIVE lobby.
  *
  * Production rule: never simulate a broadcast. There is no streaming server
  * wired yet, so this screen shows the real signed-in identity and explains
@@ -161,7 +161,7 @@ fun LiveStreamScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Real-time broadcasting activates with the ZEVORA streaming-server rollout. " +
+                        text = "Real-time broadcasting activates with the Rivo streaming-server rollout. " +
                             "Your account is ready — nothing here is simulated.",
                         color = TextMuted,
                         fontSize = 13.sp

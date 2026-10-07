@@ -65,7 +65,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * ZEVORA 3.1.0 — Activity center: liked videos (Room + server sync) and the
+ * Rivo 3.1.0 — Activity center: liked videos (Room + server sync) and the
  * real on-device watch history. Clearing history wipes it for real.
  */
 @Composable

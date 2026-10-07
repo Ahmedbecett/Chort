@@ -45,6 +45,7 @@ apiRouter.post('/auth/oauth/google', authLimiter, validateBody('oauthGoogle'), A
 apiRouter.post('/auth/oauth/facebook', authLimiter, validateBody('oauthFacebook'), ApiController.oauthFacebook);
 apiRouter.post('/auth/phone/request', otpLimiter, validateBody('phoneRequest'), ApiController.phoneRequest);
 apiRouter.post('/auth/phone/verify', otpLimiter, validateBody('phoneVerify'), ApiController.phoneVerify);
+apiRouter.post('/auth/phone/firebase', authLimiter, validateBody('phoneFirebase'), ApiController.phoneFirebase);
 apiRouter.post('/auth/recover/request', otpLimiter, validateBody('recoverRequest'), ApiController.recoverRequest);
 apiRouter.post('/auth/recover/confirm', otpLimiter, validateBody('recoverConfirm'), ApiController.recoverConfirm);
 apiRouter.post('/auth/password/change', authLimiter, validateBody('changePassword'), ApiController.changePassword);

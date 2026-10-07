@@ -9,7 +9,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * ZEVORA 3.1.0 — real offline vault: downloads video bytes into private app
+ * Rivo 3.1.0 — real offline vault: downloads video bytes into private app
  * storage with a metadata sidecar. Sizes, lists and deletes are all genuine.
  */
 data class OfflineVideo(
@@ -50,7 +50,7 @@ object OfflineStore {
                 instanceFollowRedirects = true
                 connectTimeout = 15_000
                 readTimeout = 120_000
-                setRequestProperty("User-Agent", "ZEVORA-Android/offline")
+                setRequestProperty("User-Agent", "Rivo-Android/offline")
             }
             connection.connect()
             if (connection.responseCode !in 200..299) {

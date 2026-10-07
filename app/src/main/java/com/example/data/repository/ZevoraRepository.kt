@@ -28,6 +28,7 @@ import com.example.data.remote.ApiVideo
 import com.example.data.remote.CompleteUploadRequest
 import com.example.data.remote.FacebookAuth
 import com.example.data.remote.FirebaseService
+import com.google.firebase.auth.FirebaseAuth
 import com.example.data.remote.GoogleAuth
 import com.example.data.remote.LikeRequest
 import com.example.data.remote.LinkProviderRequest
@@ -762,6 +763,23 @@ class ZevoraRepository(private val context: Context) {
             dao.insertUser(user)
             _currentUserId.value = user.id
             _currentUser.value = user
+            // Link the verified Firebase phone identity to a real backend session (JWT).
+            try {
+                val firebaseToken = FirebaseAuth.getInstance().currentUser?.getIdToken(false)?.await()?.token
+                if (!firebaseToken.isNullOrBlank()) {
+                    val linkResponse = ZevoraApiClient.api.phoneFirebase(
+                        PhoneFirebaseRequest(firebaseToken, phone.trim(), name?.trim()?.ifBlank { null })
+                    )
+                    val linkBody = linkResponse.body()
+                    if ((linkResponse.isSuccessful || linkResponse.code() == 201) && linkBody?.user != null) {
+                        val linked = persistBackendSession(linkBody, name ?: "")
+                        if (linked != null) {
+                            syncWithCloud()
+                            return@withContext Result.success(linked)
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
             try {
                 ZevoraApiClient.api.phoneVerify(
                     PhoneVerifyRequest(phone.trim(), code.trim(), name?.trim()?.ifBlank { null })
@@ -924,7 +942,7 @@ class ZevoraRepository(private val context: Context) {
     // --- LIVE SERVER DATA: notifications / sessions / admin ---
 
     /**
-     * Pulls real notifications from the ZEVORA API into the local inbox.
+     * Pulls real notifications from the Rivo API into the local inbox.
      * Actor profiles are resolved best-effort (cache first, profile API
      * second) so rows always show genuine usernames/avatars.
      */
@@ -1453,7 +1471,7 @@ class ZevoraRepository(private val context: Context) {
                     actorUsername = user.username,
                     actorAvatar = user.avatarUrl,
                     type = "follow",
-                    message = "started following you on ZEVORA!"
+                    message = "started following you on Rivo!"
                 )
             )
             true

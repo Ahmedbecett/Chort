@@ -69,7 +69,7 @@ import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 
 // ---------------------------------------------------------------------------
-// LIVE REPORTS: real moderation queue from the ZEVORA API
+// LIVE REPORTS: real moderation queue from the Rivo API
 // ---------------------------------------------------------------------------
 
 @Composable
@@ -333,7 +333,7 @@ private fun LiveActionButton(
 }
 
 // ---------------------------------------------------------------------------
-// LOGINS: real sign-in records from the ZEVORA API
+// LOGINS: real sign-in records from the Rivo API
 // ---------------------------------------------------------------------------
 
 @Composable

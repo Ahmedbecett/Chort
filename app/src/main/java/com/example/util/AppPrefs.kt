@@ -15,7 +15,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * ZEVORA 3.1.0 — single persistent store for every user-facing setting.
+ * Rivo 3.1.0 — single persistent store for every user-facing setting.
  *
  * Everything here drives REAL behaviour somewhere in the app:
  * theme, language, playback, privacy gates, notification prefs, coins ledger,

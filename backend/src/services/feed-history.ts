@@ -5,7 +5,7 @@ import { redis } from '../config';
  * Feed history & identity helpers.
  *
  * - Logged-in users get DURABLE history in PostgreSQL:
- *     ZEVORA videos  -> "View" rows (videoId FK, userId nullable w/ FK guard)
+ *     Rivo videos  -> "View" rows (videoId FK, userId nullable w/ FK guard)
  *     licensed seed -> "ExternalSeen" rows (no FK by design: external ids are
  *                      not rows in "Video", and ids must never break writes)
  * - Guests get a FAST seen-list in cache keyed by device/IP identity.

@@ -746,7 +746,7 @@ fun ZevoraBottomNavigation(
                 testTag = "nav_friends"
             )
 
-            // Distinctive ZEVORA Center Create '+' Button
+            // Distinctive Rivo Center Create '+' Button
             ZevoraCenterCreateButton(
                 onClick = { onNavigate("create") }
             )
@@ -835,7 +835,7 @@ private fun ZevoraCenterCreateButton(onClick: () -> Unit) {
             .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center
     ) {
-        // ZEVORA mark as the center action, framed by the brand gradient
+        // Rivo mark as the center action, framed by the brand gradient
         ZevoraMark(size = 44.dp)
     }
 }

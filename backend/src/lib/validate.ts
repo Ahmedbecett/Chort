@@ -92,6 +92,11 @@ export const schemas = {
     code: z.string().trim().regex(/^\d{4,8}$/, 'code must be digits'),
     name: z.string().trim().max(50).optional(),
   }),
+  phoneFirebase: z.object({
+    idToken: z.string().trim().min(10),
+    phone: z.string().trim().min(8).max(20).optional(),
+    name: z.string().trim().max(50).optional(),
+  }),
   recoverRequest: z.object({
     phone: z.string().trim().min(8).max(20),
   }),

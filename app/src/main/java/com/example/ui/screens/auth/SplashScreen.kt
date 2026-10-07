@@ -29,7 +29,7 @@ import com.example.ui.theme.ZevoraDarkBg
 import kotlinx.coroutines.delay
 
 /**
- * ZEVORA launch splash: brand identity up top, soft scale+fade entrance,
+ * Rivo launch splash: brand identity up top, soft scale+fade entrance,
  * then hands off to the app (feed when a session exists, welcome otherwise).
  */
 @Composable
@@ -78,7 +78,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             )
         }
         Text(
-            text = "ZEVORA • v3.1.0",
+            text = "Rivo • v3.1.0",
             color = Color.White.copy(alpha = 0.25f),
             fontSize = 11.sp,
             modifier = Modifier.align(Alignment.BottomCenter)

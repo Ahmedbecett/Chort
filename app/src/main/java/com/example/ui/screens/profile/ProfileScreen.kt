@@ -106,7 +106,7 @@ import com.example.util.AppPrefs
 import kotlinx.coroutines.launch
 
 /**
- * ZEVORA 3.1.0 — profile in the reference layout: avatar + stats header,
+ * Rivo 3.1.0 — profile in the reference layout: avatar + stats header,
  * action buttons, Videos/Liked/Saved tabs, 3-column grid, follow system with
  * live server state, private-account locks, followers sheets, and the full
  * navigation drawer (Balance … Settings).
@@ -235,9 +235,9 @@ fun ProfileScreen(
         try {
             val profile = profileUser
             val text = if (AppPrefs.showProfileOnShare()) {
-                "Follow @${profile?.username ?: "zevora"} on ZEVORA! zevora:user:$targetUserId:${profile?.username ?: ""}"
+                "Follow @${profile?.username ?: "zevora"} on Rivo! zevora:user:$targetUserId:${profile?.username ?: ""}"
             } else {
-                "Find me on ZEVORA!"
+                "Find me on Rivo!"
             }
             context.startActivity(
                 Intent.createChooser(
@@ -363,7 +363,7 @@ fun ProfileScreen(
                                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                         clipboard.setPrimaryClip(
                                             ClipData.newPlainText(
-                                                "ZEVORA profile",
+                                                "Rivo profile",
                                                 "zevora:user:$targetUserId:${profileUser?.username ?: ""}"
                                             )
                                         )
@@ -936,7 +936,7 @@ private fun ProfileDrawerContent(
         DrawerItem(Icons.Default.History, "Activity center") { onOpenActivity() }
         DrawerItem(Icons.Default.CloudDownload, "Offline videos") { onOpenOffline() }
         DrawerItem(Icons.Default.QrCode2, "Your QR code") { onOpenQr() }
-        DrawerItem(Icons.Default.AutoGraph, "ZEVORA Studio") { onOpenStudio() }
+        DrawerItem(Icons.Default.AutoGraph, "Rivo Studio") { onOpenStudio() }
         DrawerItem(Icons.Default.LocalFireDepartment, "Promote") { onOpenPromote() }
         DrawerItem(Icons.Default.Settings, "Settings and privacy") { onOpenSettings() }
         if (user?.role == "admin") {

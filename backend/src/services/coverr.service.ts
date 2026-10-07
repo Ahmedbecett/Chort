@@ -32,7 +32,7 @@ export class CoverrService {
 
   /**
    * Fetches portrait licensed videos from Coverr Videos API.
-   * Respects rate limits via caching and formats output for ZEVORA feed.
+   * Respects rate limits via caching and formats output for Rivo feed.
    * Shape mirrors PexelsService so the dispatcher can swap providers safely.
    */
   public static async getVideos(options: {
@@ -94,7 +94,7 @@ export class CoverrService {
         headers: {
           Authorization: `Bearer ${config.coverr.apiKey}`,
           Accept: 'application/json',
-          'User-Agent': 'ZEVORA-Video-Platform/3.0.0',
+          'User-Agent': 'Rivo-Video-Platform/3.0.0',
         },
       });
 
@@ -117,7 +117,8 @@ export class CoverrService {
 
       const formattedVideos: FormattedExternalVideo[] = [];
       for (const v of rawVideos) {
-        const videoFileUrl = v.urls?.mp4 || '';
+        // Prefer the original-quality download file, then standard mp4, then preview.
+        const videoFileUrl = v.urls?.mp4_download || v.urls?.mp4 || v.urls?.mp4_preview || '';
         const thumb = v.thumbnail || v.poster || '';
         if (!v.id || !videoFileUrl.startsWith('https://') || !thumb.startsWith('https://')) continue;
         const width = Number(v.max_width || 0);

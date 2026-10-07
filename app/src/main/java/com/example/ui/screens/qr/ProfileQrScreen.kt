@@ -66,7 +66,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * ZEVORA 3.1.0 — the real profile QR code: generated on-device with ZXing,
+ * Rivo 3.1.0 — the real profile QR code: generated on-device with ZXing,
  * encoding this user's identity payload. Save-to-gallery and share both work.
  */
 @Composable
@@ -109,12 +109,12 @@ fun ProfileQrScreen(
     fun saveQrToGallery(): Uri? {
         val bitmap = qrBitmap ?: return null
         return try {
-            val name = "ZEVORA-QR-${currentUser?.username ?: "me"}.png"
+            val name = "Rivo-QR-${currentUser?.username ?: "me"}.png"
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, name)
                 put(MediaStore.Images.Media.MIME_TYPE, "image/png")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/ZEVORA")
+                    put(MediaStore.Images.Media.RELATIVE_PATH, "DCIM/Rivo")
                     put(MediaStore.Images.Media.IS_PENDING, 1)
                 }
             }
@@ -203,7 +203,7 @@ fun ProfileQrScreen(
         }
         Spacer(Modifier.height(12.dp))
         Text(
-            "Scan with any camera to open this ZEVORA profile",
+            "Scan with any camera to open this Rivo profile",
             color = TextMuted,
             fontSize = 12.sp
         )

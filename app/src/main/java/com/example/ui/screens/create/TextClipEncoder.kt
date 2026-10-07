@@ -18,7 +18,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * ZEVORA 3.1.0 — real TEXT-mode clips: renders styled text frames and encodes
+ * Rivo 3.1.0 — real TEXT-mode clips: renders styled text frames and encodes
  * them into a genuine H.264 MP4 with MediaCodec (ByteBuffer input, no GL),
  * so TEXT posts publish exactly like recorded videos. Canvas text shaping
  * keeps Arabic RTL text correct.
@@ -40,7 +40,7 @@ object TextClipEncoder {
         durationSec: Int = 3,
         outFile: File
     ): EncodeResult = withContext(Dispatchers.IO) {
-        val clean = text.trim().ifBlank { "ZEVORA" }.take(280)
+        val clean = text.trim().ifBlank { "Rivo" }.take(280)
         val bitmap = renderTextBitmap(clean, styleIndex.coerceIn(0, 2), 720, 1280)
         val totalFrames = (durationSec.coerceIn(2, 5)) * 30
         return@withContext encodeBitmapClip(bitmap, totalFrames, 30, outFile)
@@ -250,7 +250,7 @@ object TextClipEncoder {
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.RIGHT
         }
-        canvas.drawText("ZEVORA", width - 36f, height - 48f, mark)
+        canvas.drawText("Rivo", width - 36f, height - 48f, mark)
         return bitmap
     }
 

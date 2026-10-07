@@ -9,7 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * ZEVORA 3.1.0 — real on-device media queries for the TikTok-style picker.
+ * Rivo 3.1.0 — real on-device media queries for the TikTok-style picker.
  * Images + videos with album buckets, plus a device-audio list for "Add sound".
  */
 data class DeviceMedia(

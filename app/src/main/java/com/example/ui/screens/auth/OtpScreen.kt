@@ -123,7 +123,7 @@ fun OtpScreen(
                     repository.verifyPhoneOtp(phone, code, displayName)
                 }
                 if (result.isSuccess) {
-                    successMessage = if (mode == OtpMode.RECOVERY) "Account recovered. Welcome back!" else "Phone verified. Welcome to ZEVORA!"
+                    successMessage = if (mode == OtpMode.RECOVERY) "Account recovered. Welcome back!" else "Phone verified. Welcome to Rivo!"
                     delay(700)
                     onSuccess()
                 } else {

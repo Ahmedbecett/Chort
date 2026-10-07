@@ -383,7 +383,7 @@ fun ExternalTrackingCenterScreen(
     if (showExportDialog) {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
         val csvSummary = buildString {
-            append("--- ZEVORA AUDIT & TRACKING REPORT ---\n")
+            append("--- Rivo AUDIT & TRACKING REPORT ---\n")
             append("Generated At: ${dateFormat.format(Date())}\n")
             append("Total Registered Users: ${allUsers.size}\n")
             append("Active Users: ${allUsers.count { it.status == "active" }}\n")

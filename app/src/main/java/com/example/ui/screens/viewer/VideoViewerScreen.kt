@@ -34,7 +34,7 @@ import com.example.util.AppPrefs
 import kotlinx.coroutines.launch
 
 /**
- * ZEVORA 3.1.0 — shared full-screen video viewer used by profile grids,
+ * Rivo 3.1.0 — shared full-screen video viewer used by profile grids,
  * activity center and studio: the exact feed experience (like/save/follow,
  * comments, share, remix, report) for one video.
  */

@@ -194,7 +194,7 @@ fun FeedScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Be the first to create and publish a video on ZEVORA!",
+                        text = "Be the first to create and publish a video on Rivo!",
                         color = TextSecondary,
                         fontSize = 13.sp,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center

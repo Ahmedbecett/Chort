@@ -130,7 +130,7 @@ fun VideoPlayerView(
             .setReadTimeoutMs(25000)
             .setAllowCrossProtocolRedirects(true)
             .setKeepPostFor302Redirects(true)
-            .setUserAgent("ZEVORA-Android/${BuildConfig.VERSION_NAME} (Linux; Android)")
+            .setUserAgent("Rivo-Android/${BuildConfig.VERSION_NAME} (Linux; Android)")
 
         val dataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(context, httpDataSourceFactory)
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)

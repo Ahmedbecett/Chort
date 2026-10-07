@@ -1,5 +1,5 @@
 /**
- * ZEVORA AI Moderation Service (baseline heuristic gate).
+ * Rivo AI Moderation Service (baseline heuristic gate).
  *
  * Production publish gate for user-uploaded videos: content must pass
  * moderation before it can become READY/PUBLIC.

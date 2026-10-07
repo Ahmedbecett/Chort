@@ -38,8 +38,8 @@ android {
     // production signing. Bump BOTH on every release so a stale APK can
     // never be mistaken for the current build on-device.
     // ------------------------------------------------------------------
-    versionCode = 31000
-    versionName = "3.1.0"
+    versionCode = 32000
+    versionName = "3.2.0"
 
     // Commit stamp compiled into BuildConfig.GIT_COMMIT so any APK can be
     // traced back to the exact git revision it was built from.

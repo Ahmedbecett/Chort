@@ -249,7 +249,7 @@ export class VideoService {
       data: {
         id: videoId,
         userId,
-        caption: caption || 'New ZEVORA Video',
+        caption: caption || 'New Rivo Video',
         originalKey: storedKey,
         streamUrl: isExternalBytes ? clientVideoUrl : canonicalStreamUrl,
         thumbnailUrl: realThumbnail,

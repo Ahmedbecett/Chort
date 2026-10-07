@@ -56,7 +56,7 @@ import com.example.ui.theme.ZevoraDarkSurface
 import com.example.ui.theme.ZevoraRed
 
 /**
- * ZEVORA 3.1.0 — offline vault: genuinely downloaded videos with real sizes,
+ * Rivo 3.1.0 — offline vault: genuinely downloaded videos with real sizes,
  * in-app playback, per-video delete and clear-all.
  */
 @Composable

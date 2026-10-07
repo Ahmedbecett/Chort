@@ -74,7 +74,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Inbox: stories on top, live activity (likes, comments, follows)
- * synced from the ZEVORA server below. No placeholder content.
+ * synced from the Rivo server below. No placeholder content.
  */
 @Composable
 fun InboxScreen(

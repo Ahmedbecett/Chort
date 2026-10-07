@@ -168,9 +168,9 @@ export class ApiController {
 
     return res.status(200).json({
       status: 'UP',
-      service: 'ZEVORA Video Platform API',
+      service: 'Rivo Video Platform API',
       timestamp: new Date().toISOString(),
-      version: '3.0.0',
+      version: '3.2.0',
       database: dbMessage,
       databaseConnected: isDbConnected,
       tablesCount: tablesCount,
@@ -454,7 +454,7 @@ export class ApiController {
         (q.distinct_id as string);
       const includeRaw = (q.includeExternal as string) ?? (q.include_external as string);
       const includeExternal =
-        includeRaw === undefined ? undefined : !['false', '0', 'no'].includes(String(includeRaw).toLowerCase());
+        includeRaw === undefined ? true : !['false', '0', 'no'].includes(String(includeRaw).toLowerCase());
 
       // Ensure schema is ready before querying
       await ensureDatabaseSchema();
@@ -553,7 +553,7 @@ export class ApiController {
       const video = await VideoService.completeUpload({
         videoId,
         userId: activeUserId,
-        caption: caption || 'New ZEVORA Video',
+        caption: caption || 'New Rivo Video',
         videoUrl,
         thumbnailUrl,
         musicTitle,
@@ -844,7 +844,7 @@ export class ApiController {
       }
 
       // 2. High-res dynamic SVG poster
-      const title = (video?.caption || 'ZEVORA Video').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 48);
+      const title = (video?.caption || 'Rivo Video').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 48);
       const creator = (video?.user?.username || 'creator').replace(/&/g, '&amp;');
 
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1280" viewBox="0 0 720 1280">
@@ -866,7 +866,7 @@ export class ApiController {
   <text x="360" y="700" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" text-anchor="middle">${title}</text>
   <text x="360" y="745" fill="#a0aec0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" text-anchor="middle">@${creator}</text>
   <rect x="290" y="1160" width="140" height="38" rx="19" fill="url(#accent)"/>
-  <text x="360" y="1185" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="900" text-anchor="middle" letter-spacing="2">ZEVORA</text>
+  <text x="360" y="1185" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="900" text-anchor="middle" letter-spacing="2">Rivo</text>
 </svg>`;
 
       res.setHeader('Content-Type', 'image/svg+xml');
@@ -1289,6 +1289,20 @@ export class ApiController {
     }
   }
 
+  // --- AUTH: Firebase phone sign-in (verified ID token -> backend session) ---
+  static async phoneFirebase(req: Request, res: Response) {
+    try {
+      await ensureDatabaseSchema();
+      const body = req.body || {};
+      const verified = await AuthService.verifyFirebaseIdToken(String(body.idToken || ''));
+      const out = await AuthService.claimPhoneUser(verified.phone, typeof body.name === 'string' ? body.name : (verified.name || undefined));
+      const session = await ApiController.issueSession(out.user, req);
+      return res.status(out.isNew ? 201 : 200).json({ message: out.isNew ? 'Account created with phone number' : 'Phone login successful', ...session, isNew: out.isNew, linked: out.linked });
+    } catch (err: any) {
+      return res.status(err.statusCode || 500).json({ error: err.message });
+    }
+  }
+
   // --- AUTH: account recovery via verified phone ---
   static async recoverRequest(req: Request, res: Response) {
     try {
@@ -1585,7 +1599,7 @@ export class ApiController {
       }
       const existing = await prisma.account.findUnique({ where: { provider_providerId: { provider, providerId: profile.sub } } });
       if (existing && existing.userId !== self.userId) {
-        return res.status(409).json({ error: 'That account is already linked to another ZEVORA user.' });
+        return res.status(409).json({ error: 'That account is already linked to another Rivo user.' });
       }
       if (!existing) {
         await prisma.account.create({ data: { userId: self.userId, provider, providerId: profile.sub, email: profile.email || null } });

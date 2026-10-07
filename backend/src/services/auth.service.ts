@@ -2,9 +2,10 @@ import { createHash, createHmac, randomInt, timingSafeEqual } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
 import { config } from '../config';
+import jwt from 'jsonwebtoken';
 
 /**
- * ZEVORA authentication core: Google/Facebook OAuth, phone+SMS OTP, account
+ * Rivo authentication core: Google/Facebook OAuth, phone+SMS OTP, account
  * linking, and phone-based recovery. Extends (never replaces) the existing
  * email/JWT/session system.
  *
@@ -16,6 +17,23 @@ import { config } from '../config';
  * - No development echo: verification codes are delivered via Twilio SMS
  *   only. There is no code path that returns the code in an API response.
  */
+
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'shortvideoapp-6b870';
+let firebaseCertCache: { fetchedAt: number; keys: Record<string, string> } | null = null;
+
+async function getFirebasePublicKeys(): Promise<Record<string, string>> {
+  const now = Date.now();
+  if (firebaseCertCache && now - firebaseCertCache.fetchedAt < 3600 * 1000) {
+    return firebaseCertCache.keys;
+  }
+  const resp = await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com', {
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!resp.ok) throw new Error(`Firebase cert fetch failed: HTTP ${resp.status}`);
+  const keys = (await resp.json()) as Record<string, string>;
+  firebaseCertCache = { fetchedAt: now, keys };
+  return keys;
+}
 
 export const OTP_PURPOSES = ['register', 'recovery'] as const;
 export type OtpPurpose = (typeof OTP_PURPOSES)[number];
@@ -179,7 +197,7 @@ export class AuthService {
     void record;
     const base = { expiresInSeconds: config.otp.ttlSeconds, resendCooldownSeconds: config.otp.cooldownSeconds };
 
-    const sms = await sendSmsViaTwilio(phone, `ZEVORA code: ${code}. It expires in ${Math.round(config.otp.ttlSeconds / 60)} minutes.`);
+    const sms = await sendSmsViaTwilio(phone, `Rivo code: ${code}. It expires in ${Math.round(config.otp.ttlSeconds / 60)} minutes.`);
     if (!sms.ok) {
       return { sent: false, via: 'failed', ...base, error: sms.error || 'SMS delivery failed' };
     }
@@ -251,7 +269,7 @@ export class AuthService {
     ].filter(Boolean);
     const isAudValid = allowedAudiences.includes(data.aud) || String(data.aud || '').startsWith('358490968062');
     if (!data?.sub || !isAudValid) {
-      const err = new Error('Google credential was not issued for ZEVORA');
+      const err = new Error('Google credential was not issued for Rivo');
       (err as any).statusCode = 401;
       throw err;
     }
@@ -266,6 +284,52 @@ export class AuthService {
       name: String(data.name || ''),
       avatar: String(data.picture || ''),
     };
+  }
+
+  /**
+   * Verify a Firebase Authentication ID token (phone sign-in) against Google's
+   * published public keys. No Admin SDK or service account is needed: the RS256
+   * signature plus audience/issuer checks prove the token is genuine, and the
+   * phone_number claim proves the number was verified by Firebase SMS.
+   */
+  static async verifyFirebaseIdToken(idToken: string): Promise<{ sub: string; phone: string; name: string }> {
+    const keys = await getFirebasePublicKeys().catch(() => null);
+    if (!keys) {
+      const err = new Error('Could not reach Google to verify the login. Try again');
+      (err as any).statusCode = 502;
+      throw err;
+    }
+    let kid = '';
+    try {
+      kid = JSON.parse(Buffer.from(idToken.split('.')[0] || '', 'base64').toString('utf8')).kid || '';
+    } catch {
+      kid = '';
+    }
+    const cert = kid ? keys[kid] : undefined;
+    if (!cert) {
+      const err = new Error('Invalid login credential. Please try again');
+      (err as any).statusCode = 401;
+      throw err;
+    }
+    let data: any;
+    try {
+      data = jwt.verify(idToken, cert, {
+        algorithms: ['RS256'],
+        audience: FIREBASE_PROJECT_ID,
+        issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
+      }) as any;
+    } catch {
+      const err = new Error('Invalid login credential. Please try again');
+      (err as any).statusCode = 401;
+      throw err;
+    }
+    const phone = String(data.phone_number || '');
+    if (!data?.sub || !phone) {
+      const err = new Error('This login is not a verified phone number');
+      (err as any).statusCode = 401;
+      throw err;
+    }
+    return { sub: String(data.sub), phone, name: String(data.name || '') };
   }
 
   static async verifyFacebookToken(accessToken: string): Promise<{ sub: string; email: string; name: string; avatar: string }> {
@@ -423,7 +487,7 @@ export class AuthService {
     const { phone } = await AuthService.verifyOtp(phoneRaw, codeRaw, 'recovery');
     const user = await prisma.user.findFirst({ where: { phone }, include: { profile: true } });
     if (!user) {
-      const err = new Error('No ZEVORA account is linked to this number');
+      const err = new Error('No Rivo account is linked to this number');
       (err as any).statusCode = 404;
       throw err;
     }

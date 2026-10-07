@@ -90,7 +90,7 @@ private val Muted = Color(0xFF8D8D92)
 private val Accent = Color(0xFFFF2D55)
 
 /**
- * ZEVORA 3.1.0 — Settings and privacy in the reference structure.
+ * Rivo 3.1.0 — Settings and privacy in the reference structure.
  * EVERY row is wired: sub-pages for device/account features, full screens
  * for Balance / Activity / Offline / QR / Studio / Promote. No dead dialogs.
  */
@@ -212,7 +212,7 @@ private fun SettingsMainList(
                 Item(Icons.Default.History, "Activity center") { onOpenActivity() }
                 Item(Icons.Default.CloudDownload, "Offline videos") { onOpenOffline() }
                 Item(Icons.Default.QrCode2, "Your QR code") { onOpenQr() }
-                Item(Icons.Default.AutoGraph, "ZEVORA Studio") { onOpenStudio() }
+                Item(Icons.Default.AutoGraph, "Rivo Studio") { onOpenStudio() }
                 Item(Icons.Default.LocalFireDepartment, "Promote") { onOpenPromote() }
                 Item(Icons.Default.PlayCircle, "Manage posts") { onOpenPage("posts") }
                 Item(Icons.Default.Tune, "Content preferences") { onOpenPage("content") }
@@ -321,7 +321,7 @@ private fun SettingsMainList(
                 Item(Icons.Default.HeadsetMic, "Help Center") { onOpenPage("help") }
                 Item(Icons.Default.Lock, "Privacy Center") { onNavigateToLegal("privacy") }
                 Item(Icons.Default.Info, "Terms and Policies") { onNavigateToLegal("terms") }
-                Item(Icons.Default.Person, "About ZEVORA", "Ahmed Becetti") { onOpenPage("about") }
+                Item(Icons.Default.Person, "About Rivo", "Ahmed Becetti") { onOpenPage("about") }
             }
 
             Section("Login") {

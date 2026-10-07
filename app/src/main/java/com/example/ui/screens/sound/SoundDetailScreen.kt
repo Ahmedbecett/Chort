@@ -273,7 +273,7 @@ fun SoundDetailScreen(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "ZEVORA Verified Audio • ${if (isPlaying) "Playing now" else "Tap play to listen"}",
+                    text = "Rivo Verified Audio • ${if (isPlaying) "Playing now" else "Tap play to listen"}",
                     color = ZevoraCyan,
                     fontSize = 12.sp
                 )

@@ -81,7 +81,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * ZEVORA 3.1.0 — every action here is real: gallery download writes bytes to
+ * Rivo 3.1.0 — every action here is real: gallery download writes bytes to
  * MediaStore, bookmark toggles the synced saved set, offlinevault uses the
  * download manager, and "Not interested" hides the video from all feeds.
  */
@@ -241,7 +241,7 @@ fun ShareBottomSheet(
                         iconTint = ZevoraCyan,
                         onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText("ZEVORA Video", "https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream")
+                            val clip = ClipData.newPlainText("Rivo Video", "https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream")
                             clipboard.setPrimaryClip(clip)
                             Toast.makeText(context, "Link copied to clipboard!", Toast.LENGTH_SHORT).show()
                             onDismiss()
@@ -256,13 +256,13 @@ fun ShareBottomSheet(
                         iconTint = ZevoraRed,
                         onClick = {
                             val shareText = if (AppPrefs.showProfileOnShare()) {
-                                "Watch @${video.creatorUsername}'s video on ZEVORA: ${video.caption} https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream"
+                                "Watch @${video.creatorUsername}'s video on Rivo: ${video.caption} https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream"
                             } else {
-                                "Watch this video on ZEVORA: https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream"
+                                "Watch this video on Rivo: https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream"
                             }
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "Check out this clip on ZEVORA!")
+                                putExtra(Intent.EXTRA_SUBJECT, "Check out this clip on Rivo!")
                                 putExtra(Intent.EXTRA_TEXT, shareText)
                             }
                             context.startActivity(Intent.createChooser(intent, "Share via"))
@@ -401,17 +401,17 @@ fun ShareBottomSheet(
     }
 }
 
-/** Streams the video bytes into the public gallery (DCIM/ZEVORA). Real file IO. */
+/** Streams the video bytes into the public gallery (DCIM/Rivo). Real file IO. */
 private suspend fun saveVideoToGallery(context: Context, video: VideoEntity): Result<String> =
     withContext(Dispatchers.IO) {
         var connection: HttpURLConnection? = null
         try {
-            val name = "ZEVORA_${video.id.take(12)}_${System.currentTimeMillis()}.mp4"
+            val name = "Rivo_${video.id.take(12)}_${System.currentTimeMillis()}.mp4"
             val values = ContentValues().apply {
                 put(MediaStore.Video.Media.DISPLAY_NAME, name)
                 put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Video.Media.RELATIVE_PATH, "DCIM/ZEVORA")
+                    put(MediaStore.Video.Media.RELATIVE_PATH, "DCIM/Rivo")
                     put(MediaStore.Video.Media.IS_PENDING, 1)
                 }
             }
@@ -424,7 +424,7 @@ private suspend fun saveVideoToGallery(context: Context, video: VideoEntity): Re
                 instanceFollowRedirects = true
                 connectTimeout = 15_000
                 readTimeout = 180_000
-                setRequestProperty("User-Agent", "ZEVORA-Android/save")
+                setRequestProperty("User-Agent", "Rivo-Android/save")
             }
             connection.connect()
             if (connection.responseCode !in 200..299) {

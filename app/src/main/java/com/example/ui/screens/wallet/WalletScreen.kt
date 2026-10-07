@@ -68,7 +68,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * ZEVORA 3.1.0 — Balance & Coins. Server-synced ledger with offline queue:
+ * Rivo 3.1.0 — Balance & Coins. Server-synced ledger with offline queue:
  * when logged in the shown balance is the server truth (synced across
  * devices); guests and offline time fall back to the on-device ledger. Coins
  * genuine in-app activity (check-ins, watching, publishing) and spent on
@@ -147,7 +147,7 @@ fun WalletScreen(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text("@${currentUser?.username ?: "guest"}", color = TextSecondary, fontSize = 13.sp)
-                        Text("ZEVORA Coins", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Rivo Coins", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 }
                 Spacer(Modifier.height(16.dp))

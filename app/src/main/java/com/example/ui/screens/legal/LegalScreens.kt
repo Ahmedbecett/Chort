@@ -86,32 +86,32 @@ fun LegalScreen(
             if (isTerms) {
                 LegalSection(
                     title = "1. Acceptance of Terms",
-                    content = "By creating an account, browsing content, uploading videos, or interacting with others on ZEVORA, you agree to comply with and be bound by these Terms of Service. If you do not agree, you must discontinue using ZEVORA immediately."
+                    content = "By creating an account, browsing content, uploading videos, or interacting with others on Rivo, you agree to comply with and be bound by these Terms of Service. If you do not agree, you must discontinue using Rivo immediately."
                 )
 
                 LegalSection(
                     title = "2. User Conduct & Acceptable Use",
-                    content = "ZEVORA is dedicated to fostering an inspiring and safe community. You agree not to upload, transmit, or share content that:\n• Infringes third-party copyright, trademark, or intellectual property rights.\n• Promotes hate speech, harassment, defamation, or discrimination.\n• Depicts gratuitous violence, self-harm, or dangerous illegal activities.\n• Constitutes commercial spam, unauthorized phishing, or malware distribution."
+                    content = "Rivo is dedicated to fostering an inspiring and safe community. You agree not to upload, transmit, or share content that:\n• Infringes third-party copyright, trademark, or intellectual property rights.\n• Promotes hate speech, harassment, defamation, or discrimination.\n• Depicts gratuitous violence, self-harm, or dangerous illegal activities.\n• Constitutes commercial spam, unauthorized phishing, or malware distribution."
                 )
 
                 LegalSection(
                     title = "3. Intellectual Property & Ownership",
-                    content = "You retain ownership of the short videos, captions, and audio original works you create and publish on ZEVORA. By posting content, you grant ZEVORA a worldwide, non-exclusive, royalty-free license to stream, host, and display your public videos within the platform."
+                    content = "You retain ownership of the short videos, captions, and audio original works you create and publish on Rivo. By posting content, you grant Rivo a worldwide, non-exclusive, royalty-free license to stream, host, and display your public videos within the platform."
                 )
 
                 LegalSection(
                     title = "4. Content Moderation & Enforcement",
-                    content = "ZEVORA employs real-time safety monitoring and user reporting queues. Administrators reserve the right to review, hide, or permanently remove videos that violate platform rules, and may issue warnings, temporary 7-day suspensions, or permanent account bans."
+                    content = "Rivo employs real-time safety monitoring and user reporting queues. Administrators reserve the right to review, hide, or permanently remove videos that violate platform rules, and may issue warnings, temporary 7-day suspensions, or permanent account bans."
                 )
 
                 LegalSection(
                     title = "5. Account Termination",
-                    content = "You may delete your account at any time via the Profile Settings menu. ZEVORA reserves the right to suspend or terminate accounts that repeatedly breach safety protocols."
+                    content = "You may delete your account at any time via the Profile Settings menu. Rivo reserves the right to suspend or terminate accounts that repeatedly breach safety protocols."
                 )
             } else {
                 LegalSection(
                     title = "1. Information We Collect",
-                    content = "When you register and interact on ZEVORA, we collect:\n• Account profile details: username, display name, email, biography, and profile picture.\n• Uploaded media: short video files, thumbnails, audio titles, and hashtags.\n• Interaction telemetry: videos watched, likes given, comments posted, and followed accounts."
+                    content = "When you register and interact on Rivo, we collect:\n• Account profile details: username, display name, email, biography, and profile picture.\n• Uploaded media: short video files, thumbnails, audio titles, and hashtags.\n• Interaction telemetry: videos watched, likes given, comments posted, and followed accounts."
                 )
 
                 LegalSection(

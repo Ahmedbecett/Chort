@@ -13,7 +13,7 @@ import kotlin.coroutines.resume
 /**
  * Official Facebook Login (facebook-android-sdk).
  *
- * Returns the user access token; the ZEVORA backend verifies it with
+ * Returns the user access token; the Rivo backend verifies it with
  * Facebook (debug_token) before creating/linking the account.
  * Requires R.string.facebook_app_id to be set to a real App ID.
  */

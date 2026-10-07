@@ -2,7 +2,7 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ZEVORA Vibrant Neon Brand Colors
+// Rivo Vibrant Neon Brand Colors
 val ZevoraRed = Color(0xFFFE2C55)
 val ZevoraCyan = Color(0xFF25F4EE)
 val ZevoraDarkBg = Color(0xFF000000)

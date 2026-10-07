@@ -64,7 +64,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 /**
- * ZEVORA 3.1.0 — Promote: spend earned coins on real video Boosts.
+ * Rivo 3.1.0 — Promote: spend earned coins on real video Boosts.
  * A boosted video jumps to the front of your profile grid with a BOOSTED
  * badge until the package expires. No real money is involved, ever.
  */

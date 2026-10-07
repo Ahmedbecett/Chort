@@ -281,6 +281,14 @@ data class PhoneVerifyRequest(
     val name: String? = null
 )
 
+/** Firebase phone-auth session link: verified ID token mints a backend JWT (no Twilio needed). */
+@JsonClass(generateAdapter = true)
+data class PhoneFirebaseRequest(
+    val idToken: String,
+    val phone: String? = null,
+    val name: String? = null
+)
+
 @JsonClass(generateAdapter = true)
 data class RecoverRequestBody(val phone: String)
 
@@ -669,6 +677,9 @@ interface ZevoraApiService {
     @POST("api/v1/auth/phone/verify")
     suspend fun phoneVerify(@Body req: PhoneVerifyRequest): Response<AuthResponse>
 
+    @POST("api/v1/auth/phone/firebase")
+    suspend fun phoneFirebase(@Body req: PhoneFirebaseRequest): Response<AuthResponse>
+
     @POST("api/v1/auth/recover/request")
     suspend fun recoverRequest(@Body req: RecoverRequestBody): Response<OtpResponse>
 
@@ -720,7 +731,8 @@ interface ZevoraApiService {
     suspend fun getFeed(
         @Query("cursor") cursor: String? = null,
         @Query("limit") limit: Int = 20,
-        @Query("seen") seen: String? = null
+        @Query("seen") seen: String? = null,
+        @Query("includeExternal") includeExternal: Boolean = true
     ): Response<FeedResponse>
 
     @GET("api/v1/external/videos")

@@ -108,7 +108,7 @@ export class PixabayService {
       const response = await fetch(endpoint, {
         headers: {
           Accept: 'application/json',
-          'User-Agent': 'ZEVORA-Video-Platform/3.0.0',
+          'User-Agent': 'Rivo-Video-Platform/3.0.0',
         },
       });
 
@@ -133,13 +133,14 @@ export class PixabayService {
       let portraitCount = 0;
       for (const v of rawVideos) {
         if (!v || !v.id || !v.videos) continue;
-        const files = [v.videos.medium, v.videos.large, v.videos.small, v.videos.tiny].filter(
+        const files = [v.videos.large, v.videos.medium, v.videos.small, v.videos.tiny].filter(
           (f): f is PixabayVideoFile =>
             Boolean(f && f.url && f.url.startsWith('https://') && f.height > 0 && f.width > 0 && f.height >= f.width)
         );
         if (files.length === 0) continue;
         portraitCount += 1;
-        const best = files.find((f) => f.height >= 640) || files[0];
+        files.sort((a, b) => b.width * b.height - a.width * a.height);
+        const best = files[0];
         const thumb = best.thumbnail || '';
         if (!thumb.startsWith('https://')) continue;
 

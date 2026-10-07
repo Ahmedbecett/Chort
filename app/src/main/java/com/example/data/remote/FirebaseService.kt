@@ -772,7 +772,7 @@ class FirebaseService(private val context: Context) {
                 "actorUsername" to followerUser.username,
                 "actorAvatar" to followerUser.avatarUrl,
                 "type" to "follow",
-                "message" to "started following you on ZEVORA!",
+                "message" to "started following you on Rivo!",
                 "isRead" to false,
                 "createdAt" to System.currentTimeMillis()
             )
@@ -942,7 +942,7 @@ class FirebaseService(private val context: Context) {
                 "id" to notifId,
                 "userId" to userId,
                 "actorId" to "system_moderation",
-                "actorUsername" to "ZEVORA Safety",
+                "actorUsername" to "Rivo Safety",
                 "actorAvatar" to "",
                 "type" to "warning",
                 "message" to "Official Warning: $reason. Repeated violations will lead to permanent suspension.",

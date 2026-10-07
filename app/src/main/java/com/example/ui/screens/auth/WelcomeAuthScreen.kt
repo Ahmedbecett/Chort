@@ -232,7 +232,7 @@ fun WelcomeAuthScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "By continuing you agree to the ZEVORA Terms of Service and Privacy Policy.",
+            text = "By continuing you agree to the Rivo Terms of Service and Privacy Policy.",
             color = TextMuted,
             fontSize = 11.sp,
             textAlign = TextAlign.Center,

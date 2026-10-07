@@ -209,7 +209,7 @@ fun AdminDashboardScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
-                        text = "ZEVORA Admin Center",
+                        text = "Rivo Admin Center",
                         color = TextPrimary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold

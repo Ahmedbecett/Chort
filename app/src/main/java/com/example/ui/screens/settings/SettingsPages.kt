@@ -377,7 +377,7 @@ fun ManagePostsPage(repository: ZevoraRepository, onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
             title = { Text("Delete this video?") },
-            text = { Text("It will be removed from ZEVORA permanently. This cannot be undone.") },
+            text = { Text("It will be removed from Rivo permanently. This cannot be undone.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = null
@@ -577,7 +577,7 @@ fun ScreenTimePage(onBack: () -> Unit) {
     SettingsPageShell(title = "Time and well-being", onBack = onBack) {
         PrefCard {
             Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Today on ZEVORA", color = PageMuted, fontSize = 13.sp)
+                Text("Today on Rivo", color = PageMuted, fontSize = 13.sp)
                 Text(
                     if (today < 60) "${today}m" else "${today / 60}h ${today % 60}m",
                     color = PageInk,
@@ -834,7 +834,7 @@ fun AccountPage(repository: ZevoraRepository, onBack: () -> Unit, onDeleted: () 
             PrefRow(null, "User ID", me.id.take(18) + "…", showChevron = false) {
                 try {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("ZEVORA user id", me.id))
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Rivo user id", me.id))
                     Toast.makeText(context, "User ID copied", Toast.LENGTH_SHORT).show()
                 } catch (_: Exception) {
                 }
@@ -1128,9 +1128,9 @@ fun AnalyticsPage(repository: ZevoraRepository, onBack: () -> Unit, onOpenStudio
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
         ) {
-            Text("Open ZEVORA Studio")
+            Text("Open Rivo Studio")
         }
-        PrefNote("Full per-video breakdowns live in ZEVORA Studio.")
+        PrefNote("Full per-video breakdowns live in Rivo Studio.")
     }
 }
 
@@ -1153,15 +1153,15 @@ fun ShareProfilePage(repository: ZevoraRepository, onBack: () -> Unit, onOpenQr:
         PrefCard {
             Column(Modifier.fillMaxWidth().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("@${currentUser?.username ?: "unknown"}", color = PageInk, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text("Share your ZEVORA identity anywhere", color = PageMuted, fontSize = 13.sp)
+                Text("Share your Rivo identity anywhere", color = PageMuted, fontSize = 13.sp)
                 Spacer(Modifier.height(14.dp))
                 Button(
                     onClick = {
                         try {
                             val text = if (showProfile) {
-                                "Follow @${currentUser?.username} on ZEVORA! $payload"
+                                "Follow @${currentUser?.username} on Rivo! $payload"
                             } else {
-                                "Find me on ZEVORA!"
+                                "Find me on Rivo!"
                             }
                             val share = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
@@ -1319,7 +1319,7 @@ fun AdsPage(onBack: () -> Unit) {
                 AppPrefs.setAdsPersonalized(it)
             }
         }
-        PrefNote("ZEVORA currently shows no advertisements at all. This choice is saved on your device and will apply if an ads program ever launches.")
+        PrefNote("Rivo currently shows no advertisements at all. This choice is saved on your device and will apply if an ads program ever launches.")
     }
 }
 
@@ -1507,7 +1507,7 @@ private fun inviteContactBySms(context: Context, contactUri: Uri) {
         val sms = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:$number")).apply {
             putExtra(
                 "sms_body",
-                "Hi${if (name.isNotBlank()) " $name" else ""}! Join me on ZEVORA — short videos, no noise: https://chort-nine.vercel.app"
+                "Hi${if (name.isNotBlank()) " $name" else ""}! Join me on Rivo — short videos, no noise: https://chort-nine.vercel.app"
             )
         }
         context.startActivity(sms)
@@ -1688,10 +1688,10 @@ fun AboutPage(repository: ZevoraRepository, onBack: () -> Unit) {
         }
     }
 
-    SettingsPageShell(title = "About ZEVORA", onBack = onBack) {
+    SettingsPageShell(title = "About Rivo", onBack = onBack) {
         PrefCard {
             Column(Modifier.fillMaxWidth().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("ZEVORA", color = PageInk, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
+                Text("Rivo", color = PageInk, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
                 Text("Short videos, zero noise", color = PageMuted, fontSize = 13.sp)
                 Spacer(Modifier.height(10.dp))
                 Text(
@@ -1719,7 +1719,7 @@ fun AboutPage(repository: ZevoraRepository, onBack: () -> Unit) {
             PrefRow(null, "Package", "com.aistudio.tokpulse.social", showChevron = false) { }
             PrefRow(null, "Backend", "chort-nine.vercel.app", showChevron = false) { }
         }
-        PrefNote("ZEVORA is a global short-video platform. Every screen in this app is wired to production services — no demo content.")
+        PrefNote("Rivo is a global short-video platform. Every screen in this app is wired to production services — no demo content.")
     }
 }
 
@@ -1751,7 +1751,7 @@ fun SwitchAccountPage(
             PrefCard {
                 PrefRow(null, "@${last.username}", "Tap Log out, then sign in as ${last.username}", showChevron = false) { }
             }
-            PrefNote("For your safety ZEVORA never stores passwords: switching signs you out first.")
+            PrefNote("For your safety Rivo never stores passwords: switching signs you out first.")
         }
         Button(
             onClick = { confirm = true },
@@ -1789,7 +1789,7 @@ fun FollowingVisibilityPage(onBack: () -> Unit) {
     var current by remember { mutableStateOf(AppPrefs.getFollowingVisibility()) }
     ChoicePage(
         title = "Following list",
-        note = "Who can see the accounts you follow. Viewers on ZEVORA 3.1+ always respect this; combine with Private account for full server enforcement.",
+        note = "Who can see the accounts you follow. Viewers on Rivo 3.1+ always respect this; combine with Private account for full server enforcement.",
         options = listOf("Everyone" to "Everyone", "Followers" to "Followers", "Only you" to "Only you"),
         current = current,
         onPick = {
@@ -1805,7 +1805,7 @@ fun LikedVisibilityPage(onBack: () -> Unit) {
     var current by remember { mutableStateOf(AppPrefs.getLikedVisibility()) }
     ChoicePage(
         title = "Liked videos",
-        note = "Who can see the videos you liked. Viewers on ZEVORA 3.1+ always respect this; combine with Private account for full server enforcement.",
+        note = "Who can see the videos you liked. Viewers on Rivo 3.1+ always respect this; combine with Private account for full server enforcement.",
         options = listOf("Everyone" to "Everyone", "Followers" to "Followers", "Only you" to "Only you"),
         current = current,
         onPick = {
@@ -1869,7 +1869,7 @@ fun DisplayPage(onBack: () -> Unit) {
     val current by AppPrefs.themeMode.collectAsState()
     ChoicePage(
         title = "Display",
-        note = "Dark is the signature ZEVORA look. Pure black saves battery on OLED screens.",
+        note = "Dark is the signature Rivo look. Pure black saves battery on OLED screens.",
         options = listOf("dark" to "Dark", "black" to "Pure black (OLED)"),
         current = current,
         onPick = { AppPrefs.setThemeMode(it) },

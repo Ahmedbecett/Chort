@@ -89,7 +89,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * ZEVORA 3.1.0 — publish screen fed by the picker / camera / remix flow.
+ * Rivo 3.1.0 — publish screen fed by the picker / camera / remix flow.
  * Multi-video queue with per-item progress, optional real sound mixing,
  * server-enforced Public/Private visibility, and +5 coins per publish.
  */
@@ -193,7 +193,7 @@ fun UploadScreen(
             }
         }
         if (captionText.isBlank()) {
-            captionText = "Check out this energetic moment! ✨ #zevora #viral"
+            captionText = "Check out this energetic moment! ✨ #rivo #viral"
         }
         isUploading = true
         doneCount = 0
@@ -263,7 +263,7 @@ fun UploadScreen(
             uploadProgress = 1f
             isUploading = false
             if (published > 0) {
-                uploadStatusText = if (failed == 0) "Published to ZEVORA!" else "Published $published of $total"
+                uploadStatusText = if (failed == 0) "Published to Rivo!" else "Published $published of $total"
                 Toast.makeText(
                     context,
                     if (failed == 0) "Video${if (published > 1) "s" else ""} published! +${published * 5} coins"
@@ -308,7 +308,7 @@ fun UploadScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Share short-form stories on ZEVORA",
+                        text = "Share short-form stories on Rivo",
                         color = TextMuted,
                         fontSize = 12.sp
                     )

@@ -61,7 +61,7 @@ export class PexelsService {
 
   /**
    * Fetches portrait licensed videos from Pexels Video API.
-   * Respects rate limits via caching and formats output for ZEVORA feed.
+   * Respects rate limits via caching and formats output for Rivo feed.
    */
   public static async getVideos(options: {
     query?: string;
@@ -116,7 +116,7 @@ export class PexelsService {
         headers: {
           Authorization: config.pexels.apiKey,
           Accept: 'application/json',
-          'User-Agent': 'ZEVORA-Video-Platform/3.0.0',
+          'User-Agent': 'Rivo-Video-Platform/3.2.0',
         },
       });
 
@@ -138,17 +138,19 @@ export class PexelsService {
       const rawVideos: PexelsVideoItem[] = data.videos || [];
 
       const formattedVideos: FormattedExternalVideo[] = rawVideos.map((v) => {
-        // Choose best video file: portrait mp4 with preferred 720p or 1080p
+        // Choose best video file: highest-resolution portrait mp4 in HD (max pixels wins).
         const mp4Files = (v.video_files || []).filter(
           (f) => f.file_type === 'video/mp4' && f.link && f.link.startsWith('http')
         );
-
-        // Sort by quality: prefer hd with portrait aspect ratio
+        const pixels = (f: PexelsVideoFile) => (f.width || 0) * (f.height || 0);
+        const byPixelsDesc = (a: PexelsVideoFile, b: PexelsVideoFile) => pixels(b) - pixels(a);
+        const portraitMp4 = mp4Files
+          .filter((f) => f.height && f.width && f.height >= f.width)
+          .sort(byPixelsDesc);
         const bestFile =
-          mp4Files.find((f) => f.quality === 'hd' && f.height && f.width && f.height >= f.width) ||
-          mp4Files.find((f) => f.quality === 'hd') ||
-          mp4Files.find((f) => f.quality === 'sd') ||
-          mp4Files[0] ||
+          portraitMp4.find((f) => f.quality === 'hd') ||
+          portraitMp4[0] ||
+          [...mp4Files].sort(byPixelsDesc)[0] ||
           v.video_files?.[0];
 
         const videoFileUrl = bestFile ? bestFile.link : '';

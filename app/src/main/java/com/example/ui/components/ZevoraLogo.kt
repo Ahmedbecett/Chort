@@ -35,7 +35,7 @@ import com.example.ui.theme.ZevoraCyan
 import com.example.ui.theme.ZevoraRed
 
 /**
- * Original ZEVORA brand mark: an eighth-note whose head is a play
+ * Original Rivo brand mark: an eighth-note whose head is a play
  * triangle, drawn with a neon glow (soft cyan/red light layers behind a
  * crisp white core). Still by design - the glow does the talking.
  */

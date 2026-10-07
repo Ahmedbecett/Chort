@@ -12,7 +12,7 @@ import java.io.File
 import java.nio.ByteBuffer
 
 /**
- * ZEVORA 3.1.0 — real sound mixing without any native dependency.
+ * Rivo 3.1.0 — real sound mixing without any native dependency.
  * Replaces (or adds) the audio track of an MP4 with a device audio file,
  * trimmed to the video duration. AAC/M4A works on every device; MP3 is
  * attempted and honestly reported when the device muxer rejects it.

@@ -17,11 +17,11 @@ import {
 } from './feed-history';
 
 /**
- * ZEVORA Feed Engine — a real social-video feed, not a static list.
+ * Rivo Feed Engine — a real social-video feed, not a static list.
  *
  * Guarantees:
  *  1. Different viewers get feeds that CAN differ (per-viewer daily seed).
- *  2. Real cursor pagination across BOTH ZEVORA videos and licensed seed.
+ *  2. Real cursor pagination across BOTH Rivo videos and licensed seed.
  *  3. No repeats: page-level dedupe + watch-history exclusion (durable for
  *     logged users, fast seen-list for guests, `seen` param for everyone).
  *  4. User content is primary: licensed Pexels/Coverr clips are seed content
@@ -201,7 +201,7 @@ export interface FeedCursorState {
   /** Recently served licensed-seed ids: providers overlap across slices, so
    *  the cursor itself carries exclusion to guarantee no repeats. */
   sx: string[];
-  /** Recently served ZEVORA ids: the dedup mechanism for score-ordered
+  /** Recently served Rivo ids: the dedup mechanism for score-ordered
    *  (trending) pages, safety net for keyset modes. */
   sd: string[];
 }
@@ -361,7 +361,7 @@ export class FeedEngine {
           videos: [],
           nextCursor: null,
           hasMore: false,
-          meta: { mode, provider, seedProviders: [], dbCount: 0, extCount: 0, day: today, source: 'ZEVORA', databaseConnected: true },
+          meta: { mode, provider, seedProviders: [], dbCount: 0, extCount: 0, day: today, source: 'Rivo', databaseConnected: true },
           message: 'Sign in and follow creators to fill your Following feed.',
         };
       }
@@ -370,7 +370,7 @@ export class FeedEngine {
           videos: [],
           nextCursor: null,
           hasMore: false,
-          meta: { mode, provider, seedProviders: [], dbCount: 0, extCount: 0, day: today, source: 'ZEVORA', databaseConnected: true },
+          meta: { mode, provider, seedProviders: [], dbCount: 0, extCount: 0, day: today, source: 'Rivo', databaseConnected: true },
           message: 'You are not following anyone yet.',
         };
       }
@@ -380,7 +380,7 @@ export class FeedEngine {
       return this.getTrendingPage({ limit, userId, dbSeen, cursorSd, servedSoFar, today, provider });
     }
 
-    // ---- ZEVORA candidates: keyset pagination, unseen only ------------------
+    // ---- Rivo candidates: keyset pagination, unseen only ------------------
     let databaseConnected = true;
     const fetchN = Math.min(80, limit * 2 + 10);
     let batch: Array<Record<string, any>> = [];
@@ -568,13 +568,13 @@ export class FeedEngine {
     const providerLabel = provider === 'coverr' ? 'Coverr' : provider === 'pixabay' ? 'Pixabay' : 'Pexels';
     const source =
       dbCount > 0 && extCount > 0
-        ? `ZEVORA & ${providerLabel}`
+        ? `Rivo & ${providerLabel}`
         : dbCount > 0
-          ? 'ZEVORA'
+          ? 'Rivo'
           : extCount > 0
             ? `${providerLabel} Licensed API`
             : databaseConnected
-              ? 'ZEVORA'
+              ? 'Rivo'
               : 'Unavailable';
 
     const servedExtIds = videos.filter((v) => isExternalId(String(v.id))).map((v) => String(v.id));
@@ -685,7 +685,7 @@ export class FeedEngine {
         dbCount: videos.length,
         extCount: 0,
         day: today,
-        source: 'ZEVORA Trending',
+        source: 'Rivo Trending',
         databaseConnected,
       },
     };

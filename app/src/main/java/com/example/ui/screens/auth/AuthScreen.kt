@@ -135,7 +135,7 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // ZEVORA Header Icon
+        // Rivo Header Icon
         Box(
             modifier = Modifier
                 .size(72.dp)
@@ -146,7 +146,7 @@ fun AuthScreen(
         ) {
             Icon(
                 imageVector = Icons.Default.Security,
-                contentDescription = "ZEVORA",
+                contentDescription = "Rivo",
                 tint = ZevoraCyan,
                 modifier = Modifier.size(38.dp)
             )
@@ -155,7 +155,7 @@ fun AuthScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "ZEVORA",
+            text = "Rivo",
             color = TextPrimary,
             fontSize = 30.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -506,7 +506,7 @@ fun AuthScreen(
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "ZEVORA Platform • Production Infrastructure Active",
+            text = "Rivo Platform • Production Infrastructure Active",
             color = TextMuted,
             fontSize = 11.sp
         )
