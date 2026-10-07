@@ -464,6 +464,7 @@ export async function ensureDatabaseSchema(force = false): Promise<{
       `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'Visibility') THEN CREATE TYPE "Visibility" AS ENUM ('PUBLIC', 'FOLLOWERS', 'PRIVATE'); END IF; END $$;`,
       `ALTER TABLE "Profile" ADD COLUMN IF NOT EXISTS "isPrivate" BOOLEAN NOT NULL DEFAULT false;`,
       `ALTER TABLE "Video" ADD COLUMN IF NOT EXISTS "visibility" "Visibility" NOT NULL DEFAULT 'PUBLIC';`,
+      `ALTER TABLE "Video" ADD COLUMN IF NOT EXISTS "streamUid" TEXT;`,
     ];
     for (const statement of ALTER_STATEMENTS) {
       try {
