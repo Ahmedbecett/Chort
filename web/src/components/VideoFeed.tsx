@@ -1,3 +1,4 @@
+===== ZEVORA_BUNDLE_PATH: web/src/components/VideoFeed.tsx =====
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Heart, MessageCircle, Bookmark, Share2, Music, Play, Pause, 
@@ -95,7 +96,7 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
   };
 
   const handleShareClick = () => {
-    navigator.clipboard.writeText(`https://chort.app/v/${currentVideo.id}`);
+    navigator.clipboard.writeText(`${window.location.origin}/v/${currentVideo.id}`);
     alert('تم نسخ رابط الفيديو إلى الحافظة!');
   };
 
@@ -403,3 +404,5 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
     </div>
   );
 };
+
+===== END ZEVORA_BUNDLE_FILE =====
