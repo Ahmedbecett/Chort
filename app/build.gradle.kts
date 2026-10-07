@@ -8,20 +8,11 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
-// --------------------------------------------------------------------
-// Reproducible release keystore committed with the repo. Production/Play
-// builds should override it with their own key via STORE_PASSWORD +
-// my-upload-key.jks (see RELEASE.md).
-// --------------------------------------------------------------------
-val fallbackKeystoreFile = file("${rootDir}/chort-release.jks")
-val fallbackKeystorePassword = "chortrelease"
-val fallbackKeyAlias = "chort"
+// Release signing is supplied only through CI/local environment variables.
+// No private signing material is committed to the repository.
+val releaseKeystorePath = System.getenv("KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
+val releaseStorePassword = System.getenv("STORE_PASSWORD")?.takeIf { it.isNotBlank() }
 
-/**
- * Short hash of the git revision this build is compiled from, stamped into
- * BuildConfig.GIT_COMMIT so an APK can always be traced back to its source
- * commit. Falls back to "unknown" outside a git checkout.
- */
 fun resolveGitCommit(): String = try {
   providers.exec {
     commandLine("git", "rev-parse", "--short", "HEAD")
@@ -95,7 +86,7 @@ android {
       enableV2Signing = true
       enableV3Signing = true
 
-      logger.lifecycle("[Chort] Release signing keystore: ${chosen.first.name}")
+      logger.lifecycle("[ZEVORA] Release signing keystore: ${chosen.first.name}")
     }
     create("debugConfig") {
       // debug.keystore is git-ignored and absent on fresh clones, which used to
@@ -115,9 +106,16 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
+      if (releaseKeystorePath != null && releaseStorePassword != null) signingConfig = signingConfigs.getByName("release")
     }
     debug { signingConfig = signingConfigs.getByName("debugConfig") }
+  }
+  tasks.named("assembleRelease") {
+    doFirst {
+      if (releaseKeystorePath == null || releaseStorePassword == null) {
+        throw GradleException("Release signing is not configured. Set KEYSTORE_PATH and STORE_PASSWORD.")
+      }
+    }
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
