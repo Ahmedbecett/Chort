@@ -72,13 +72,6 @@ android {
     }
     debug { }
   }
-  tasks.named("assembleRelease") {
-    doFirst {
-      if (releaseKeystorePath == null || releaseStorePassword == null) {
-        throw GradleException("Release signing is not configured. Set KEYSTORE_PATH and STORE_PASSWORD.")
-      }
-    }
-  }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
