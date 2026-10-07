@@ -65,17 +65,17 @@ REQUIRED_DEX_STRINGS = [
     ("Failed to decode/stream media", "VideoPlayerView.kt - playback error path"),
     ("Primary API error", "ZevoraRepository.kt - primary cluster fallback"),
     ("https://chort-nine.vercel.app/", "ZevoraApi.kt - production cluster"),
-    ("ZEVORA-Android/", "VideoPlayerView.kt - version-stamped User-Agent"),
+    ("Rivo-Android/", "VideoPlayerView.kt - version-stamped User-Agent"),
     # --- ZEVORA 3.0.0 rebuild identity markers (absent from every 2.x build) ---
     ("ZevoraRepository", "ZEVORA 3.0.0 class rename (was TokPulseRepository)"),
     ("ZevoraApiClient", "ZEVORA 3.0.0 class rename (was TokPulseApiClient)"),
-    ("ZEVORA • v3.1.0", "SplashScreen.kt - 3.1.0 splash stamp"),
+    ("Rivo • v3.2.0", "SplashScreen.kt - 3.2.0 splash stamp"),
     ("live_start_button", "LiveStreamScreen.kt - honest LIVE lobby (replaces simulation)"),
     ("No fake viewers. No scripted chat. Only real broadcasts.", "LiveStreamScreen.kt - LIVE lobby honesty note"),
-    # --- ZEVORA 3.1.0 create/publish/wallet markers ---
-    ("Scan with any camera to open this ZEVORA profile", "ProfileQrScreen.kt - QR card"),
+    # --- Rivo 3.2.0 (ex-ZEVORA) create/publish/wallet markers ---
+    ("Scan with any camera to open this Rivo profile", "ProfileQrScreen.kt - QR card"),
     ("Mixing sound", "UploadScreen.kt - real audio-mux status"),
-    ("Published to ZEVORA!", "UploadScreen.kt - publish success"),
+    ("Published to Rivo!", "UploadScreen.kt - publish success"),
     ("Server lookup", "AdminDashboardScreen.kt - server user lookup"),
     ("video_published", "UploadScreen.kt - coin earn reason"),
     ("api/v1/wallet/earn", "ZevoraApi.kt - server coin ledger"),
@@ -90,7 +90,7 @@ FORBIDDEN_DEX_STRINGS = [
     ("Alex Rivera", "removed mock DM recipient (deleted DirectMessageScreen)"),
     ("Setup mode \u2014 your code is", "removed OTP dev-echo UI (old OtpScreen)"),
     ("TokPulseRepository", "pre-rebuild class name (renamed to ZevoraRepository)"),
-    ("thileli dz-Android/", "pre-rebuild User-Agent (now ZEVORA-Android/)"),
+    ("thileli dz-Android/", "pre-rebuild User-Agent (now Rivo-Android/)"),
 ]
 
 # Markers that must be ABSENT from VideoPlayerViewKt: they belonged to the
