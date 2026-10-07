@@ -731,6 +731,14 @@ export class VideoService {
       }
     }
 
+    if (video.streamUid && CloudflareStreamService.isConfigured()) {
+      try {
+        await CloudflareStreamService.deleteVideo(video.streamUid);
+      } catch (err: any) {
+        console.warn('Cloudflare Stream deletion notice:', err?.message || err);
+      }
+    }
+
     // 2. Cascade delete from PostgreSQL
     await prisma.video.delete({
       where: { id: videoId },
