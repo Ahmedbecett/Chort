@@ -1,6 +1,6 @@
 name: Android Release APK
 
-# ZEVORA 3.0.0 rebuild pipeline.
+# Rivo 3.0.0 rebuild pipeline.
 # Builds, signs and verifies a release APK straight from the pushed commit, then
 # publishes it as a downloadable artifact (and attaches it to the GitHub Release
 # when a v* tag is pushed). This is why a stale APK can no longer be shipped:
@@ -88,23 +88,23 @@ jobs:
         run: |
           set -euo pipefail
           if [ -n "${KS_PRIMARY:-}" ] && [ -n "${SP_PRIMARY:-}" ]; then
-            echo "ZEVORA signing: primary production key (ANDROID_KEYSTORE_BASE64)"
+            echo "Rivo signing: primary production key (ANDROID_KEYSTORE_BASE64)"
             KS="$KS_PRIMARY"; SP="$SP_PRIMARY"
             AL="${AL_PRIMARY:-upload}"; KP="${KP_PRIMARY:-$SP_PRIMARY}"
           elif [ -n "${KS_FALLBACK:-}" ] && [ -n "${SP_FALLBACK:-}" ]; then
-            echo "ZEVORA signing: fallback production key (ANDROID_RELEASE_KEYSTORE_BASE64)"
+            echo "Rivo signing: fallback production key (ANDROID_RELEASE_KEYSTORE_BASE64)"
             KS="$KS_FALLBACK"; SP="$SP_FALLBACK"
             AL="${AL_FALLBACK:-upload}"; KP="${KP_FALLBACK:-$SP_FALLBACK}"
           else
             echo "::error::No production keystore configured. Set ANDROID_KEYSTORE_BASE64 + ANDROID_STORE_PASSWORD in GitHub Secrets (repository Settings > Secrets and variables > Actions). Refusing to ship an APK signed with any other key."
             exit 1
           fi
-          echo "$KS" | base64 --decode > "$RUNNER_TEMP/zevora-production.jks"
+          echo "$KS" | base64 --decode > "$RUNNER_TEMP/rivo-production.jks"
           # Print the public certificate identity (proves WHICH production key signed this build).
-          keytool -list -v -keystore "$RUNNER_TEMP/zevora-production.jks" -storepass "$SP" 2>/dev/null \
+          keytool -list -v -keystore "$RUNNER_TEMP/rivo-production.jks" -storepass "$SP" 2>/dev/null \
             | grep -E "Alias name|Owner:" || true
           {
-            echo "KEYSTORE_PATH=$RUNNER_TEMP/zevora-production.jks"
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/rivo-production.jks"
             echo "STORE_PASSWORD=$SP"
             echo "KEY_ALIAS=$AL"
             echo "KEY_PASSWORD=$KP"
@@ -116,15 +116,15 @@ jobs:
           test "${PIPESTATUS[0]}" -eq 0
           mkdir -p release
           cp app/build/outputs/apk/release/app-release.apk \
-             "release/ZEVORA-v${{ steps.meta.outputs.name }}-release.apk"
+             "release/Rivo-v${{ steps.meta.outputs.name }}-release.apk"
           cp app/build/outputs/apk/release/app-release.apk \
-             "release/ZEVORA-latest.apk"
+             "release/Rivo-latest.apk"
 
       - name: Upload Gradle failure log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: zevora-build-log
+          name: rivo-build-log
           path: ${{ runner.temp }}/gradle-build.log
           if-no-files-found: ignore
 
@@ -150,7 +150,7 @@ jobs:
       - name: Verify APK against the current source code
         run: |
           python3 scripts/verify_apk.py \
-            --apk "release/ZEVORA-v${{ steps.meta.outputs.name }}-release.apk" \
+            --apk "release/Rivo-v${{ steps.meta.outputs.name }}-release.apk" \
             --expect-version-code "${{ steps.meta.outputs.code }}" \
             --expect-version-name "${{ steps.meta.outputs.name }}" \
             --source-commit "${{ steps.meta.outputs.commit }}" \
@@ -159,7 +159,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ZEVORA-v${{ steps.meta.outputs.name }}-release
+          name: Rivo-v${{ steps.meta.outputs.name }}-release
           path: |
             release/*.apk
             release/VERIFICATION_REPORT.md
@@ -171,7 +171,7 @@ jobs:
         with:
           overwrite_files: true
           body: |
-            ZEVORA v${{ steps.meta.outputs.name }} (versionCode ${{ steps.meta.outputs.code }})
+            Rivo Chort v${{ steps.meta.outputs.name }} (versionCode ${{ steps.meta.outputs.code }})
 
             Built from commit `${{ steps.meta.outputs.commit }}` by this workflow and
             verified against the source tree before publishing (`scripts/verify_apk.py`:
