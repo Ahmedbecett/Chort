@@ -205,10 +205,9 @@ class FirebaseService(private val context: Context) {
                 val firebaseUser = authResult.user ?: throw Exception("Empty user returned from Google Sign-In.")
 
                 val uid = firebaseUser.uid
-                val email = firebaseUser.email ?: "user@tokpulse.com"
-                val displayName = firebaseUser.displayName ?: "thileli dz Creator"
+                val email = firebaseUser.email ?: ""
+                val displayName = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@")?.takeIf { it.isNotBlank() } ?: "User_${uid.take(6)}"
                 val photoUrl = firebaseUser.photoUrl?.toString()
-                    ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
                 val username = email.substringBefore("@").lowercase().replace(".", "_")
 
                 val userDocRef = db.collection("users").document(uid)
@@ -303,7 +302,7 @@ class FirebaseService(private val context: Context) {
             val authResult = authInstance.signInWithCredential(credential).await()
             val firebaseUser = authResult.user ?: throw Exception("Empty user from Google sign-in")
             val uid = firebaseUser.uid
-            val email = firebaseUser.email ?: "user@chort.app"
+            val email = firebaseUser.email ?: ""
             val displayName = firebaseUser.displayName ?: "thileli dz Creator"
             val photoUrl = firebaseUser.photoUrl?.toString()
                 ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
@@ -316,7 +315,7 @@ class FirebaseService(private val context: Context) {
                 email = email,
                 passwordHash = "GOOGLE_OAUTH",
                 avatarUrl = photoUrl,
-                bio = "Content Creator on thileli dz",
+                bio = "",
                 followersCount = 0,
                 followingCount = 0,
                 totalLikes = 0,
@@ -421,9 +420,9 @@ class FirebaseService(private val context: Context) {
                 id = uid,
                 username = username,
                 displayName = name,
-                email = "${username}@chort.app",
+                email = "",
                 passwordHash = "PHONE_AUTH",
-                avatarUrl = "https://api.dicebear.com/7.x/avataaars/png?seed=$username",
+                avatarUrl = null,
                 bio = "Content Creator on thileli dz",
                 followersCount = 0,
                 followingCount = 0,
@@ -461,9 +460,9 @@ class FirebaseService(private val context: Context) {
         val authUser = auth?.currentUser
 
         val effectiveEmail = fallbackEmail ?: authUser?.email ?: ""
-        val effectiveDisplayName = fallbackDisplayName ?: authUser?.displayName ?: "thileli dz Creator"
+        val effectiveDisplayName = fallbackDisplayName ?: authUser?.displayName ?: authUser?.email?.substringBefore("@")?.takeIf { it.isNotBlank() } ?: "User_${uid.take(6)}"
         val effectiveUsername = effectiveEmail.substringBefore("@").ifEmpty { "user_${uid.take(6)}" }.lowercase().replace(".", "_")
-        val effectiveAvatar = authUser?.photoUrl?.toString() ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
+        val effectiveAvatar = authUser?.photoUrl?.toString()
         val isAdmin = isAdminEmail(effectiveEmail)
 
         if (db == null) {
