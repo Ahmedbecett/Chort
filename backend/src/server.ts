@@ -9,99 +9,81 @@ import { apiRouter } from './routes/api.router';
 
 const app = express();
 
-// Security Middlewares
+// Security
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin: '*' }));
+app.use(cors({ origin: config.corsOrigin.split(',') }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Global Rate Limiting (Protects from DDoS / brute force)
+// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 2000, // Limit each IP
+  windowMs: 15 * 60 * 1000,
+  max: 2000,
   standardHeaders: true,
   legacyHeaders: false,
 });
 app.use(limiter);
 
-// Minimal request log: method + path + status + latency only.
-// Never logs headers, bodies, tokens, or keys.
+// Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   res.on('finish', () => {
     const ms = Date.now() - start;
-    const path = req.path.length > 160 ? `${req.path.slice(0, 160)}…` : req.path;
-    console.log(`${req.method} ${path} -> ${res.statusCode} (${ms}ms)`);
+    console.log(`${req.method} ${req.path} -> ${res.statusCode} (${ms}ms)`);
   });
   next();
 });
 
-// Optional JWT Authenticator. Tokens carrying a jti are valid only while
-// their Session row exists, which makes logout/revoke GLOBAL (works across
-// serverless instances with plain PostgreSQL, no shared Redis required).
-// DB errors fail open (availability first); a definitively-missing row fails
-// closed. Pre-jti tokens keep working unchanged.
+// JWT authentication middleware
 app.use(async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     try {
       const decoded = jwt.verify(token, config.jwtSecret) as any;
-      let revoked = false;
-      if (decoded?.jti) {
-        try {
-          const row = await prisma.session.findUnique({
-            where: { token: decoded.jti },
-            select: { id: true },
-          });
-          if (row === null) revoked = true;
-        } catch {
-          revoked = false;
-        }
-      }
-      if (revoked) {
-        (req as any).userRevoked = true;
-      } else {
-        (req as any).user = decoded;
-      }
-    } catch {
-      // Ignored for optional token
+      (req as any).user = decoded;
+    } catch (err) {
+      // Token invalid, continue as guest
     }
   }
   next();
 });
 
-// Mount API Routes
+// Routes
 app.use('/api/v1', apiRouter);
 
-// Root Status
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Root
 app.get('/', (req, res) => {
   res.json({
-    app: 'ZEVORA High-Scale Video Platform Backend',
-    version: '3.0.0',
-    documentation: '/api/v1/health',
-    status: 'ONLINE',
+    name: 'TikTok Clone API',
+    version: '1.0.0',
+    docs: '/api/v1/health',
   });
 });
 
-// JSON 404 (must come after all routes)
+// 404
 app.use((req: Request, res: Response) => {
   res.status(404).json({ error: `Route not found: ${req.method} ${req.path}` });
 });
 
-// JSON error boundary (must come last; never leaks internals)
+// Error handler
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
   const message = err instanceof Error ? err.message : 'Internal server error';
-  const status = (err as { statusCode?: number }).statusCode || 500;
+  const status = (err as any).statusCode || 500;
   if (status >= 500) {
-    console.error(`Unhandled ${req.method} ${req.path}:`, message.slice(0, 300));
+    console.error(`[ERROR] ${req.method} ${req.path}:`, message);
   }
   res.status(status).json({ error: status === 500 ? 'Internal server error' : message });
 });
 
 if (!process.env.VERCEL) {
   app.listen(config.port, '0.0.0.0', () => {
-    console.log(`🚀 ZEVORA API Server running on port ${config.port} (Production Mode)`);
+    console.log(`🚀 TikTok Clone API running on port ${config.port}`);
   });
 }
 

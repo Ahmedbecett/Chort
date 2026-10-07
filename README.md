@@ -1,117 +1,146 @@
-# 📱 ZEVORA — Scalable Short-Video Social Platform
+# TikTok Clone - Clean Build
 
-[![Android Build](https://img.shields.io/badge/Platform-Android%2014%2B%20%7C%20Compose-3DDC84.svg?style=for-the-badge&logo=android)](https://android.com)
+A production-ready short-form video platform inspired by TikTok.
 
-> **Current release:** `v3.0.0` · **versionCode:** `30000` · rebuild from the ZEVORA source.
+## Stack
 
-- 📥 **[Latest release (APK)](https://github.com/Ahmedbecett/Chort/releases/latest)** — `ZEVORA-latest.apk`
-- 📦 **[All releases](https://github.com/Ahmedbecett/Chort/releases)**
-- ⚙️ **[Release builds (GitHub Actions)](https://github.com/Ahmedbecett/Chort/actions)**
+- **Frontend (Android):** Kotlin + Jetpack Compose + ExoPlayer
+- **Frontend (Web):** React + TypeScript + Vite + Tailwind
+- **Backend:** Node.js + Express + TypeScript + Prisma + PostgreSQL
+- **Storage:** S3-compatible (MinIO/AWS S3)
+- **Real-time:** WebSocket (future notifications)
+- **Auth:** JWT + Google OAuth + Phone OTP
 
-Every APK is rebuilt from source by CI on each release, signed with the **stable
-production key** (GitHub Secrets — never a per-build key, never committed), and
-verified against the source tree by `scripts/verify_apk.py` before publishing.
-
----
-
-## 🆕 What changed in v3.0.0 (rebuild)
-
-1. **Production cleanup merged in** — OTP dev-echo removed end to end, fabricated
-   profile media/avatars/bios removed, backend rejects unknown users instead of
-   inventing `@chort.app` accounts, web demo seeds removed.
-2. **Mock screens removed** — the simulated DM chat and the fake admin backdoor
-   (`devSwitchToAdmin` + "Enter as Platform Admin" button) are gone; the LIVE
-   screen is now an honest lobby wired to the real signed-in account (no fake
-   viewers, no scripted chat) until the streaming server rolls out.
-3. **ZEVORA identity** — app name, logo wordmark, theme, strings (EN/AR) and docs
-   rebranded; `applicationId` stays `com.aistudio.tokpulse.social` and local
-   data (Room DB, sessions, preferences) is preserved so updates install cleanly.
-4. **Stable signing** — the release workflow fails loudly unless the production
-   keystore from Secrets is present; `verify_apk.py` additionally rejects the
-   debug key and any per-build isolated key, and asserts 3.0.0 DEX markers while
-   asserting pre-rebuild markers are absent.
-5. **Backend fix** — the missing `ai-moderation.service` module is implemented as
-   an honest baseline publish gate (input validation + blocked-term screening),
-   documented for a future ML-provider upgrade; backend `tsc --noEmit` is clean.
-
----
-
-## 🏗️ High-Scale Cloud Architecture Overview
+## Project Structure
 
 ```
-                          ┌───────────────────────────┐
-                          │     ZEVORA Mobile App     │
-                          │   (Kotlin / Compose M3)   │
-                          └─────────────┬─────────────┘
-                                        │
-                         [ Direct Presigned Upload ]
-                                        │
-                                        ▼
-    ┌────────────────────┐     ┌─────────────────────┐     ┌────────────────────┐
-    │  Backend API       │     │   Object Storage    │     │ Global CDN Cache   │
-    │  (Node.js / Express│◄────┤  (S3 / Cloud Storage│────►│ (Cloudflare / R2)  │
-    │   & Prisma ORM)    │     │    / MinIO)         │     └─────────┬──────────┘
-    └─────────┬──────────┘     └──────────┬──────────┘               │
-              │                           │                          │
-        ┌─────┴──────┐                    ▼                  [ Adaptive HLS ]
-        │            │         ┌─────────────────────┐               │
-        ▼            ▼         │ FFmpeg Transcoder   │               ▼
-  ┌───────────┐ ┌───────────┐  │ (1080p, 720p, 480p, │     ┌───────────────────┐
-  │ PostgreSQL│ │  Redis 7  │  │  360p Master HLS)   │     │ ExoPlayer Stream  │
-  │ (Data)    │ │ (Cache)   │  └─────────────────────┘     └───────────────────┘
-  └───────────┘ └───────────┘
+.
+├── app/                    # Android application
+│   ├── src/main/java/com/tiktok/
+│   │   ├── ui/screens/     # TikTok screens (Feed, Upload, Profile, Search)
+│   │   ├── data/           # Models, API client
+│   │   └── viewmodel/      # State management
+│   └── build.gradle.kts
+├── backend/                # Node.js API server
+│   ├── src/
+│   │   ├── routes/         # API endpoints
+│   │   ├── controllers/    # Business logic
+│   │   ├── services/       # Domain services
+│   │   ├── models/         # Prisma schema
+│   │   └── server.ts       # Entry point
+│   ├── docker-compose.yml  # Local dev (PostgreSQL, Redis, MinIO)
+│   └── package.json
+└── web/                    # React web app
+    ├── src/
+    │   ├── screens/        # Main screens
+    │   ├── components/     # Reusable UI
+    │   ├── api/            # API client
+    │   └── App.tsx
+    └── package.json
 ```
 
----
+## Features (TikTok-like)
 
-## ⚙️ Backend Services (`/backend`)
+✅ **Video Feed**
+- Vertical infinite scroll
+- Auto-play on view
+- Swipe to next/previous
 
-Real production services — no demo data paths remain:
+✅ **Interactions**
+- Like/Unlike
+- Comment
+- Share
+- Follow/Unfollow
 
-- **PostgreSQL 16 (Prisma)** — `Users`, `Profiles`, `Videos`, `Comments`,
-  `Likes`, `Follows`, `Views`, `Notifications`, `Reports`, `Sessions`, …
-- **Redis 7 + BullMQ** — feed cache-aside, 60s view dedup window, async
-  transcode queue.
-- **FFmpeg HLS worker** — 1080p/720p/480p/360p ABR + master playlist.
-- **Direct cloud upload** — presigned PUT URLs, real byte-progress in-app.
-- **Auth** — Google/Facebook OAuth verification, Twilio SMS OTP (dev echo
-  permanently disabled), JWT sessions. See [AUTH_SETUP.md](AUTH_SETUP.md).
+✅ **Creator Tools**
+- Upload video
+- Edit caption + hashtags
+- Publish
+
+✅ **Discovery**
+- For You Page (FYP) - Personalized feed
+- Following feed
+- Search by hashtag/creator
+
+✅ **Profile**
+- Creator profile
+- Video library
+- Followers/Following
+- Statistics
+
+✅ **Authentication**
+- Email/Phone signup
+- Google OAuth
+- Session management
+
+## Getting Started
+
+### Backend
 
 ```bash
 cd backend
-docker compose up -d
-# API: http://localhost:4000/api/v1 · MinIO: http://localhost:9001
+npm install
+docker-compose up -d
+npm run dev
+# API: http://localhost:4000
 ```
 
----
-
-## 📱 Android Client (`/app`)
-
-- **Vertical video feed** — TikTok-style pager, ExoPlayer, bottom audio control.
-- **Real upload flow** — camera/gallery → presigned PUT → moderation gate.
-- **Real accounts** — email, Google, Facebook, phone OTP (Firebase + backend);
-  admin role strictly by owner Firebase UID.
-- **Notifications / comments / likes / follows / profiles** — synced with server.
-- **Admin moderation portal** — reports queue, logins, violation actions.
-- **Verifiable builds** — `versionCode`/`versionName` bumped every release,
-  `BuildConfig.GIT_COMMIT` stamped + shown in Profile, APK proven against
-  source by `scripts/verify_apk.py`.
-
-Build locally (production keystore required):
+### Android App
 
 ```bash
-KEYSTORE_PATH=/secure/zevora.jks STORE_PASSWORD=... scripts/build_release.sh
+cd app
+./gradlew assembleDebug
 ```
 
+### Web
+
+```bash
+cd web
+npm install
+npm run dev
+# Web: http://localhost:5173
+```
+
+## API Endpoints
+
+### Auth
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/oauth/google`
+- `POST /api/v1/auth/phone/request`
+- `POST /api/v1/auth/phone/verify`
+
+### Videos
+- `GET /api/v1/feed` - Get FYP feed
+- `GET /api/v1/feed/following` - Following feed
+- `POST /api/v1/videos/upload-url` - Get presigned upload URL
+- `POST /api/v1/videos/complete-upload` - Finalize upload
+- `DELETE /api/v1/videos/:id` - Delete video
+- `GET /api/v1/videos/:id/stream` - Stream video
+
+### Interactions
+- `POST /api/v1/videos/:id/like`
+- `DELETE /api/v1/videos/:id/like`
+- `GET /api/v1/videos/:id/comments`
+- `POST /api/v1/videos/:id/comments`
+- `DELETE /api/v1/videos/:id/comments/:commentId`
+
+### Users
+- `GET /api/v1/users/:id/profile`
+- `PATCH /api/v1/users/:id` - Update profile
+- `POST /api/v1/users/:id/follow`
+- `DELETE /api/v1/users/:id/follow`
+- `GET /api/v1/users/:id/followers`
+- `GET /api/v1/users/:id/following`
+- `GET /api/v1/users/:id/videos`
+
+### Search
+- `GET /api/v1/search?q=query` - Search videos/creators
+- `GET /api/v1/hashtags/:tag` - Videos by hashtag
+
 ---
 
-## 👨‍💻 Developer Information
-
-- **Developer:** Ahmed Becetti (أحمد بن ستي)
-- **Email:** [ahmedbecetti41@gmail.com](mailto:ahmedbecetti41@gmail.com)
-- **GitHub:** [@Ahmedbecett](https://github.com/Ahmedbecett)
-- **Repository:** [https://github.com/Ahmedbecett/Chort](https://github.com/Ahmedbecett/Chort)
-
----
-
-© 2026 ZEVORA Video Social Platform. All rights reserved. Developed by Ahmed Becetti.
+**Developed by:** Ahmed Becetti  
+**Repository:** https://github.com/Ahmedbecett/Chort  
+**License:** MIT
