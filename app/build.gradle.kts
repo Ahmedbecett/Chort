@@ -70,7 +70,7 @@ android {
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       if (releaseKeystorePath != null && releaseStorePassword != null) signingConfig = signingConfigs.getByName("release")
     }
-    debug { signingConfig = signingConfigs.getByName("debugConfig") }
+    debug { }
   }
   tasks.named("assembleRelease") {
     doFirst {
