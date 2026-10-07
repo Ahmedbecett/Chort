@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: web/src/components/LanguagesView.tsx =====
 import React, { useMemo, useState } from 'react';
 import { ArrowRight, Check, Search, Globe2 } from 'lucide-react';
 
@@ -36,4 +35,3 @@ export const LanguagesView: React.FC<{onBack:()=>void}> = ({onBack}) => {
   </div>;
 };
 
-===== END ZEVORA_BUNDLE_FILE =====
