@@ -81,7 +81,7 @@ fun RecoveryScreen(
             mode = "recovery",
             title = "Recover your account",
             subtitle = "Enter the phone number linked to your account. We'll text you a code.",
-            onCodeSent = { sentPhone, sentCooldown, sentExpires, sentDevOtp ->
+            onCodeSent = { sentPhone, sentCooldown, sentExpires ->
                 phone = sentPhone
                 cooldown = sentCooldown
                 expiresIn = sentExpires
