@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: web/src/components/ProfileView.tsx =====
 import React, { useState } from 'react';
 import { 
   Menu, Edit3, UserPlus, Shield, Sparkles, Plus, Share2, 
@@ -386,4 +385,3 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   );
 };
 
-===== END ZEVORA_BUNDLE_FILE =====
