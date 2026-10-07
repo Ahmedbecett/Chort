@@ -833,7 +833,7 @@ export class ApiController {
   <text x="360" y="700" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" text-anchor="middle">${title}</text>
   <text x="360" y="745" fill="#a0aec0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" text-anchor="middle">@${creator}</text>
   <rect x="290" y="1160" width="140" height="38" rx="19" fill="url(#accent)"/>
-  <text x="360" y="1185" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="900" text-anchor="middle" letter-spacing="2">CHORT</text>
+  <text x="360" y="1185" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="900" text-anchor="middle" letter-spacing="2">ZEVORA</text>
 </svg>`;
 
       res.setHeader('Content-Type', 'image/svg+xml');
