@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: README.md =====
 # 📱 ZEVORA — Scalable Short-Video Social Platform
 
 
@@ -11,10 +10,10 @@
 
 > **الإصدار الحالي:** `v2.4.6` | **رقم البناء (versionCode):** `20406` | **تاريخ التحديث:** أكتوبر 2026
 
-- 📥 **[تحميل مباشر للإصدار v2.4.6 (ZEVORA-v2.4.6-release.apk)](https://github.com/Ahmedbecett/ZEVORA/releases/download/v2.4.6/ZEVORA-v2.4.6-release.apk)**
-- ⚡ **[رابط دائم لأحدث إصدار (Always Latest APK): ZEVORA-latest.apk](https://github.com/Ahmedbecett/ZEVORA/releases/latest/download/ZEVORA-latest.apk)**
-- 📦 **[جميع الإصدارات وسجلات البناء (Releases Page)](https://github.com/Ahmedbecett/ZEVORA/releases)**
-- ⚙️ **[متابعة بناء الـ APK عبر GitHub Actions](https://github.com/Ahmedbecett/ZEVORA/actions)**
+- 📥 **[تحميل مباشر للإصدار v2.4.6 (ZEVORA-v2.4.6-release.apk)](https://github.com/Ahmedbecett/Chort/releases/download/v2.4.6/ZEVORA-v2.4.6-release.apk)**
+- ⚡ **[رابط دائم لأحدث إصدار (Always Latest APK): ZEVORA-latest.apk](https://github.com/Ahmedbecett/Chort/releases/latest/download/ZEVORA-latest.apk)**
+- 📦 **[جميع الإصدارات وسجلات البناء (Releases Page)](https://github.com/Ahmedbecett/Chort/releases)**
+- ⚙️ **[متابعة بناء الـ APK عبر GitHub Actions](https://github.com/Ahmedbecett/Chort/actions)**
 
 ### 🛠️ التحديثات المطبقة في الإصدار v2.4.6:
 1. **تشغيل ورفع الفيديو:** دعم كامل لتشغيل الفيديوهات المختارة من الهاتف محلياً (`content://` و `file://`) وإصلاح خطأ `تعذر تشغيل الفيديو - Invalid or empty video URL`.
@@ -115,10 +114,9 @@ Services will be accessible at:
 - **Developer:** Ahmed Becetti (أحمد بن ستي)
 - **Email:** [ahmedbecetti41@gmail.com](mailto:ahmedbecetti41@gmail.com)
 - **GitHub:** [@Ahmedbecett](https://github.com/Ahmedbecett)
-- **Repository:** [https://github.com/Ahmedbecett/ZEVORA](https://github.com/Ahmedbecett/ZEVORA)
+- **Repository:** [https://github.com/Ahmedbecett/Chort](https://github.com/Ahmedbecett/Chort)
 
 ---
 
 © 2026 ZEVORA Video Social Platform.
 
-===== END ZEVORA_BUNDLE_FILE =====
