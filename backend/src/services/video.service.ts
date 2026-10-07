@@ -176,22 +176,12 @@ export class VideoService {
   }) {
     const { videoId, userId, caption, videoUrl, thumbnailUrl, musicTitle, aspectRatio } = params;
 
-    // Ensure user exists before creating video
-    let existingUser = await prisma.user.findUnique({ where: { id: userId } });
+    // A video must belong to a real authenticated PostgreSQL user.
+    const existingUser = await prisma.user.findUnique({ where: { id: userId } });
     if (!existingUser) {
-      existingUser = await prisma.user.create({
-        data: {
-          id: userId,
-          email: `${userId}@chort.app`,
-          username: userId.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase(),
-          passwordHash: 'OAUTH_OR_SESSION',
-          profile: {
-            create: {
-              displayName: userId,
-            },
-          },
-        },
-      });
+      const err = new Error('Authenticated user not found');
+      (err as any).statusCode = 401;
+      throw err;
     }
 
     // Clean and validate real thumbnail
@@ -329,18 +319,11 @@ export class VideoService {
    * Toggle Like on video in PostgreSQL
    */
   static async toggleLike(videoId: string, userId: string) {
-    // Ensure user exists before creating or toggling like
-    let user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          id: userId,
-          email: `${userId.replace(/[^a-zA-Z0-9_]/g, '') || 'user'}@chort.app`,
-          username: (userId.replace(/[^a-zA-Z0-9_]/g, '_') || 'user').toLowerCase(),
-          passwordHash: 'OAUTH_OR_SESSION',
-          profile: { create: { displayName: userId } },
-        },
-      });
+      const err = new Error('Authenticated user not found');
+      (err as any).statusCode = 401;
+      throw err;
     }
 
     const existing = await prisma.like.findUnique({
@@ -408,18 +391,11 @@ export class VideoService {
    * Add comment to video in PostgreSQL
    */
   static async addComment(videoId: string, userId: string, content: string) {
-    // Ensure user exists before creating comment
-    let user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          id: userId,
-          email: `${userId.replace(/[^a-zA-Z0-9_]/g, '') || 'user'}@chort.app`,
-          username: (userId.replace(/[^a-zA-Z0-9_]/g, '_') || 'user').toLowerCase(),
-          passwordHash: 'OAUTH_OR_SESSION',
-          profile: { create: { displayName: userId } },
-        },
-      });
+      const err = new Error('Authenticated user not found');
+      (err as any).statusCode = 401;
+      throw err;
     }
 
     const comment = await prisma.comment.create({
