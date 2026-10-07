@@ -140,7 +140,7 @@ jobs:
           fi
           echo "--- gradle-build.log: $(wc -l < "$LOG") lines, $(wc -c < "$LOG") bytes ---"
           grep -E "^e: |FAILED|Execution failed|Caused by|Could not|FAILURE:|error:" "$LOG" \
-            | head -n 12 | while IFS= read -r line; do
+            | head -n 20 | while IFS= read -r line; do
               line="$(echo "$line" | head -c 900 | sed 's/%/%25/g')"
               echo "::error::$line"
             done

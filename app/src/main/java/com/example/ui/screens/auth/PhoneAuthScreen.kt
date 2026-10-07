@@ -261,7 +261,7 @@ fun PhoneAuthScreen(
                         },
                         onAutoVerified = { _ ->
                             isLoading = false
-                            onCodeSent(fullPhone, 60, 600, null)
+                            onCodeSent(fullPhone, 60, 600)
                         },
                         onError = { fbErr ->
                             scope.launch {
