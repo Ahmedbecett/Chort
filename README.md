@@ -1,16 +1,42 @@
-# 📱 ZEVORA — Scalable Short-Video Social Platform
+# 📱 ZEVORA Play — Scalable Short-Video Social Platform
 
 [![Android Build](https://img.shields.io/badge/Platform-Android%2014%2B%20%7C%20Compose-3DDC84.svg?style=for-the-badge&logo=android)](https://android.com)
+[![Release](https://img.shields.io/badge/Release-v3.1.0-FE2C55.svg?style=for-the-badge)](https://github.com/Ahmedbecett/Chort/releases/tag/v3.1.0)
 
-> **Current release:** `v3.0.0` · **versionCode:** `30000` · rebuild from the ZEVORA source.
+> **Current release:** `v3.1.0` · **versionCode:** `31000` · TikTok-style create flow + new launcher identity.
 
-- 📥 **[Latest release (APK)](https://github.com/Ahmedbecett/Chort/releases/latest)** — `ZEVORA-latest.apk`
+## 📥 Download the app
+
+| | |
+|---|---|
+| **⬇️ Direct APK download** | **[ZEVORA-v3.1.0-release.apk (25.6 MB)](https://github.com/Ahmedbecett/Chort/releases/download/v3.1.0/ZEVORA-v3.1.0-release.apk)** |
+| **Release page** | [v3.1.0 — notes + verification report](https://github.com/Ahmedbecett/Chort/releases/tag/v3.1.0) |
+| **SHA-256** | `36a2eea1e5885e27da5a02f0d4d6e7115229c2e323878df898004f19b5bd10d2` |
+
 - 📦 **[All releases](https://github.com/Ahmedbecett/Chort/releases)**
 - ⚙️ **[Release builds (GitHub Actions)](https://github.com/Ahmedbecett/Chort/actions)**
 
 Every APK is rebuilt from source by CI on each release, signed with the **stable
 production key** (GitHub Secrets — never a per-build key, never committed), and
 verified against the source tree by `scripts/verify_apk.py` before publishing.
+Installs over previous versions with no uninstall.
+
+---
+
+## 🆕 What changed in v3.1.0
+
+1. **TikTok-style create flow** — MediaStore picker (All/Videos/Photos, albums,
+   multi-select, Add-sound), real CameraX camera (right toolbar, 15s/60s/10m,
+   photo + text modes), genuine audio mixing and a multi-video publish queue.
+2. **Profile + drawer** — reference profile layout with live follow system,
+   private-account locks and followers sheets; drawer with Balance, Activity
+   center, Offline videos, QR code, ZEVORA Studio, Promote and Settings.
+3. **Settings-and-privacy overhaul** — full page structure with deep links, OLED
+   black theme, locale support, second-precision screen time, restricted mode.
+4. **Server coin wallet** — authoritative ledger with offline earn queue, Boost
+   spending, admin user lookup + coin adjustment.
+5. **New launcher identity** — renamed to **ZEVORA Play** (زيفورا بلاي) with an
+   original neon Z-mark icon.
 
 ---
 
