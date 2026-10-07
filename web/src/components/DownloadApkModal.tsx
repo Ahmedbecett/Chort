@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, ExternalLink, QrCode, CheckCircle2, ShieldCheck, X, Sparkles, Smartphone } from 'lucide-react';
+import { ExternalLink, ShieldCheck, X, Smartphone } from 'lucide-react';
 
 interface DownloadApkModalProps {
   isOpen: boolean;
