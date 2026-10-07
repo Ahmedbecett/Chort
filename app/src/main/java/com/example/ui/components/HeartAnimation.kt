@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: app/src/main/java/com/example/ui/components/HeartAnimation.kt =====
 package com.example.ui.components
 
 import androidx.compose.animation.core.Animatable
@@ -66,4 +65,3 @@ fun BurstHeart(
     }
 }
 
-===== END ZEVORA_BUNDLE_FILE =====
