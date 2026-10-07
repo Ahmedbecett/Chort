@@ -31,8 +31,8 @@ import androidx.compose.ui.unit.sp
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.ThileliFont
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraRed
 
 /**
  * Original thileli dz brand mark: an eighth-note whose head is a play
@@ -40,7 +40,7 @@ import com.example.ui.theme.TokRed
  * crisp white core). Still by design - the glow does the talking.
  */
 @Composable
-fun ChortLogo(
+fun ZevoraLogo(
     size: Dp = 88.dp,
     showWordmark: Boolean = true,
     tagline: String? = null,
@@ -55,7 +55,7 @@ fun ChortLogo(
                 .size(size)
                 .clip(RoundedCornerShape(size * 0.28f))
                 .background(
-                    Brush.horizontalGradient(listOf(TokCyan, TokRed))
+                    Brush.horizontalGradient(listOf(ZevoraCyan, ZevoraRed))
                 )
                 .padding(size * 0.03f)
                 .clip(RoundedCornerShape(size * 0.25f))
@@ -68,10 +68,10 @@ fun ChortLogo(
                 val ox = (this.size.width - s) / 2f
                 val oy = (this.size.height - s) / 2f
                 // Neon glow: wide soft halos, then chromatic offsets, then core.
-                drawNoteMark(TokRed.copy(alpha = 0.30f), ox + s * 0.035f, oy, s, s * 0.16f)
-                drawNoteMark(TokCyan.copy(alpha = 0.30f), ox - s * 0.035f, oy, s, s * 0.16f)
-                drawNoteMark(TokRed.copy(alpha = 0.65f), ox + s * 0.018f, oy, s, s * 0.115f)
-                drawNoteMark(TokCyan.copy(alpha = 0.65f), ox - s * 0.018f, oy, s, s * 0.115f)
+                drawNoteMark(ZevoraRed.copy(alpha = 0.30f), ox + s * 0.035f, oy, s, s * 0.16f)
+                drawNoteMark(ZevoraCyan.copy(alpha = 0.30f), ox - s * 0.035f, oy, s, s * 0.16f)
+                drawNoteMark(ZevoraRed.copy(alpha = 0.65f), ox + s * 0.018f, oy, s, s * 0.115f)
+                drawNoteMark(ZevoraCyan.copy(alpha = 0.65f), ox - s * 0.018f, oy, s, s * 0.115f)
                 drawNoteMark(Color.White, ox, oy, s, s * 0.10f)
             }
         }
@@ -103,11 +103,11 @@ fun ChortLogo(
 
 /** Compact mark for headers and buttons (tile only, no wordmark). */
 @Composable
-fun ChortMark(
+fun ZevoraMark(
     size: Dp = 40.dp,
     modifier: Modifier = Modifier
 ) {
-    ChortLogo(size = size, showWordmark = false, modifier = modifier)
+    ZevoraLogo(size = size, showWordmark = false, modifier = modifier)
 }
 
 private fun DrawScope.drawNoteMark(color: Color, ox: Float, oy: Float, s: Float, stroke: Float) {
