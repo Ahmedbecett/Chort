@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: FIXES_APPLIED.md =====
 # ZEVORA Platform - Production Fixes & Deployment Verification
 
 This document details the inspections, architectural fixes, security hardening, and production tests applied to the ZEVORA platform.
@@ -33,8 +32,8 @@ This document details the inspections, architectural fixes, security hardening, 
 ---
 
 ## 4. Removal of Obsolete Fallback Cluster
-- Removed `FALLBACK_BASE_URL` (`https://zevora-nine.vercel.app/`), `fallbackApi`, and `getFallbackStreamUrl` across `ZEVORAApi.kt`, `ZevoraRepository.kt`, `ExampleRobolectricTest.kt`, and `verify_apk.py`.
-- Established single public production endpoint: `https://zevora-nine.vercel.app/`.
+- Removed `FALLBACK_BASE_URL` (`https://chort-nine.vercel.app/`), `fallbackApi`, and `getFallbackStreamUrl` across `TokPulseApi.kt`, `TokPulseRepository.kt`, `ExampleRobolectricTest.kt`, and `verify_apk.py`.
+- Established single public production endpoint: `https://chort-nine.vercel.app/`.
 
 ---
 
@@ -59,4 +58,3 @@ This document details the inspections, architectural fixes, security hardening, 
 - Web API no longer imports initial mock user/video/comment data.
 - Session revocation now fails closed when the session store cannot be checked.
 
-===== END ZEVORA_BUNDLE_FILE =====
