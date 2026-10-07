@@ -219,22 +219,13 @@ export class ApiController {
     }
 
     try {
-      const testTicket = await VideoService.createSignedUploadUrl({
-        userId: 'storage_health_checker',
-        filename: 'health_check_test.mp4',
-        contentType: 'video/mp4',
-      });
-
       return res.status(200).json({
-        configured: true,
-        provider: config.s3.endpoint ? 'Neon Object Storage / S3-Compatible' : 'AWS S3',
-        bucket: config.s3.bucket,
-        endpoint: config.s3.endpoint || 'AWS Standard',
+        configured: isStorageConfigured(),
+        provider: config.s3.endpoint ? 'S3-Compatible Object Storage' : 'AWS S3',
+        bucketConfigured: Boolean(config.s3.bucket),
+        endpointConfigured: Boolean(config.s3.endpoint),
         region: config.s3.region,
         forcePathStyle: config.s3.forcePathStyle,
-        testUploadUrlGenerated: true,
-        expiresInSeconds: 900,
-        sampleUploadUrlPreview: testTicket.uploadUrl.substring(0, 80) + '...',
       });
     } catch (err: any) {
       return res.status(500).json({
