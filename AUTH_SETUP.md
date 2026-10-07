@@ -1,11 +1,11 @@
-# Chort Auth Setup (Google / Facebook / Phone SMS)
+# ZEVORA Auth Setup (Google / Facebook / Phone SMS)
 
 Two commits implement auth end to end (`6769650` backend, `5b226c9` app 2.4.0).
 Nothing here contains secrets — only variable **names** and where they go.
 
 ## 1. Vercel backend variables (required for real OAuth + SMS)
 
-Vercel Dashboard → your `Chort` project → **Settings → Environment Variables**
+Vercel Dashboard → your `ZEVORA` project → **Settings → Environment Variables**
 → add each for **Production** (and Preview if you test previews), then **Redeploy**.
 
 | Variable | Where the value comes from |
@@ -46,7 +46,7 @@ In `app/src/main/res/values/strings.xml`, replace:
 
 Facebook app setup: Developers → your app → **Facebook Login → Settings** →
 add Android platform, package `com.aistudio.tokpulse.social`, and your key
-hash (`keytool -exportcert -alias chort -keystore chort-release.jks | openssl
+hash (`keytool -exportcert -alias zevora -keystore zevora-release.jks | openssl
 sha1 -binary | openssl base64` for the committed dev key; use your Play key
 for production).
 
@@ -57,14 +57,15 @@ instead of crashing.
 
 | State | Behaviour |
 |---|---|
-| Nothing configured | Email auth works. Google/Facebook show "not configured". Phone OTP API returns a setup-mode code (used by automated tests only — **the app never displays it**), until Twilio is set. |
+| Nothing configured | Email auth works. Google/Facebook show "not configured". Mobile phone registration uses Firebase Phone Authentication; there is no development OTP fallback. Legacy recovery OTP requires a real Twilio configuration. |
 | `GOOGLE_CLIENT_ID` set | Real Google sign-in (account picker → backend verifies with Google). |
 | `FACEBOOK_*` + app strings set | Real Facebook Login (backend verifies via `debug_token`). |
-| `TWILIO_*` set | Real SMS delivery worldwide; setup-mode echo disappears automatically. |
+| `TWILIO_*` set | Real SMS delivery for legacy recovery endpoints. Mobile phone registration uses Firebase Phone Authentication directly. |
 
 ## 4. Verify after deploy
 
 - `GET /api/v1/health` shows `googleOAuthConfigured`, `facebookOAuthConfigured`,
-  `smsConfigured`, `otpDevEcho` flags.
+  `smsConfigured`, and `otpDevEcho` (always false) flags.
 - Admin app → **Logins** tab shows real sign-in records; **Live Reports**
   tab drives the real moderation queue.
+

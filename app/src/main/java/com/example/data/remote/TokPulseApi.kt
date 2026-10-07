@@ -50,6 +50,9 @@ data class LoginRequest(
 )
 
 @JsonClass(generateAdapter = true)
+data class FirebaseTokenRequest(val idToken: String)
+
+@JsonClass(generateAdapter = true)
 data class AuthResponse(
     val message: String? = null,
     val token: String? = null,
@@ -99,7 +102,7 @@ data class ApiVideo(
     val sharesCount: Int = 0,
     val viewsCount: Int = 0,
     val aspectRatio: String? = "9:16",
-    val source: String? = "chort",
+    val source: String? = null,
     val provider: String? = null,
     val attributionUrl: String? = null,
     val photographerUrl: String? = null,
@@ -109,7 +112,7 @@ data class ApiVideo(
 @JsonClass(generateAdapter = true)
 data class ExternalVideosResponse(
     val configured: Boolean = false,
-    val provider: String? = "pexels",
+    val provider: String? = null,
     val page: Int = 1,
     val perPage: Int = 15,
     val total: Int = 0,
@@ -270,16 +273,6 @@ data class OAuthGoogleRequest(val idToken: String)
 data class OAuthFacebookRequest(val accessToken: String)
 
 @JsonClass(generateAdapter = true)
-data class PhoneRequestBody(val phone: String)
-
-@JsonClass(generateAdapter = true)
-data class PhoneVerifyRequest(
-    val phone: String,
-    val code: String,
-    val name: String? = null
-)
-
-@JsonClass(generateAdapter = true)
 data class RecoverRequestBody(val phone: String)
 
 @JsonClass(generateAdapter = true)
@@ -296,8 +289,6 @@ data class OtpResponse(
     val expiresInSeconds: Int = 600,
     val resendCooldownSeconds: Int = 60,
     val accountFound: Boolean? = null,
-    // Setup-mode only: present while no SMS provider is configured server-side.
-    val devOtp: String? = null,
     val error: String? = null
 )
 
@@ -498,6 +489,9 @@ interface TokPulseApiService {
     @POST("api/v1/auth/login")
     suspend fun login(@Body req: LoginRequest): Response<AuthResponse>
 
+    @POST("api/v1/auth/firebase")
+    suspend fun firebaseExchange(@Body req: FirebaseTokenRequest): Response<AuthResponse>
+
     @POST("api/v1/auth/logout")
     suspend fun logout(): Response<GenericActionResponse>
 
@@ -512,12 +506,6 @@ interface TokPulseApiService {
 
     @POST("api/v1/auth/oauth/facebook")
     suspend fun oauthFacebook(@Body req: OAuthFacebookRequest): Response<AuthResponse>
-
-    @POST("api/v1/auth/phone/request")
-    suspend fun phoneRequest(@Body req: PhoneRequestBody): Response<OtpResponse>
-
-    @POST("api/v1/auth/phone/verify")
-    suspend fun phoneVerify(@Body req: PhoneVerifyRequest): Response<AuthResponse>
 
     @POST("api/v1/auth/recover/request")
     suspend fun recoverRequest(@Body req: RecoverRequestBody): Response<OtpResponse>

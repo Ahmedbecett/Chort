@@ -53,11 +53,11 @@ import com.example.data.local.entities.CommentEntity
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,7 +75,7 @@ fun CommentBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = TokDarkSurface,
+        containerColor = ZevoraDarkSurface,
         dragHandle = null,
         modifier = Modifier.fillMaxHeight(0.75f)
     ) {
@@ -111,7 +111,7 @@ fun CommentBottomSheet(
                 }
             }
 
-            HorizontalDivider(color = TokBorder, thickness = 0.5.dp)
+            HorizontalDivider(color = ZevoraBorder, thickness = 0.5.dp)
 
             // Comments List
             if (comments.isEmpty()) {
@@ -148,7 +148,7 @@ fun CommentBottomSheet(
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(TokDarkElevated)
+                    .background(ZevoraDarkElevated)
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -168,7 +168,7 @@ fun CommentBottomSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(TokDarkSurface)
+                    .background(ZevoraDarkSurface)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -179,10 +179,10 @@ fun CommentBottomSheet(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextPrimary,
                         unfocusedTextColor = TextPrimary,
-                        focusedBorderColor = TokCyan,
-                        unfocusedBorderColor = TokBorder,
-                        focusedContainerColor = TokDarkElevated,
-                        unfocusedContainerColor = TokDarkElevated
+                        focusedBorderColor = ZevoraCyan,
+                        unfocusedBorderColor = ZevoraBorder,
+                        focusedContainerColor = ZevoraDarkElevated,
+                        unfocusedContainerColor = ZevoraDarkElevated
                     ),
                     shape = RoundedCornerShape(24.dp),
                     modifier = Modifier
@@ -202,7 +202,7 @@ fun CommentBottomSheet(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(if (commentText.isNotBlank()) TokRed else TokBorder)
+                        .background(if (commentText.isNotBlank()) ZevoraRed else ZevoraBorder)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Send,
@@ -285,7 +285,7 @@ private fun CommentItem(
             Icon(
                 imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                 contentDescription = "Like comment",
-                tint = if (isLiked) TokRed else TextMuted,
+                tint = if (isLiked) ZevoraRed else TextMuted,
                 modifier = Modifier.size(16.dp)
             )
             if (comment.likesCount > 0 || isLiked) {
@@ -298,3 +298,4 @@ private fun CommentItem(
         }
     }
 }
+

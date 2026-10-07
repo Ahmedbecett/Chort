@@ -163,7 +163,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </button>
           <button
             onClick={() => {
-              navigator.clipboard.writeText(`https://chort.app/@${user.username}`);
+              navigator.clipboard.writeText(`${window.location.origin}/@${user.username}`);
               alert('تم نسخ رابط ملفك الشخصي!');
             }}
             className="py-2 px-3 rounded-xl bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 text-xs font-semibold text-white transition-colors flex items-center gap-1"
@@ -384,3 +384,4 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     </div>
   );
 };
+

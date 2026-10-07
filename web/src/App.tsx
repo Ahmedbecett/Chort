@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from './services/api';
 import { UserProfile, VideoItem } from './types';
-import { INITIAL_USER, INITIAL_VIDEOS } from './data/mockData';
 import { LoginScreen } from './components/LoginScreen';
 import { BottomNav } from './components/BottomNav';
 import { VideoFeed } from './components/VideoFeed';
@@ -19,13 +18,18 @@ import { OfflineVideosModal } from './components/modals/OfflineVideosModal';
 import { QrCodeModal } from './components/modals/QrCodeModal';
 import { StudioAnalyticsModal } from './components/modals/StudioAnalyticsModal';
 import { PromoteModal } from './components/modals/PromoteModal';
+import { LanguagesView } from './components/LanguagesView';
+import { OfficialProfileView } from './components/OfficialProfileView';
+import { AIToolsView } from './components/AIToolsView';
+import { AdminPanel } from './components/AdminPanel';
+import { LiveStudio } from './components/LiveStudio';
 
 import { Download, Users, Bell, Play, X, Heart, MessageCircle, Share2, Music } from 'lucide-react';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<UserProfile>(() => api.getUser());
-  const [videos, setVideos] = useState<VideoItem[]>(INITIAL_VIDEOS);
+  const [videos, setVideos] = useState<VideoItem[]>([]);
   const [currentTab, setCurrentTab] = useState<'home' | 'friends' | 'inbox' | 'profile'>('home');
 
   // Modals & Sheets
@@ -44,8 +48,15 @@ export default function App() {
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isPromoteOpen, setIsPromoteOpen] = useState(false);
+  const [specialView, setSpecialView] = useState<'languages'|'official'|'ai'|'admin'|'live'|null>(null);
 
   // Load videos from API
+  useEffect(() => {
+    const open = () => setSpecialView('languages');
+    window.addEventListener('zevora:open-languages', open);
+    return () => window.removeEventListener('zevora:open-languages', open);
+  }, []);
+
   useEffect(() => {
     api.getVideos().then((vids) => {
       setVideos(vids);
@@ -94,6 +105,12 @@ export default function App() {
     );
   }
 
+  if (specialView === 'languages') return <LanguagesView onBack={() => setSpecialView(null)} />;
+  if (specialView === 'official') return <OfficialProfileView onBack={() => setSpecialView(null)} onSelectVideo={(video) => setSelectedVideoModal(video)} />;
+  if (specialView === 'ai') return <AIToolsView onBack={() => setSpecialView(null)} />;
+  if (specialView === 'admin') return <AdminPanel onBack={() => setSpecialView(null)} />;
+  if (specialView === 'live') return <LiveStudio onBack={() => setSpecialView(null)} />;
+
   return (
     <div className="relative min-h-screen bg-black text-white font-sans select-none overflow-x-hidden">
       {/* Floating Global APK Download Badge (Always accessible) */}
@@ -107,6 +124,11 @@ export default function App() {
         </button>
       </div>
 
+      <div className="fixed top-3 right-3 z-50 flex gap-2">
+        <button onClick={() => setSpecialView('official')} className="px-3 py-2 rounded-full bg-black/70 border border-white/10 text-xs font-bold backdrop-blur">ZEVORA الرسمي</button>
+        <button onClick={() => setSpecialView('ai')} className="px-3 py-2 rounded-full bg-fuchsia-700/80 border border-fuchsia-300/20 text-xs font-bold backdrop-blur">AI</button>
+      </div>
+
       {/* Main Tab Content */}
       <main className="w-full h-full">
         {/* 1. Home Tab: Video Feed */}
@@ -115,7 +137,7 @@ export default function App() {
             videos={videos}
             onOpenDownloadModal={() => setIsDownloadModalOpen(true)}
             onOpenProfile={() => setCurrentTab('profile')}
-            onOpenLive={() => setIsCameraOpen(true)}
+            onOpenLive={() => setSpecialView('live')}
           />
         )}
 
@@ -166,32 +188,8 @@ export default function App() {
         {/* 3. Inbox Tab */}
         {currentTab === 'inbox' && (
           <div className="min-h-screen bg-black p-4 pb-24 text-right" dir="rtl">
-            <div className="sticky top-0 bg-black/95 backdrop-blur-md py-4 border-b border-zinc-800 flex items-center justify-between z-10">
-              <h2 className="text-lg font-black text-white">صندوق الوارد (99+)</h2>
-              <Bell className="w-5 h-5 text-zinc-400" />
-            </div>
-
-            <div className="py-4 space-y-3 max-w-md mx-auto">
-              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-pink-950/40 to-zinc-900 border border-pink-800/40 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-pink-600 flex items-center justify-center text-white shrink-0">
-                  <Heart className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white">إشعارات التفاعل الجديدة</div>
-                  <div className="text-[11px] text-zinc-400">أعجب 142 مستخدماً بفيديو جبال جرجرة الأخير</div>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-600 flex items-center justify-center text-white shrink-0">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white">متابعون جدد اليوم</div>
-                  <div className="text-[11px] text-zinc-400">بدأ @mehdi_oran31 و 28 آخرين بمتابعتك</div>
-                </div>
-              </div>
-            </div>
+            <div className="sticky top-0 bg-black/95 backdrop-blur-md py-4 border-b border-zinc-800 flex items-center justify-between z-10"><h2 className="text-lg font-black text-white">صندوق الوارد</h2><Bell className="w-5 h-5 text-zinc-400"/></div>
+            <div className="py-20 text-center max-w-md mx-auto"><Bell className="w-10 h-10 mx-auto text-zinc-700"/><p className="mt-4 text-sm font-bold text-zinc-300">لا توجد إشعارات معروضة</p><p className="text-xs text-zinc-500 mt-2">سيتم عرض الإشعارات الحقيقية بعد اتصال الحساب بواجهة الإشعارات الخلفية.</p></div>
           </div>
         )}
 
@@ -227,6 +225,10 @@ export default function App() {
         onOpenStudio={() => setIsStudioOpen(true)}
         onOpenPromote={() => setIsPromoteOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenAI={() => setSpecialView('ai')}
+        onOpenOfficial={() => setSpecialView('official')}
+        onOpenLanguages={() => setSpecialView('languages')}
+        onOpenAdmin={() => setSpecialView('admin')}
         onOpenDownloadModal={() => setIsDownloadModalOpen(true)}
         onLogout={handleLogout}
         user={user}
@@ -339,3 +341,4 @@ export default function App() {
     </div>
   );
 }
+

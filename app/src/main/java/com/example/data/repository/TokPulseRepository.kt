@@ -39,8 +39,6 @@ import com.example.data.remote.OAuthGoogleRequest
 import com.example.data.remote.OtpResponse
 import com.example.data.remote.ChangePasswordRequest
 import com.example.data.remote.UpdateUserRequest
-import com.example.data.remote.PhoneRequestBody
-import com.example.data.remote.PhoneVerifyRequest
 import com.example.data.remote.RecoverConfirmRequest
 import com.example.data.remote.RecoverRequestBody
 import com.example.data.remote.RegisterRequest
@@ -134,7 +132,7 @@ class TokPulseRepository(private val context: Context) {
             // a local user, and never auto-grant admin: identity comes only
             // from a real login whose session restores above.
 
-            // Sync video feed from Vercel API and Database
+            // Sync the canonical server feed; Room is cache only
             try {
                 val cached = dao.getAllActiveVideosSync()
                 if (cached.isNotEmpty()) {
@@ -162,7 +160,7 @@ class TokPulseRepository(private val context: Context) {
             Log.w(TAG, "cleanup notice: ${e.message}")
         }
 
-        // 1. Fetch real feed from production Vercel API
+        // 1. Fetch the canonical feed from the configured API
         var syncedCount = 0
         feedCursor = null
         feedHasMore = true
@@ -193,12 +191,12 @@ class TokPulseRepository(private val context: Context) {
                 }
                 feedCursor = feedBody.nextCursor
                 feedHasMore = feedBody.hasMore
-                Log.i(TAG, "Successfully synced ${entities.size} valid videos from Vercel API")
+                Log.i(TAG, "Successfully synced ${entities.size} valid videos from canonical API")
             } else {
                 Log.w(TAG, "Feed response empty or unsuccessful")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Vercel API feed sync exception: ${e.message}", e)
+            Log.e(TAG, "Canonical API feed sync exception: ${e.message}", e)
         }
 
         // 2. Also sync with Firebase Firestore if available
@@ -209,10 +207,10 @@ class TokPulseRepository(private val context: Context) {
                     dao.insertVideos(cloudVideos)
                 }
 
+                // Admin operations are authorized by the backend/Firebase security layer.
+                // A local email or locally cached role is never sufficient to grant admin access.
                 val user = _currentUser.value
-                val isUserAdmin = user?.role == "admin" ||
-                    user?.email?.equals("ahmedbecetti35@gmail.com", true) == true ||
-                    user?.email?.equals("ahmedbecetti41@gmail.com", true) == true
+                val isUserAdmin = user?.role == "admin"
 
                 if (isUserAdmin) {
                     val cloudUsers = firebaseService.fetchUsersAdminFirestore()
@@ -320,22 +318,22 @@ class TokPulseRepository(private val context: Context) {
             id = apiVid.id,
             creatorId = apiVid.creatorId,
             creatorUsername = apiVid.creatorUsername,
-            creatorAvatar = apiVid.creatorAvatar ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+            creatorAvatar = apiVid.creatorAvatar ?: "",
             videoUrl = url,
             thumbnailUrl = thumb,
             caption = apiVid.caption,
-            musicTitle = apiVid.musicTitle ?: "Original Audio",
-            tags = if (isExt) "#licensed,#stock" else "#thileli dz,#fyp,#viral",
+            musicTitle = apiVid.musicTitle ?: "",
+            tags = if (isExt) "#licensed,#stock" else "",
             likesCount = apiVid.likesCount,
             commentsCount = apiVid.commentsCount,
             sharesCount = apiVid.sharesCount,
             viewsCount = apiVid.viewsCount,
-            source = apiVid.source ?: if (isExt) "licensed" else "thileli dz",
-            provider = apiVid.provider ?: if (isExt) "licensed" else "thileli dz",
+            source = apiVid.source ?: if (isExt) "licensed" else "",
+            provider = apiVid.provider ?: if (isExt) "licensed" else "",
             isExternal = isExt,
             attributionUrl = apiVid.attributionUrl ?: "",
             photographerUrl = apiVid.photographerUrl ?: "",
-            createdAt = if (apiVid.createdAt > 0) apiVid.createdAt else System.currentTimeMillis()
+            createdAt = apiVid.createdAt
         )
     }
 
@@ -402,7 +400,7 @@ class TokPulseRepository(private val context: Context) {
                         displayName = apiUser.displayName ?: displayName.ifBlank { apiUser.username },
                         email = apiUser.email,
                         passwordHash = "JWT_SECURED",
-                        avatarUrl = apiUser.avatarUrl ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+                        avatarUrl = apiUser.avatarUrl ?: "",
                         bio = apiUser.bio ?: "",
                         followersCount = apiUser.followersCount ?: 0,
                         followingCount = apiUser.followingCount ?: 0,
@@ -442,7 +440,31 @@ class TokPulseRepository(private val context: Context) {
         fbResult
     }
 
+    private suspend fun exchangeFirebaseSession(): AuthResponse? {
+        val idToken = firebaseService.getCurrentIdToken(false) ?: return null
+        return try {
+            val response = TokPulseApiClient.api.firebaseExchange(FirebaseTokenRequest(idToken))
+            val body = response.body()
+            if (response.isSuccessful && body?.user != null) {
+                body.token?.takeIf { it.isNotBlank() }?.let { TokPulseApiClient.setAuthToken(it); sharedPrefs.edit().putString("auth_token",it).putString("user_id",body.user.id).apply() }
+                body
+            } else null
+        } catch(e:Exception) { Log.w(TAG,"Firebase backend exchange notice: ${e.message}"); null }
+    }
+
     suspend fun signInWithEmail(identifier: String, password: String): Result<UserEntity> = withContext(Dispatchers.IO) {
+        try {
+            val firebaseResult = firebaseService.signInWithEmail(identifier, password)
+            if (firebaseResult.isSuccess) {
+                val body = exchangeFirebaseSession()
+                body?.user?.let { apiUser ->
+                    val userEntity = UserEntity(id=apiUser.id,username=apiUser.username,displayName=apiUser.displayName?:apiUser.username,email=apiUser.email,passwordHash="JWT_SECURED",avatarUrl=apiUser.avatarUrl?:"",bio=apiUser.bio?:"",followersCount=apiUser.followersCount?:0,followingCount=apiUser.followingCount?:0,totalLikes=0,role=(apiUser.role?:"user").lowercase(),status="active",createdAt=System.currentTimeMillis())
+                    dao.insertUser(userEntity); _currentUserId.value=userEntity.id; _currentUser.value=userEntity; syncWithCloud()
+                    return@withContext Result.success(userEntity)
+                }
+            }
+        } catch(e:Exception) { Log.w(TAG,"Firebase-first email sign-in notice: ${e.message}") }
+
         try {
             val response = TokPulseApiClient.api.login(
                 LoginRequest(
@@ -470,7 +492,7 @@ class TokPulseRepository(private val context: Context) {
                         displayName = apiUser.displayName ?: apiUser.username,
                         email = apiUser.email,
                         passwordHash = "JWT_SECURED",
-                        avatarUrl = apiUser.avatarUrl ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+                        avatarUrl = apiUser.avatarUrl ?: "",
                         bio = apiUser.bio ?: "",
                         followersCount = apiUser.followersCount ?: 0,
                         followingCount = apiUser.followingCount ?: 0,
@@ -513,13 +535,10 @@ class TokPulseRepository(private val context: Context) {
     suspend fun signInWithGoogle(): Result<UserEntity> = withContext(Dispatchers.IO) {
         val result = firebaseService.signInWithGoogle()
         if (result.isSuccess) {
-            val user = result.getOrThrow()
-            dao.insertUser(user)
-            _currentUserId.value = user.id
-            _currentUser.value = user
-            syncWithCloud()
-        }
-        result
+            val apiUser = exchangeFirebaseSession()?.user
+            val user = apiUser?.let { u -> UserEntity(id=u.id,username=u.username,displayName=u.displayName?:u.username,email=u.email,passwordHash="JWT_SECURED",avatarUrl=u.avatarUrl?:"",bio=u.bio?:"",followersCount=u.followersCount?:0,followingCount=u.followingCount?:0,totalLikes=0,role=(u.role?:"user").lowercase(),status="active",createdAt=System.currentTimeMillis()) } ?: result.getOrThrow()
+            dao.insertUser(user); _currentUserId.value=user.id; _currentUser.value=user; syncWithCloud(); Result.success(user)
+        } else result
     }
 
     // --- BACKEND AUTH: Google / Facebook / Phone / Recovery ---
@@ -553,7 +572,7 @@ class TokPulseRepository(private val context: Context) {
             email = apiUser.email,
             passwordHash = "JWT_SECURED",
             avatarUrl = apiUser.avatarUrl
-                ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${apiUser.username}",
+                ?: "",
             bio = apiUser.bio ?: "",
             followersCount = apiUser.followersCount ?: 0,
             followingCount = apiUser.followingCount ?: 0,
@@ -634,59 +653,6 @@ class TokPulseRepository(private val context: Context) {
             }
         }
 
-    suspend fun requestPhoneOtp(phone: String): Result<OtpResponse> =
-        withContext(Dispatchers.IO) {
-            try {
-                val response = TokPulseApiClient.api.phoneRequest(PhoneRequestBody(phone.trim()))
-                val body = response.body()
-                if (response.isSuccessful && body != null && body.sent) {
-                    Result.success(body)
-                } else {
-                    Result.failure(
-                        Exception(
-                            body?.error
-                                ?: backendError(
-                                    response.errorBody()?.string(),
-                                    response.code(),
-                                    "Could not send the code"
-                                )
-                        )
-                    )
-                }
-            } catch (e: Exception) {
-                Result.failure(Exception(e.message ?: "Could not send the code."))
-            }
-        }
-
-    suspend fun verifyPhoneOtp(phone: String, code: String, name: String? = null): Result<UserEntity> =
-        withContext(Dispatchers.IO) {
-            try {
-                val response = TokPulseApiClient.api.phoneVerify(
-                    PhoneVerifyRequest(phone.trim(), code.trim(), name?.trim()?.ifBlank { null })
-                )
-                val body = response.body()
-                if ((response.isSuccessful || response.code() == 201) && body?.user != null) {
-                    val user = persistBackendSession(body, name ?: "") ?: return@withContext Result.failure(
-                        Exception("Phone verification returned an empty profile.")
-                    )
-                    syncWithCloud()
-                    Result.success(user)
-                } else {
-                    Result.failure(
-                        Exception(
-                            backendError(
-                                response.errorBody()?.string(),
-                                response.code(),
-                                "Verification failed"
-                            )
-                        )
-                    )
-                }
-            } catch (e: Exception) {
-                Result.failure(Exception(e.message ?: "Verification failed."))
-            }
-        }
-
     fun sendFirebasePhoneOtp(
         activity: Activity,
         phone: String,
@@ -738,28 +704,11 @@ class TokPulseRepository(private val context: Context) {
             dao.insertUser(user)
             _currentUserId.value = user.id
             _currentUser.value = user
-            try {
-                TokPulseApiClient.api.phoneVerify(
-                    PhoneVerifyRequest(phone.trim(), code.trim(), name?.trim()?.ifBlank { null })
-                )
-            } catch (_: Exception) {}
             syncWithCloud()
             return@withContext Result.success(user)
         }
-        // Fallback to backend verify
-        try {
-            val response = TokPulseApiClient.api.phoneVerify(
-                PhoneVerifyRequest(phone.trim(), code.trim(), name?.trim()?.ifBlank { null })
-            )
-            val body = response.body()
-            if ((response.isSuccessful || response.code() == 201) && body?.user != null) {
-                val user = persistBackendSession(body, name ?: "") ?: return@withContext Result.failure(
-                    Exception("Phone verification returned an empty profile.")
-                )
-                syncWithCloud()
-                return@withContext Result.success(user)
-            }
-        } catch (_: Exception) {}
+        // Registration phone verification is Firebase-only. Never fall back
+        // to a second OTP backend or accept a backend-generated code.
         fbResult
     }
 
@@ -938,7 +887,7 @@ class TokPulseRepository(private val context: Context) {
                                     email = "",
                                     passwordHash = "REMOTE",
                                     avatarUrl = remote.avatarUrl
-                                        ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${remote.username}",
+                                        ?: "",
                                     bio = remote.bio ?: "",
                                     followersCount = remote.followersCount,
                                     followingCount = remote.followingCount,
@@ -958,7 +907,7 @@ class TokPulseRepository(private val context: Context) {
                     actorId = n.actorId,
                     actorUsername = actorName ?: "user_${n.actorId.take(6)}",
                     actorAvatar = actorAvatar
-                        ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${n.actorId}",
+                        ?: "",
                     type = n.type,
                     message = n.message,
                     videoId = n.referenceId,
@@ -1047,8 +996,7 @@ class TokPulseRepository(private val context: Context) {
         withContext(Dispatchers.IO) {
             try {
                 val response = TokPulseApiClient.api.adminReports(status, page, 20)
-                if (response.isSuccessful && response.body() != null) {
-                    Result.success(response.body()!!)
+                if (response.isSuccessful && response.body() != null) {                    Result.success(response.body()!!)
                 } else {
                     Result.failure(
                         Exception(
@@ -1097,28 +1045,6 @@ class TokPulseRepository(private val context: Context) {
             }
         }
 
-    suspend fun devSwitchToAdmin(): UserEntity = withContext(Dispatchers.IO) {
-        val adminUser = UserEntity(
-            id = "user_admin",
-            username = "admin",
-            displayName = "Admin Ahmed",
-            email = "ahmedbecetti35@gmail.com",
-            passwordHash = "PROTECTED",
-            avatarUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300",
-            bio = "thileli dz Administrator & Moderation Lead.",
-            followersCount = 0,
-            followingCount = 0,
-            totalLikes = 0,
-            role = "admin",
-            status = "active",
-            createdAt = System.currentTimeMillis()
-        )
-        dao.insertUser(adminUser)
-        _currentUserId.value = adminUser.id
-        _currentUser.value = adminUser
-        adminUser
-    }
-
     // --- VIDEO FEED & DETAILS ---
 
     fun getActiveVideos(): Flow<List<VideoEntity>> = dao.getAllActiveVideos()
@@ -1133,7 +1059,7 @@ class TokPulseRepository(private val context: Context) {
         val user = _currentUser.value ?: return@withContext false
         val isLiked = dao.countLike(videoId, user.id) > 0
 
-        // Background call to Vercel API
+        // Background call to canonical API
         try {
             TokPulseApiClient.api.toggleLike(videoId, LikeRequest(user.id))
         } catch (e: Exception) {
@@ -1217,7 +1143,7 @@ class TokPulseRepository(private val context: Context) {
         dao.insertComment(comment)
         dao.updateCommentsCount(videoId, 1)
 
-        // Background call to Vercel API
+        // Background call to canonical API
         try {
             TokPulseApiClient.api.addComment(videoId, AddCommentRequest(user.id, text))
         } catch (e: Exception) {
@@ -1305,7 +1231,7 @@ class TokPulseRepository(private val context: Context) {
                     actorUsername = user.username,
                     actorAvatar = user.avatarUrl,
                     type = "follow",
-                    message = "started following you on thileli dz!"
+                    message = "started following you on ZEVORA!"
                 )
             )
             true
@@ -1327,10 +1253,10 @@ class TokPulseRepository(private val context: Context) {
         videoUri: Uri? = null,
         onProgress: ((Float) -> Unit)? = null
     ): Result<VideoEntity> = withContext(Dispatchers.IO) {
-        val user = _currentUser.value
-        val creatorId = user?.id ?: "creator_guest"
-        val creatorName = user?.username ?: "creator"
-        val creatorAvatar = user?.avatarUrl ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
+        val user = _currentUser.value ?: return@withContext Result.failure(IllegalStateException("Authentication is required to upload a video."))
+        val creatorId = user.id
+        val creatorName = user.username
+        val creatorAvatar = user.avatarUrl
 
         try {
             // 1. Upload ticket: the server mints the videoId + storage keys.
@@ -1577,13 +1503,13 @@ class TokPulseRepository(private val context: Context) {
                             videoUrl = apiVid.streamUrl ?: "",
                             thumbnailUrl = apiVid.thumbnailUrl ?: "",
                             caption = apiVid.caption,
-                            musicTitle = apiVid.musicTitle ?: "Original Audio",
-                            tags = "#tokpulse,#fyp",
+                            musicTitle = apiVid.musicTitle ?: "",
+                            tags = "",
                             likesCount = apiVid.likesCount,
                             commentsCount = apiVid.commentsCount,
                             sharesCount = apiVid.sharesCount,
                             viewsCount = apiVid.viewsCount,
-                            createdAt = if (apiVid.createdAt > 0) apiVid.createdAt else System.currentTimeMillis()
+                            createdAt = apiVid.createdAt
                         )
                     }
                     dao.insertVideos(entities)

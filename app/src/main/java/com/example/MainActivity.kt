@@ -65,7 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.remote.FacebookAuth
-import com.example.ui.components.ChortMark
+import com.example.ui.components.ZevoraMark
 import com.example.ui.screens.admin.AdminDashboardScreen
 import com.example.ui.screens.auth.AuthScreen
 import com.example.ui.screens.auth.OtpMode
@@ -87,16 +87,16 @@ import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.sound.SoundDetailScreen
 import com.example.ui.screens.tracking.ExternalTrackingCenterScreen
 import com.example.ui.screens.upload.UploadScreen
-import com.example.ui.theme.TokPulseTheme
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraTheme
+import com.example.ui.theme.ZevoraRed
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            TokPulseTheme {
-                TokPulseApp()
+            ZevoraTheme {
+                ZevoraApp()
             }
         }
     }
@@ -112,9 +112,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TokPulseApp() {
+fun ZevoraApp() {
     val context = LocalContext.current
-    val repository = TokPulseApplication.instance.repository
+    val repository = ZevoraApplication.instance.repository
     val currentUser by repository.currentUser.collectAsState()
     val unreadNotifications by repository.getUnreadCount(currentUser?.id ?: "user_me").collectAsState(initial = 0)
 
@@ -181,7 +181,7 @@ fun TokPulseApp() {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(TokRed.copy(alpha = 0.95f))
+                        .background(ZevoraRed.copy(alpha = 0.95f))
                         .statusBarsPadding()
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -454,7 +454,7 @@ fun TokPulseApp() {
 
             // Bottom Navigation overlay positioned at bottom center
             if (showBottomNav) {
-                TokPulseBottomNavigation(
+                ZevoraBottomNavigation(
                     currentScreen = currentScreen,
                     isFeedScreen = (currentScreen == "feed"),
                     unreadBadgeCount = unreadNotifications,
@@ -477,7 +477,7 @@ fun TokPulseApp() {
 }
 
 @Composable
-fun TokPulseBottomNavigation(
+fun ZevoraBottomNavigation(
     currentScreen: String,
     isFeedScreen: Boolean,
     unreadBadgeCount: Int,
@@ -538,7 +538,7 @@ fun TokPulseBottomNavigation(
             )
 
             // Distinctive thileli dz Center Create '+' Button
-            ChortCenterCreateButton(
+            ZevoraCenterCreateButton(
                 onClick = { onNavigate("upload") }
             )
 
@@ -594,7 +594,7 @@ private fun BottomNavItem(
                     modifier = Modifier
                         .offset(x = 8.dp, y = (-4).dp)
                         .clip(CircleShape)
-                        .background(TokRed)
+                        .background(ZevoraRed)
                         .padding(horizontal = 4.dp, vertical = 1.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -618,7 +618,7 @@ private fun BottomNavItem(
 }
 
 @Composable
-private fun ChortCenterCreateButton(onClick: () -> Unit) {
+private fun ZevoraCenterCreateButton(onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clickable(onClick = onClick)
@@ -627,6 +627,6 @@ private fun ChortCenterCreateButton(onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         // thileli dz mark as the center action, framed by the brand gradient
-        ChortMark(size = 44.dp)
+        ZevoraMark(size = 44.dp)
     }
 }

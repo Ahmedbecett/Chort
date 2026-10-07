@@ -9,7 +9,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.example.data.repository.TokPulseRepository
 
-class TokPulseApplication : Application(), ImageLoaderFactory {
+class ZevoraApplication : Application(), ImageLoaderFactory {
 
     lateinit var repository: TokPulseRepository
         private set
@@ -42,7 +42,7 @@ class TokPulseApplication : Application(), ImageLoaderFactory {
     }
 
     companion object {
-        lateinit var instance: TokPulseApplication
+        lateinit var instance: ZevoraApplication
             private set
     }
 }

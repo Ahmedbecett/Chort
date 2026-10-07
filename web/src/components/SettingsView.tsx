@@ -23,6 +23,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [allowDownloads, setAllowDownloads] = useState(true);
   const [dataSaver, setDataSaver] = useState(false);
   const [cacheClearedNotice, setCacheClearedNotice] = useState(false);
+  const [supportMode, setSupportMode] = useState<'help' | 'report' | null>(null);
 
   const handleClearCache = () => {
     setCacheClearedNotice(true);
@@ -54,7 +55,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {cacheClearedNotice && (
         <div className="m-4 p-3 bg-emerald-950/80 border border-emerald-800 rounded-xl flex items-center gap-2 text-xs text-emerald-300">
           <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-          <span>تم تفريغ ذاكرة التخزين المؤقت (142 MB) وتحرير المساحة بنجاح!</span>
+          <span>تم تفريغ الذاكرة المؤقتة المحلية بنجاح.</span>
         </div>
       )}
 
@@ -114,6 +115,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
+        {/* Language */}
+        <div className="space-y-2">
+          <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider px-1">المحتوى واللغة</span>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+            <button onClick={() => { window.dispatchEvent(new CustomEvent('zevora:open-languages')); }} className="w-full p-3.5 flex items-center justify-between text-right hover:bg-zinc-800/50">
+              <div className="flex items-center gap-3"><Globe2 className="w-4 h-4 text-cyan-400"/><div><div className="text-xs font-semibold text-white">اللغة</div><div className="text-[11px] text-zinc-500">العربية · English · Français وغيرها</div></div></div><ChevronLeft className="w-4 h-4 text-zinc-500"/>
+            </button>
+          </div>
+        </div>
+
         {/* Section 3: Cache & Cellular */}
         <div className="space-y-2">
           <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider px-1">الذاكرة والبيانات</span>
@@ -129,7 +140,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <div className="text-[11px] text-zinc-500">مسح الذاكرة المؤقتة المؤقتة</div>
                 </div>
               </div>
-              <span className="text-xs text-pink-400 font-bold">142 MB</span>
+              <span className="text-xs text-zinc-500">مسح الآن</span>
             </button>
 
             <div className="p-3.5 flex items-center justify-between">
@@ -165,13 +176,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <Download className="w-4 h-4 text-cyan-400" />
             </button>
 
-            <div className="p-3.5 flex items-center justify-between">
+            <button onClick={() => setSupportMode('help')} className="w-full p-3.5 flex items-center justify-between text-right hover:bg-zinc-800/50">
               <div className="flex items-center gap-3">
-                <HelpCircle className="w-4 h-4 text-zinc-400" />
-                <span className="text-xs font-semibold text-white">مركز المساعدة والدعم الفني</span>
-              </div>
-              <ChevronLeft className="w-4 h-4 text-zinc-500" />
-            </div>
+                <HelpCircle className="w-4 h-4 text-cyan-400" />
+                <div><div className="text-xs font-semibold text-white">مركز المساعدة</div><div className="text-[11px] text-zinc-500">الحساب، الفيديو، الرسائل والسلامة</div></div>
+              </div><ChevronLeft className="w-4 h-4 text-zinc-500" />
+            </button>
+            <button onClick={() => setSupportMode('report')} className="w-full p-3.5 flex items-center justify-between text-right hover:bg-zinc-800/50">
+              <div className="flex items-center gap-3">
+                <Shield className="w-4 h-4 text-pink-400" />
+                <div><div className="text-xs font-semibold text-white">الإبلاغ عن مشكلة</div><div className="text-[11px] text-zinc-500">خطأ، إساءة أو مشكلة تتعلق بالسلامة</div></div>
+              </div><ChevronLeft className="w-4 h-4 text-zinc-500" />
+            </button>
           </div>
         </div>
 
@@ -200,6 +216,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </button>
         </div>
       </div>
+
+      {supportMode && (
+        <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-3xl bg-zinc-950 border border-white/10 p-5 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-black text-white">{supportMode === 'help' ? 'مركز المساعدة' : 'الإبلاغ عن مشكلة'}</h3>
+              <button onClick={() => setSupportMode(null)} className="text-zinc-400">×</button>
+            </div>
+            {supportMode === 'help' ? (
+              <div className="space-y-2 text-sm text-zinc-300">
+                {['تسجيل الدخول والحساب','الأمان والخصوصية','الفيديوهات والرفع','التعليقات والرسائل','الإبلاغ وحماية المجتمع'].map(x => <div key={x} className="rounded-2xl bg-white/5 border border-white/8 p-3">{x}</div>)}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <textarea className="w-full min-h-32 rounded-2xl bg-white/5 border border-white/10 p-3 text-sm text-white outline-none" placeholder="صف المشكلة بالتفصيل…" />
+                <button onClick={() => setSupportMode(null)} className="w-full rounded-2xl py-3 bg-gradient-to-r from-pink-600 to-cyan-500 font-bold">إرسال البلاغ</button>
+                <p className="text-[11px] text-zinc-500">سيتم إرسال البلاغ عند ربطه بخدمة الدعم الخلفية. لا نعرض حالة أو رقمًا وهميًا.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

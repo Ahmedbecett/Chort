@@ -2,13 +2,13 @@ import { VideoItem, UserProfile } from '../types';
 import { INITIAL_USER, INITIAL_VIDEOS, INITIAL_COMMENTS } from '../data/mockData';
 
 const STORAGE_KEYS = {
-  USER: 'chort_user_profile',
-  VIDEOS: 'chort_videos_db',
-  COMMENTS: 'chort_comments_db',
-  WATCH_HISTORY: 'chort_watch_history',
-  OFFLINE_VIDEOS: 'chort_offline_videos',
-  AUTH_TOKEN: 'chort_auth_token',
-  AUTH_LOGGED_IN: 'chort_logged_in',
+  USER: 'zevora_user_profile',
+  VIDEOS: 'zevora_videos_db',
+  COMMENTS: 'zevora_comments_db',
+  WATCH_HISTORY: 'zevora_watch_history',
+  OFFLINE_VIDEOS: 'zevora_offline_videos',
+  AUTH_TOKEN: 'zevora_auth_token',
+  AUTH_LOGGED_IN: 'zevora_logged_in',
 };
 
 export const api = {

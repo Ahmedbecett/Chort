@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma';
 import { config } from '../config';
 
 /**
- * Chort authentication core: Google/Facebook OAuth, phone+SMS OTP, account
+ * ZEVORA authentication core: Google/Facebook OAuth, phone+SMS OTP, account
  * linking, and phone-based recovery. Extends (never replaces) the existing
  * email/JWT/session system.
  *
@@ -389,7 +389,7 @@ export class AuthService {
     }
     const user = await prisma.user.create({
       data: {
-        email: email || `${provider}_${providerId}@chort.app`,
+        email: email || `${provider}_${providerId}@zevora.social`,
         username,
         passwordHash: 'OAUTH_OR_SESSION',
         role: 'USER',

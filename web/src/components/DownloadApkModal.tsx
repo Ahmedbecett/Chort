@@ -11,11 +11,11 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
 
   if (!isOpen) return null;
 
-  const APK_DOWNLOAD_URL = 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.6/Chort-latest.apk';
-  const APK_VERSIONED_URL = 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.6/Chort-v2.4.6-release.apk';
-  const SOURCE_ZIP_URL = 'https://github.com/Ahmedbecett/Chort/archive/refs/tags/v2.4.6.zip';
-  const RELEASE_URL = 'https://github.com/Ahmedbecett/Chort/releases/tag/v2.4.6';
   const REPO_URL = 'https://github.com/Ahmedbecett/Chort';
+  const SOURCE_ZIP_URL = `${REPO_URL}/archive/refs/heads/zevora-cleanup.zip`;
+  const RELEASE_URL = `${REPO_URL}/releases`;
+  const APK_DOWNLOAD_URL = RELEASE_URL;
+  const APK_VERSIONED_URL = RELEASE_URL;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(APK_DOWNLOAD_URL);
@@ -37,12 +37,12 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-white">تحميل تطبيق Chort APK</h3>
+                <h3 className="text-lg font-bold text-white">تحميل تطبيق ZEVORA APK</h3>
                 <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded-full font-mono border border-emerald-500/30">
-                  v2.4.6 الأحدث
+                  نسخة البناء الحالية
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 mt-0.5">الإصدار الرسمي الفعلي الأحدث من المستودع</p>
+              <p className="text-xs text-zinc-400 mt-0.5">الإصدار الرسمي سيظهر هنا بعد نشر Release موثوق</p>
             </div>
           </div>
           <button 
@@ -63,7 +63,7 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
             className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-pink-600 via-rose-600 to-cyan-600 hover:from-pink-500 hover:to-cyan-500 shadow-xl shadow-pink-600/25 active:scale-[0.98] transition-all text-center text-base"
           >
             <Download className="w-6 h-6 animate-bounce" />
-            <span>تحميل Chort-latest.apk المباشر الآن (24.7 MB)</span>
+            <span>فتح صفحة الإصدارات الرسمية</span>
           </a>
 
           {/* Secondary APK Direct Download */}
@@ -74,7 +74,7 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
             className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-zinc-200 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 active:scale-[0.98] transition-all text-center text-xs"
           >
             <Download className="w-4 h-4 text-cyan-400" />
-            <span>رابط بديل: تحميل Chort-v2.4.6-release.apk</span>
+            <span>فتح صفحة الإصدارات</span>
           </a>
 
           {/* Full Files Download Action */}
@@ -85,23 +85,23 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
             className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-amber-300 bg-amber-950/40 hover:bg-amber-900/50 border border-amber-800/60 active:scale-[0.98] transition-all text-center text-xs"
           >
             <Download className="w-4 h-4 text-amber-400" />
-            <span>تحميل ملفات المشروع كاملة (Source Code .ZIP)</span>
+            <span>تحميل نسخة المصدر النظيفة</span>
           </a>
 
           {/* Quick Info Badges */}
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-800">
               <span className="block text-xs text-zinc-400">الحجم</span>
-              <span className="text-sm font-semibold text-white">24.7 MB</span>
+              <span className="text-sm font-semibold text-white">—</span>
             </div>
             <div className="bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-800">
               <span className="block text-xs text-zinc-400">الإصدار</span>
-              <span className="text-sm font-semibold text-cyan-400 font-mono">v2.4.6</span>
+              <span className="text-sm font-semibold text-cyan-400 font-mono">cleanup</span>
             </div>
             <div className="bg-zinc-800/60 p-2.5 rounded-xl border border-zinc-800">
               <span className="block text-xs text-zinc-400">الحالة</span>
               <span className="text-sm font-semibold text-emerald-400 flex items-center justify-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" /> تم التحقق 100%
+                <ShieldCheck className="w-3.5 h-3.5" /> جاهز للمراجعة
               </span>
             </div>
           </div>
@@ -109,7 +109,7 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
           {/* Direct Links section */}
           <div className="space-y-2 pt-2 border-t border-zinc-800">
             <div className="flex items-center justify-between text-xs text-zinc-400">
-              <span>رابط التحميل المباشر للـ APK:</span>
+              <span>رابط الإصدارات الرسمية:</span>
               <button 
                 onClick={handleCopyLink}
                 className="text-cyan-400 hover:text-cyan-300 underline font-medium"
@@ -131,7 +131,7 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
               className="flex-1 py-2 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 flex items-center justify-center gap-2 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
-              <span>صفحة الإصدار v2.4.6</span>
+              <span>صفحة الإصدارات</span>
             </a>
             <a 
               href={REPO_URL}
@@ -148,3 +148,4 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
     </div>
   );
 };
+
