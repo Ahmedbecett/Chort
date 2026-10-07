@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: web/src/components/AdminPanel.tsx =====
 import React,{useEffect,useState} from 'react';
 import {ArrowRight, Users, Video, Flag, ShieldCheck, RefreshCw, LogIn} from 'lucide-react';
 
@@ -13,4 +12,3 @@ export const AdminPanel:React.FC<{onBack:()=>void}> = ({onBack})=>{
 <section className="mt-6 rounded-2xl border border-white/10 overflow-hidden"><div className="p-4 border-b border-white/10 font-bold">البلاغات الحقيقية</div>{reports.length===0?<div className="p-8 text-center text-zinc-500">لا توجد بلاغات حالية أو لم يرجع الخادم بيانات.</div>:reports.map(r=><div key={r.id} className="p-4 border-b border-white/5"><b>{r.reason}</b><div className="text-xs text-zinc-500 mt-1">{r.status} · {r.createdAt}</div></div>)}</section></div></div>;
 };
 
-===== END ZEVORA_BUNDLE_FILE =====
