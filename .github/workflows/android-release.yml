@@ -83,15 +83,27 @@ jobs:
           echo "KEY_PASSWORD=zevora-build-only" >> "$GITHUB_ENV"
 
       - name: Build signed release APK
+        id: build_apk
+        continue-on-error: true
         run: |
-          ./gradlew --no-daemon clean assembleRelease
+          ./gradlew --no-daemon clean assembleRelease --stacktrace 2>&1 | tee "$RUNNER_TEMP/gradle-build.log"
+          test "${PIPESTATUS[0]}" -eq 0
           mkdir -p release
           cp app/build/outputs/apk/release/app-release.apk \
              "release/ZEVORA-v${{ steps.meta.outputs.name }}-release.apk"
           cp app/build/outputs/apk/release/app-release.apk \
              "release/ZEVORA-latest.apk"
 
+      - name: Upload Gradle failure log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zevora-build-log
+          path: ${{ runner.temp }}/gradle-build.log
+          if-no-files-found: ignore
+
       - name: Verify APK against the current source code
+        if: steps.build_apk.outcome == 'success'
         run: |
           python3 scripts/verify_apk.py \
             --apk "release/ZEVORA-v${{ steps.meta.outputs.name }}-release.apk" \
@@ -99,6 +111,10 @@ jobs:
             --expect-version-name "${{ steps.meta.outputs.name }}" \
             --source-commit "${{ steps.meta.outputs.commit }}" \
             --report release/VERIFICATION_REPORT.md
+
+      - name: Fail job when APK build failed
+        if: steps.build_apk.outcome != 'success'
+        run: exit 1
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
