@@ -56,8 +56,6 @@ export const config = {
     cooldownSeconds: Math.max(10, parseInt(process.env.OTP_RESEND_COOLDOWN_SECONDS || '60', 10) || 60),
     maxPerHour: Math.max(1, parseInt(process.env.OTP_MAX_PER_HOUR || '5', 10) || 5),
     maxAttempts: Math.max(1, parseInt(process.env.OTP_MAX_ATTEMPTS || '5', 10) || 5),
-    // devEcho is strictly disabled in production. Dev-echo is only allowed in local/test mode when no SMS provider is configured.
-    devEcho: (process.env.NODE_ENV === 'production' || (process.env.OTP_DEV_ECHO || 'auto').trim().toLowerCase() === 'false') ? 'never' : 'auto',
   },
   feed: {
     // External licensed-video providers are opt-in in production; the feed never injects them by default.
