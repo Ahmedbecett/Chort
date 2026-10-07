@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ZEVORA</string>
+    <string name="app_name">ZEVORA Play</string>
     <string name="default_web_client_id">358490968062-n584hegcbbavgsbbq621191bfbvo78q1.apps.googleusercontent.com</string>
     <string name="tab_home">Home</string>
     <string name="tab_discover">Discover</string>
