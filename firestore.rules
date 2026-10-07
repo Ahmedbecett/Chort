@@ -1,74 +1,198 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
+
     function isAdmin() {
-      return isAuthenticated() && request.auth.uid == "E9RrifJxb2QboG6kdQjqUfomEkQ2";
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
     }
 
-    // Users Collection
+    function isVideoOwner(videoId) {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/videos/$(videoId)).data.creatorId == request.auth.uid;
+    }
+
+    function isCommentOwner(commentId) {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/comments/$(commentId)).data.authorId == request.auth.uid;
+    }
+
+    // === USERS COLLECTION ===
     match /users/{userId} {
-      allow read: if true;
-      allow create, update: if true;
+      // Anyone can read public profile fields
+      allow read: if isAuthenticated();
+      
+      // Only owner or admin can write to their own profile
+      allow create: if isAuthenticated() && request.auth.uid == userId && 
+                       !('role' in request.resource.data || request.resource.data.role == 'USER');
+      
+      allow update: if (isOwner(userId) || isAdmin()) &&
+                       // Users cannot self-promote to admin
+                       (!('role' in request.resource.data) || request.resource.data.role == resource.data.role);
+      
       allow delete: if isAdmin() || isOwner(userId);
     }
 
-    // Videos Collection
+    // === VIDEOS COLLECTION ===
     match /videos/{videoId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if true;
+      // Anyone can read public videos
+      allow read: if isAuthenticated();
+      
+      // Only authenticated users can create (creatorId must match uid)
+      allow create: if isAuthenticated() && 
+                       request.resource.data.creatorId == request.auth.uid &&
+                       request.resource.data.status == 'DRAFT';
+      
+      // Only video owner or admin can update
+      allow update: if (isVideoOwner(videoId) || isAdmin());
+      
+      // Only video owner or admin can delete
+      allow delete: if (isVideoOwner(videoId) || isAdmin());
     }
 
-    // Comments Collection
+    // === COMMENTS COLLECTION ===
     match /comments/{commentId} {
-      allow read: if true;
-      allow create, update, delete: if true;
+      // Anyone can read comments
+      allow read: if isAuthenticated();
+      
+      // Only authenticated users can create
+      allow create: if isAuthenticated() && 
+                       request.resource.data.authorId == request.auth.uid;
+      
+      // Only comment owner or admin can update
+      allow update: if (isCommentOwner(commentId) || isAdmin());
+      
+      // Only comment owner or admin can delete
+      allow delete: if (isCommentOwner(commentId) || isAdmin());
     }
 
-    // Likes Collection
+    // === LIKES COLLECTION ===
     match /likes/{likeId} {
-      allow read, write: if true;
+      // Only owner can read their own likes
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      
+      // Only owner can create like
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Only owner or admin can delete
+      allow delete: if isAuthenticated() && 
+                       (resource.data.userId == request.auth.uid || isAdmin());
     }
 
-    // Followers Collection
+    // === FOLLOWERS COLLECTION ===
     match /followers/{followId} {
-      allow read, write: if true;
+      // Users can read followers list
+      allow read: if isAuthenticated();
+      
+      // Only follower user can create follow relationship
+      allow create: if isAuthenticated() && 
+                       request.resource.data.followerId == request.auth.uid;
+      
+      // Only follower or admin can delete
+      allow delete: if isAuthenticated() && 
+                       (resource.data.followerId == request.auth.uid || isAdmin());
     }
 
-    // Notifications Collection
+    // === NOTIFICATIONS COLLECTION ===
     match /notifications/{notifId} {
-      allow read, write: if true;
+      // Users can only read their own notifications
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      
+      // System creates notifications (backend only via service account)
+      allow create: if false;
+      
+      // Users can only update their own notifications (mark as read)
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId &&
+                       resource.data.userId == request.resource.data.userId;
+      
+      // Users can delete their own notifications
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
     }
 
-    // Reports Collection
+    // === REPORTS COLLECTION ===
     match /reports/{reportId} {
-      allow read, write: if true;
+      // Users can read their own reports
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.reporterId;
+      
+      // Admin can read all reports
+      allow read: if isAdmin();
+      
+      // Authenticated users can submit reports
+      allow create: if isAuthenticated() && 
+                       request.resource.data.reporterId == request.auth.uid &&
+                       request.resource.data.status == 'PENDING';
+      
+      // Only admin can update (resolve) reports
+      allow update: if isAdmin();
+      
+      // Only admin can delete reports
+      allow delete: if isAdmin();
     }
 
-    // Violations Collection
+    // === VIOLATIONS COLLECTION ===
     match /violations/{violationId} {
-      allow read, write: if true;
+      // Users can read their own violations
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      
+      // Admin can read all violations
+      allow read: if isAdmin();
+      
+      // Only admin can create/update violations
+      allow create, update: if isAdmin();
+      
+      // Only admin can delete violations
+      allow delete: if isAdmin();
     }
 
-    // Privacy Requests
+    // === PRIVACY REQUESTS COLLECTION ===
     match /privacyRequests/{reqId} {
-      allow read, write: if true;
+      // Users can only read their own privacy requests
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      
+      // Admin can read all privacy requests
+      allow read: if isAdmin();
+      
+      // Authenticated users can submit privacy requests
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.status == 'PENDING';
+      
+      // Only admin can update privacy requests
+      allow update: if isAdmin();
+      
+      // Only admin can delete privacy requests
+      allow delete: if isAdmin();
     }
 
-    // Blocked Users
+    // === BLOCKED USERS COLLECTION ===
     match /blockedUsers/{blockId} {
-      allow read, write: if true;
+      // Users can only see who they blocked
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.blockerId;
+      
+      // Users can only create their own blocks
+      allow create: if isAuthenticated() && 
+                       request.resource.data.blockerId == request.auth.uid;
+      
+      // Users can only delete their own blocks
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.blockerId;
     }
 
-    // App Settings
+    // === APP SETTINGS COLLECTION ===
     match /appSettings/{settingId} {
-      allow read, write: if true;
+      // Anyone can read app settings
+      allow read: if isAuthenticated();
+      
+      // Only admin can write settings
+      allow create, update, delete: if isAdmin();
     }
   }
 }
