@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: web/src/components/OfficialProfileView.tsx =====
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, BadgeCheck, Grid3X3, Link2, ShieldCheck } from 'lucide-react';
 import { api } from '../services/api';
@@ -23,4 +22,3 @@ export const OfficialProfileView: React.FC<{onBack:()=>void; onSelectVideo:(v:Vi
   </div>;
 };
 
-===== END ZEVORA_BUNDLE_FILE =====
