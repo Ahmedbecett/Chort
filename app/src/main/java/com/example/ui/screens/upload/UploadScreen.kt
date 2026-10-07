@@ -66,25 +66,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.components.VideoPlayerView
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.AccentGreen
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
 fun UploadScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     onUploadSuccess: () -> Unit
 ) {
     val context = LocalContext.current
@@ -165,7 +165,7 @@ fun UploadScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
@@ -187,7 +187,7 @@ fun UploadScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Share short-form stories with millions on thileli dz",
+                    text = "Share short-form stories with millions on ZEVORA",
                     color = TextMuted,
                     fontSize = 12.sp
                 )
@@ -197,13 +197,13 @@ fun UploadScreen(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(TokRed.copy(alpha = 0.2f)),
+                    .background(ZevoraRed.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.CloudUpload,
                     contentDescription = "Upload",
-                    tint = TokRed,
+                    tint = ZevoraRed,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -214,10 +214,10 @@ fun UploadScreen(
         // Video Picker Card
         Card(
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+            colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, TokBorder, RoundedCornerShape(16.dp))
+                .border(1.dp, ZevoraBorder, RoundedCornerShape(16.dp))
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 if (selectedDeviceUri != null && selectedVideoUri.isNotBlank()) {
@@ -246,7 +246,7 @@ fun UploadScreen(
                     ) {
                         Text(
                             text = "Video selected from device",
-                            color = TokCyan,
+                            color = ZevoraCyan,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -255,14 +255,14 @@ fun UploadScreen(
                             onClick = {
                                 openAnyVideoPicker()
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated),
+                            colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated),
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.border(1.dp, TokBorder, RoundedCornerShape(12.dp))
+                            modifier = Modifier.border(1.dp, ZevoraBorder, RoundedCornerShape(12.dp))
                         ) {
                             Icon(
                                 imageVector = Icons.Default.VideoLibrary,
                                 contentDescription = "Change Video",
-                                tint = TokCyan,
+                                tint = ZevoraCyan,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -275,8 +275,8 @@ fun UploadScreen(
                             .fillMaxWidth()
                             .height(180.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(TokDarkElevated)
-                            .border(1.5.dp, TokBorder, RoundedCornerShape(12.dp))
+                            .background(ZevoraDarkElevated)
+                            .border(1.5.dp, ZevoraBorder, RoundedCornerShape(12.dp))
                             .clickable {
                                 openAnyVideoPicker()
                             },
@@ -286,7 +286,7 @@ fun UploadScreen(
                             Icon(
                                 imageVector = Icons.Default.VideoLibrary,
                                 contentDescription = "Select Video",
-                                tint = TokCyan,
+                                tint = ZevoraCyan,
                                 modifier = Modifier.size(44.dp)
                             )
                             Spacer(modifier = Modifier.height(10.dp))
@@ -327,10 +327,10 @@ fun UploadScreen(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary,
-                focusedBorderColor = TokCyan,
-                unfocusedBorderColor = TokBorder,
-                focusedContainerColor = TokDarkElevated,
-                unfocusedContainerColor = TokDarkElevated
+                focusedBorderColor = ZevoraCyan,
+                unfocusedBorderColor = ZevoraBorder,
+                focusedContainerColor = ZevoraDarkElevated,
+                unfocusedContainerColor = ZevoraDarkElevated
             ),
             shape = RoundedCornerShape(14.dp),
             minLines = 3,
@@ -351,8 +351,8 @@ fun UploadScreen(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(TokDarkElevated)
-                        .border(1.dp, TokBorder, RoundedCornerShape(8.dp))
+                        .background(ZevoraDarkElevated)
+                        .border(1.dp, ZevoraBorder, RoundedCornerShape(8.dp))
                         .clickable {
                             if (!captionText.contains(tag)) {
                                 captionText = (captionText + " " + tag).trim()
@@ -360,7 +360,7 @@ fun UploadScreen(
                         }
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
-                    Text(text = tag, color = TokCyan, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
+                    Text(text = tag, color = ZevoraCyan, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -392,10 +392,10 @@ fun UploadScreen(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary,
-                focusedBorderColor = TokCyan,
-                unfocusedBorderColor = TokBorder,
-                focusedContainerColor = TokDarkElevated,
-                unfocusedContainerColor = TokDarkElevated
+                focusedBorderColor = ZevoraCyan,
+                unfocusedBorderColor = ZevoraBorder,
+                focusedContainerColor = ZevoraDarkElevated,
+                unfocusedContainerColor = ZevoraDarkElevated
             ),
             shape = RoundedCornerShape(14.dp),
             singleLine = true,
@@ -426,13 +426,13 @@ fun UploadScreen(
                 Card(
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isSel) TokCyan.copy(alpha = 0.15f) else TokDarkElevated
+                        containerColor = if (isSel) ZevoraCyan.copy(alpha = 0.15f) else ZevoraDarkElevated
                     ),
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
                         .clickable { privacySetting = opt }
-                        .border(1.dp, if (isSel) TokCyan else TokBorder, RoundedCornerShape(12.dp))
+                        .border(1.dp, if (isSel) ZevoraCyan else ZevoraBorder, RoundedCornerShape(12.dp))
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -441,7 +441,7 @@ fun UploadScreen(
                         Icon(
                             imageVector = icon,
                             contentDescription = opt,
-                            tint = if (isSel) TokCyan else TextMuted,
+                            tint = if (isSel) ZevoraCyan else TextMuted,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -467,7 +467,7 @@ fun UploadScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(TokDarkElevated)
+                    .background(ZevoraDarkElevated)
                     .padding(14.dp)
             ) {
                 Row(
@@ -476,7 +476,7 @@ fun UploadScreen(
                 ) {
                     Text(
                         text = uploadStatusText,
-                        color = TokCyan,
+                        color = ZevoraCyan,
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -490,8 +490,8 @@ fun UploadScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 LinearProgressIndicator(
                     progress = { uploadProgress },
-                    color = TokRed,
-                    trackColor = TokBorder,
+                    color = ZevoraRed,
+                    trackColor = ZevoraBorder,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)
@@ -526,7 +526,7 @@ fun UploadScreen(
                 }
 
                 if (captionText.isBlank()) {
-                    captionText = "Check out this energetic moment! ✨ #chort #viral"
+                    captionText = "Check out this energetic moment! ✨ #zevora #viral"
                 }
 
                 isUploading = true
@@ -538,7 +538,7 @@ fun UploadScreen(
                         .findAll(captionText)
                         .map { it.value }
                         .joinToString(",")
-                    val finalTags = if (extractedTags.isNotBlank()) extractedTags else "#chort,#fyp,#viral"
+                    val finalTags = if (extractedTags.isNotBlank()) extractedTags else "#zevora,#fyp,#viral"
                     val finalMusic = if (musicTitle.isNotBlank()) musicTitle.trim() else ("Original Sound - " + (currentUser?.displayName ?: "Creator"))
 
                     val result = repository.uploadVideo(
@@ -558,7 +558,7 @@ fun UploadScreen(
                         uploadStatusText = "Video published to Cloud & Feed!"
                         delay(200)
                         isUploading = false
-                        Toast.makeText(context, "Video published to thileli dz!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Video published to ZEVORA!", Toast.LENGTH_SHORT).show()
                         onUploadSuccess()
                     } else {
                         isUploading = false
@@ -570,7 +570,7 @@ fun UploadScreen(
                 }
             },
             enabled = !isUploading,
-            colors = ButtonDefaults.buttonColors(containerColor = TokRed),
+            colors = ButtonDefaults.buttonColors(containerColor = ZevoraRed),
             shape = RoundedCornerShape(24.dp),
             modifier = Modifier
                 .fillMaxWidth()

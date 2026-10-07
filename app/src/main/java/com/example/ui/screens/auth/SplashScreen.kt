@@ -22,14 +22,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.components.ChortLogo
+import com.example.ui.components.ZevoraLogo
 import com.example.ui.theme.TextMuted
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
 import kotlinx.coroutines.delay
 
 /**
- * thileli dz launch splash: brand identity up top, soft scale+fade entrance,
+ * ZEVORA launch splash: brand identity up top, soft scale+fade entrance,
  * then hands off to the app (feed when a session exists, welcome otherwise).
  */
 @Composable
@@ -48,7 +48,7 @@ fun SplashScreen(onFinished: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
             .testTag("splash_screen"),
         contentAlignment = Alignment.Center
@@ -57,14 +57,14 @@ fun SplashScreen(onFinished: () -> Unit) {
             Box(
                 modifier = Modifier.alpha(alpha.value)
             ) {
-                ChortLogo(
+                ZevoraLogo(
                     size = 104.dp,
                     tagline = "Short videos, made social"
                 )
             }
             Spacer(modifier = Modifier.height(28.dp))
             CircularProgressIndicator(
-                color = TokCyan,
+                color = ZevoraCyan,
                 strokeWidth = 3.dp,
                 modifier = Modifier.alpha(alpha.value)
             )
@@ -78,7 +78,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             )
         }
         Text(
-            text = "thileli dz • v2.4.6",
+            text = "ZEVORA • v3.0.0",
             color = Color.White.copy(alpha = 0.25f),
             fontSize = 11.sp,
             modifier = Modifier.align(Alignment.BottomCenter)

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# build_release.sh - deterministic, verifiable Chort release build.
+# build_release.sh - deterministic, verifiable ZEVORA release build.
 #
 # Guarantees:
 #   * refuses to build from a dirty working tree (the commit stamped into the
@@ -27,9 +27,9 @@ export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 VERSION_CODE="$(grep -oP 'versionCode\s*=\s*\K[0-9]+' app/build.gradle.kts | head -1)"
 VERSION_NAME="$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)"
 GIT_COMMIT="$(git rev-parse --short HEAD)"
-APK_NAME="Chort-v${VERSION_NAME}-release.apk"
+APK_NAME="ZEVORA-v${VERSION_NAME}-release.apk"
 
-echo "=== Chort release build ==="
+echo "=== ZEVORA release build ==="
 echo "versionCode : $VERSION_CODE"
 echo "versionName : $VERSION_NAME"
 echo "commit      : $GIT_COMMIT"

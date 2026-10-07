@@ -3,8 +3,8 @@ package com.example
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.example.data.local.AppDatabase
-import com.example.data.remote.TokPulseApiClient
-import com.example.data.repository.TokPulseRepository
+import com.example.data.remote.ZevoraApiClient
+import com.example.data.repository.ZevoraRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -22,25 +22,25 @@ import org.robolectric.annotation.Config
 class ExampleRobolectricTest {
 
     private lateinit var context: Context
-    private lateinit var repository: TokPulseRepository
+    private lateinit var repository: ZevoraRepository
 
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext<Context>()
-        repository = TokPulseRepository(context)
+        repository = ZevoraRepository(context)
     }
 
     @Test
-    fun testAppNameIsChort() {
+    fun testAppNameIsZEVORA() {
         val appName = context.getString(R.string.app_name)
-        assertEquals("Chort", appName)
+        assertEquals("ZEVORA", appName)
     }
 
     @Test
     fun testFeedApiLiveConnectionAndVideoParsing() = runBlocking {
         // Query the live feed API
         val feedResponse = try {
-            TokPulseApiClient.api.getFeed()
+            ZevoraApiClient.api.getFeed()
         } catch (e: Exception) {
             null
         }
@@ -59,7 +59,7 @@ class ExampleRobolectricTest {
         )
         assertNotNull("Video creatorUsername should not be empty", firstVid.creatorUsername)
 
-        val streamUrl = firstVid.videoUrl ?: firstVid.streamUrl ?: TokPulseApiClient.getCanonicalStreamUrl(firstVid.id)
+        val streamUrl = firstVid.videoUrl ?: firstVid.streamUrl ?: ZevoraApiClient.getCanonicalStreamUrl(firstVid.id)
         assertTrue("Stream URL must be HTTPS", streamUrl.startsWith("https://"))
     }
 

@@ -140,7 +140,7 @@ class FirebaseService(private val context: Context) {
                 email = email.trim(),
                 passwordHash = "AUTH_SECURE",
                 avatarUrl = photoUrl,
-                bio = "Welcome to my thileli dz profile! 🎬",
+                bio = "Welcome to my ZEVORA profile! 🎬",
                 followersCount = 0,
                 followingCount = 0,
                 totalLikes = 0,
@@ -170,7 +170,7 @@ class FirebaseService(private val context: Context) {
                     email = email.trim(),
                     passwordHash = "AUTH_SECURE",
                     avatarUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
-                    bio = "Welcome to my thileli dz profile! 🎬",
+                    bio = "Welcome to my ZEVORA profile! 🎬",
                     role = if (isAdminEmail(email)) "admin" else "user",
                     status = "active"
                 )
@@ -205,8 +205,8 @@ class FirebaseService(private val context: Context) {
                 val firebaseUser = authResult.user ?: throw Exception("Empty user returned from Google Sign-In.")
 
                 val uid = firebaseUser.uid
-                val email = firebaseUser.email ?: "user@tokpulse.com"
-                val displayName = firebaseUser.displayName ?: "thileli dz Creator"
+                val email = firebaseUser.email ?: "user@zevora.app"
+                val displayName = firebaseUser.displayName ?: "ZEVORA Creator"
                 val photoUrl = firebaseUser.photoUrl?.toString()
                     ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
                 val username = email.substringBefore("@").lowercase().replace(".", "_")
@@ -238,7 +238,7 @@ class FirebaseService(private val context: Context) {
                         email = email,
                         passwordHash = "GOOGLE_AUTH",
                         avatarUrl = existingDoc.getString("avatarUrl")?.takeIf { it.isNotBlank() } ?: photoUrl,
-                        bio = existingDoc.getString("bio")?.takeIf { it.isNotBlank() } ?: "Welcome to my thileli dz profile! 🎬",
+                        bio = existingDoc.getString("bio")?.takeIf { it.isNotBlank() } ?: "Welcome to my ZEVORA profile! 🎬",
                         followersCount = (existingDoc.getLong("followersCount") ?: 0L).toInt().coerceAtLeast(0),
                         followingCount = (existingDoc.getLong("followingCount") ?: 0L).toInt().coerceAtLeast(0),
                         totalLikes = (existingDoc.getLong("totalLikes") ?: 0L).toInt().coerceAtLeast(0),
@@ -254,7 +254,7 @@ class FirebaseService(private val context: Context) {
                         email = email,
                         passwordHash = "GOOGLE_AUTH",
                         avatarUrl = photoUrl,
-                        bio = "Welcome to my thileli dz profile! 🎬",
+                        bio = "Welcome to my ZEVORA profile! 🎬",
                         followersCount = 0,
                         followingCount = 0,
                         totalLikes = 0,
@@ -303,8 +303,8 @@ class FirebaseService(private val context: Context) {
             val authResult = authInstance.signInWithCredential(credential).await()
             val firebaseUser = authResult.user ?: throw Exception("Empty user from Google sign-in")
             val uid = firebaseUser.uid
-            val email = firebaseUser.email ?: "user@chort.app"
-            val displayName = firebaseUser.displayName ?: "thileli dz Creator"
+            val email = firebaseUser.email ?: "user@zevora.app"
+            val displayName = firebaseUser.displayName ?: "ZEVORA Creator"
             val photoUrl = firebaseUser.photoUrl?.toString()
                 ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
             val username = email.substringBefore("@").lowercase().replace(".", "_")
@@ -316,7 +316,7 @@ class FirebaseService(private val context: Context) {
                 email = email,
                 passwordHash = "GOOGLE_OAUTH",
                 avatarUrl = photoUrl,
-                bio = "Content Creator on thileli dz",
+                bio = "Content Creator on ZEVORA",
                 followersCount = 0,
                 followingCount = 0,
                 totalLikes = 0,
@@ -343,6 +343,24 @@ class FirebaseService(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "signInWithGoogleIdToken error", e)
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Current Firebase ID token for the signed-in user, used to exchange a
+     * backend session with the production API. Null when nobody is signed in.
+     */
+    suspend fun getCurrentIdToken(forceRefresh: Boolean): String? {
+        val user = try {
+            auth?.currentUser
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        return try {
+            user.getIdToken(forceRefresh).await().token
+        } catch (e: Exception) {
+            Log.w(TAG, "getCurrentIdToken failed: ${e.message}")
+            null
         }
     }
 
@@ -421,10 +439,10 @@ class FirebaseService(private val context: Context) {
                 id = uid,
                 username = username,
                 displayName = name,
-                email = "${username}@chort.app",
+                email = "${username}@zevora.app",
                 passwordHash = "PHONE_AUTH",
                 avatarUrl = "https://api.dicebear.com/7.x/avataaars/png?seed=$username",
-                bio = "Content Creator on thileli dz",
+                bio = "Content Creator on ZEVORA",
                 followersCount = 0,
                 followingCount = 0,
                 totalLikes = 0,
@@ -461,7 +479,7 @@ class FirebaseService(private val context: Context) {
         val authUser = auth?.currentUser
 
         val effectiveEmail = fallbackEmail ?: authUser?.email ?: ""
-        val effectiveDisplayName = fallbackDisplayName ?: authUser?.displayName ?: "thileli dz Creator"
+        val effectiveDisplayName = fallbackDisplayName ?: authUser?.displayName ?: "ZEVORA Creator"
         val effectiveUsername = effectiveEmail.substringBefore("@").ifEmpty { "user_${uid.take(6)}" }.lowercase().replace(".", "_")
         val effectiveAvatar = authUser?.photoUrl?.toString() ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
         val isAdmin = isAdminEmail(effectiveEmail)
@@ -474,7 +492,7 @@ class FirebaseService(private val context: Context) {
                 email = effectiveEmail,
                 passwordHash = "AUTHENTICATED",
                 avatarUrl = effectiveAvatar,
-                bio = "Welcome to my thileli dz profile! 🎬",
+                bio = "Welcome to my ZEVORA profile! 🎬",
                 followersCount = 0,
                 followingCount = 0,
                 totalLikes = 0,
@@ -506,7 +524,7 @@ class FirebaseService(private val context: Context) {
                     email = doc.getString("email")?.takeIf { it.isNotBlank() } ?: effectiveEmail,
                     passwordHash = "AUTHENTICATED",
                     avatarUrl = doc.getString("avatarUrl")?.takeIf { it.isNotBlank() } ?: effectiveAvatar,
-                    bio = doc.getString("bio")?.takeIf { it.isNotBlank() } ?: "Welcome to my thileli dz profile! 🎬",
+                    bio = doc.getString("bio")?.takeIf { it.isNotBlank() } ?: "Welcome to my ZEVORA profile! 🎬",
                     followersCount = (doc.getLong("followersCount") ?: 0L).toInt().coerceAtLeast(0),
                     followingCount = (doc.getLong("followingCount") ?: 0L).toInt().coerceAtLeast(0),
                     totalLikes = (doc.getLong("totalLikes") ?: 0L).toInt().coerceAtLeast(0),
@@ -522,7 +540,7 @@ class FirebaseService(private val context: Context) {
                     email = effectiveEmail,
                     passwordHash = "AUTHENTICATED",
                     avatarUrl = effectiveAvatar,
-                    bio = "Welcome to my thileli dz profile! 🎬",
+                    bio = "Welcome to my ZEVORA profile! 🎬",
                     followersCount = 0,
                     followingCount = 0,
                     totalLikes = 0,
@@ -562,7 +580,7 @@ class FirebaseService(private val context: Context) {
                 email = effectiveEmail,
                 passwordHash = "AUTHENTICATED",
                 avatarUrl = effectiveAvatar,
-                bio = "Welcome to my thileli dz profile! 🎬",
+                bio = "Welcome to my ZEVORA profile! 🎬",
                 followersCount = 0,
                 followingCount = 0,
                 totalLikes = 0,
@@ -672,7 +690,7 @@ class FirebaseService(private val context: Context) {
                     thumbnailUrl = doc.getString("thumbnailUrl") ?: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500",
                     caption = doc.getString("caption") ?: "",
                     musicTitle = doc.getString("musicTitle") ?: "Original Sound",
-                    tags = doc.getString("tags") ?: "#tokpulse",
+                    tags = doc.getString("tags") ?: "#zevora",
                     likesCount = (doc.getLong("likesCount") ?: 0).toInt(),
                     commentsCount = (doc.getLong("commentsCount") ?: 0).toInt(),
                     sharesCount = (doc.getLong("sharesCount") ?: 0).toInt(),
@@ -777,7 +795,7 @@ class FirebaseService(private val context: Context) {
                 "actorUsername" to followerUser.username,
                 "actorAvatar" to followerUser.avatarUrl,
                 "type" to "follow",
-                "message" to "started following you on thileli dz!",
+                "message" to "started following you on ZEVORA!",
                 "isRead" to false,
                 "createdAt" to System.currentTimeMillis()
             )
@@ -886,7 +904,7 @@ class FirebaseService(private val context: Context) {
                 UserEntity(
                     id = doc.getString("id") ?: doc.id,
                     username = doc.getString("username") ?: "user",
-                    displayName = doc.getString("displayName") ?: "thileli dz User",
+                    displayName = doc.getString("displayName") ?: "ZEVORA User",
                     email = doc.getString("email") ?: "",
                     passwordHash = "PROTECTED",
                     avatarUrl = doc.getString("avatarUrl") ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
@@ -947,7 +965,7 @@ class FirebaseService(private val context: Context) {
                 "id" to notifId,
                 "userId" to userId,
                 "actorId" to "system_moderation",
-                "actorUsername" to "thileli dz Safety",
+                "actorUsername" to "ZEVORA Safety",
                 "actorAvatar" to "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300",
                 "type" to "warning",
                 "message" to "Official Warning: $reason. Repeated violations will lead to permanent suspension.",

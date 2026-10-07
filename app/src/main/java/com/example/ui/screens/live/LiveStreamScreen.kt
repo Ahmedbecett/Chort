@@ -78,19 +78,19 @@ import coil.compose.AsyncImage
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 data class LiveChatMessage(
     val username: String,
     val message: String,
-    val badgeColor: Color = TokCyan
+    val badgeColor: Color = ZevoraCyan
 )
 
 data class LiveGift(
@@ -116,10 +116,10 @@ fun LiveStreamScreen(
     var commentInput by remember { mutableStateOf("") }
     val chatMessages = remember {
         mutableStateListOf(
-            LiveChatMessage("sara_vibe", "Welcome to the LIVE stream everyone!! 🔥", TokCyan),
-            LiveChatMessage("dj_marcus", "The sound quality is unreal today 🎧", TokRed),
+            LiveChatMessage("sara_vibe", "Welcome to the LIVE stream everyone!! 🔥", ZevoraCyan),
+            LiveChatMessage("dj_marcus", "The sound quality is unreal today 🎧", ZevoraRed),
             LiveChatMessage("lina_dance", "Can you show the next choreo move?? ✨", AccentGold),
-            LiveChatMessage("ahmed_99", "Greetings from Dubai! Amazing vibes 🌴", TokCyan)
+            LiveChatMessage("ahmed_99", "Greetings from Dubai! Amazing vibes 🌴", ZevoraCyan)
         )
     }
 
@@ -205,7 +205,7 @@ fun LiveStreamScreen(
                             modifier = Modifier
                                 .size(6.dp)
                                 .clip(CircleShape)
-                                .background(TokRed)
+                                .background(ZevoraRed)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
@@ -219,7 +219,7 @@ fun LiveStreamScreen(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(TokRed)
+                        .background(ZevoraRed)
                         .clickable { Toast.makeText(context, "Followed Live Host!", Toast.LENGTH_SHORT).show() }
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
@@ -253,7 +253,7 @@ fun LiveStreamScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = "🔥 PK BATTLE • LIVE", color = TokCyan, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
+                Text(text = "🔥 PK BATTLE • LIVE", color = ZevoraCyan, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
                 Text(text = "02:45 left", color = AccentGold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(4.dp))
@@ -266,12 +266,12 @@ fun LiveStreamScreen(
                 Box(
                     modifier = Modifier
                         .weight(0.64f)
-                        .background(TokCyan)
+                        .background(ZevoraCyan)
                 )
                 Box(
                     modifier = Modifier
                         .weight(0.36f)
-                        .background(TokRed)
+                        .background(ZevoraRed)
                 )
             }
         }
@@ -344,11 +344,11 @@ fun LiveStreamScreen(
                     if (commentInput.isNotBlank()) {
                         IconButton(
                             onClick = {
-                                chatMessages.add(LiveChatMessage("You", commentInput.trim(), TokCyan))
+                                chatMessages.add(LiveChatMessage("You", commentInput.trim(), ZevoraCyan))
                                 commentInput = ""
                             }
                         ) {
-                            Icon(Icons.Default.Send, contentDescription = "Send", tint = TokCyan)
+                            Icon(Icons.Default.Send, contentDescription = "Send", tint = ZevoraCyan)
                         }
                     }
                 }
@@ -363,7 +363,7 @@ fun LiveStreamScreen(
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(
-                            listOf(TokRed, TokCyan)
+                            listOf(ZevoraRed, ZevoraCyan)
                         )
                     )
                     .clickable { showGiftSheet = true }
@@ -392,7 +392,7 @@ fun LiveStreamScreen(
                     modifier = Modifier
                         .clip(RoundedCornerShape(24.dp))
                         .background(Color.Black.copy(alpha = 0.85f))
-                        .border(2.dp, TokCyan, RoundedCornerShape(24.dp))
+                        .border(2.dp, ZevoraCyan, RoundedCornerShape(24.dp))
                         .padding(32.dp)
                 ) {
                     Text(
@@ -419,7 +419,7 @@ fun LiveStreamScreen(
         if (showGiftSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showGiftSheet = false },
-                containerColor = TokDarkSurface
+                containerColor = ZevoraDarkSurface
             ) {
                 Column(
                     modifier = Modifier
@@ -477,8 +477,8 @@ fun LiveStreamScreen(
                                         }
                                     },
                                 shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = TokDarkElevated),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, TokBorder)
+                                colors = CardDefaults.cardColors(containerColor = ZevoraDarkElevated),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, ZevoraBorder)
                             ) {
                                 Column(
                                     modifier = Modifier.padding(10.dp),

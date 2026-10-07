@@ -3,6 +3,6 @@
     <item
         android:width="66dp"
         android:height="66dp"
-        android:drawable="@drawable/ic_chort_mark"
+        android:drawable="@drawable/ic_zevora_mark"
         android:gravity="center" />
 </layer-list>

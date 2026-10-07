@@ -33,7 +33,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.outlined.Chat
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
@@ -126,14 +125,14 @@ fun ZevoraApp() {
     // "admin","legal","live","sound","chat","tracking"
     var currentScreen by remember { mutableStateOf("splash") }
     var viewingProfileUserId by remember { mutableStateOf<String?>(null) }
-    var selectedSoundTitle by remember { mutableStateOf("Original Sound - thileli dz Creator") }
+    var selectedSoundTitle by remember { mutableStateOf("Original Sound - ZEVORA Creator") }
     var legalType by remember { mutableStateOf("terms") } // "terms" or "privacy"
 
     // OTP handoff state (phone flow)
     var otpPhone by remember { mutableStateOf("") }
     var otpCooldown by remember { mutableIntStateOf(60) }
     var otpExpiresIn by remember { mutableIntStateOf(600) }
-    var otpDevCode by remember { mutableStateOf<String?>(null) }
+    var otpVerificationId by remember { mutableStateOf<String?>(null) }
 
     fun goHome() {
         viewingProfileUserId = null
@@ -245,14 +244,15 @@ fun ZevoraApp() {
                     "phone" -> {
                         PhoneAuthScreen(
                             repository = repository,
-                            onCodeSent = { phone, cooldown, expires, devOtp ->
+                            onCodeSent = { phone, cooldown, expires, verificationId ->
                                 otpPhone = phone
                                 otpCooldown = cooldown
                                 otpExpiresIn = expires
-                                otpDevCode = devOtp
+                                otpVerificationId = verificationId
                                 currentScreen = "otp"
                             },
-                            onBack = { goWelcome() }
+                            onBack = { goWelcome() },
+                            onAutoVerified = { goHome() }
                         )
                     }
 
@@ -263,7 +263,7 @@ fun ZevoraApp() {
                             phone = otpPhone,
                             cooldownSeconds = otpCooldown,
                             expiresInSeconds = otpExpiresIn,
-                            devOtp = otpDevCode,
+                            verificationId = otpVerificationId,
                             onSuccess = { goHome() },
                             onBack = { currentScreen = "phone" }
                         )
@@ -537,7 +537,7 @@ fun ZevoraBottomNavigation(
                 testTag = "nav_friends"
             )
 
-            // Distinctive thileli dz Center Create '+' Button
+            // Distinctive ZEVORA Center Create '+' Button
             ZevoraCenterCreateButton(
                 onClick = { onNavigate("upload") }
             )
@@ -626,7 +626,7 @@ private fun ZevoraCenterCreateButton(onClick: () -> Unit) {
             .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center
     ) {
-        // thileli dz mark as the center action, framed by the brand gradient
+        // ZEVORA mark as the center action, framed by the brand gradient
         ZevoraMark(size = 44.dp)
     }
 }

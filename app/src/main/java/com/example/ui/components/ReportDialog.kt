@@ -48,11 +48,11 @@ import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 
 @Composable
 fun ReportDialog(
@@ -77,10 +77,10 @@ fun ReportDialog(
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+            colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, TokBorder, RoundedCornerShape(20.dp))
+                .border(1.dp, ZevoraBorder, RoundedCornerShape(20.dp))
         ) {
             Column(
                 modifier = Modifier
@@ -133,7 +133,7 @@ fun ReportDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
-                            .background(TokDarkElevated)
+                            .background(ZevoraDarkElevated)
                             .padding(10.dp)
                     ) {
                         Text(
@@ -168,7 +168,7 @@ fun ReportDialog(
                             selected = (selectedReason == reason),
                             onClick = { selectedReason = reason },
                             colors = RadioButtonDefaults.colors(
-                                selectedColor = TokRed,
+                                selectedColor = ZevoraRed,
                                 unselectedColor = TextMuted
                             )
                         )
@@ -198,10 +198,10 @@ fun ReportDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextPrimary,
                         unfocusedTextColor = TextPrimary,
-                        focusedBorderColor = TokCyan,
-                        unfocusedBorderColor = TokBorder,
-                        focusedContainerColor = TokDarkElevated,
-                        unfocusedContainerColor = TokDarkElevated
+                        focusedBorderColor = ZevoraCyan,
+                        unfocusedBorderColor = ZevoraBorder,
+                        focusedContainerColor = ZevoraDarkElevated,
+                        unfocusedContainerColor = ZevoraDarkElevated
                     ),
                     shape = RoundedCornerShape(12.dp),
                     minLines = 2,
@@ -227,7 +227,7 @@ fun ReportDialog(
                         onClick = {
                             onSubmitReport(selectedReason, descriptionText.trim())
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = TokRed),
+                        colors = ButtonDefaults.buttonColors(containerColor = ZevoraRed),
                         shape = RoundedCornerShape(20.dp)
                     ) {
                         Text("Submit Report", color = Color.White, fontWeight = FontWeight.Bold)

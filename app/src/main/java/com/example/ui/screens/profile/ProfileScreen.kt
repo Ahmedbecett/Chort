@@ -82,23 +82,23 @@ import coil.compose.AsyncImage
 import com.example.BuildConfig
 import com.example.data.local.entities.UserEntity
 import com.example.data.local.entities.VideoEntity
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     userIdToView: String? = null,
     onNavigateToAdmin: () -> Unit,
     onNavigateToLegal: (String) -> Unit,
@@ -139,7 +139,7 @@ fun ProfileScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
             .testTag("profile_screen")
     ) {
@@ -164,8 +164,8 @@ fun ProfileScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(TokRed.copy(alpha = 0.2f))
-                            .border(1.dp, TokRed, RoundedCornerShape(12.dp))
+                            .background(ZevoraRed.copy(alpha = 0.2f))
+                            .border(1.dp, ZevoraRed, RoundedCornerShape(12.dp))
                             .clickable { onNavigateToAdmin() }
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                             .testTag("admin_dashboard_shortcut")
@@ -174,13 +174,13 @@ fun ProfileScreen(
                             Icon(
                                 imageVector = Icons.Default.AdminPanelSettings,
                                 contentDescription = "Admin Dashboard",
-                                tint = TokRed,
+                                tint = ZevoraRed,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "Admin Portal",
-                                color = TokRed,
+                                color = ZevoraRed,
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -202,11 +202,11 @@ fun ProfileScreen(
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false },
-                        modifier = Modifier.background(TokDarkSurface)
+                        modifier = Modifier.background(ZevoraDarkSurface)
                     ) {
                         DropdownMenuItem(
                             text = { Text("Settings and privacy", color = TextPrimary) },
-                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null, tint = TokCyan) },
+                            leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null, tint = ZevoraCyan) },
                             onClick = {
                                 showMenu = false
                                 onNavigateToSettings()
@@ -214,7 +214,7 @@ fun ProfileScreen(
                         )
                         DropdownMenuItem(
                             text = { Text("Terms of Service", color = TextPrimary) },
-                            leadingIcon = { Icon(Icons.Default.Policy, contentDescription = null, tint = TokCyan) },
+                            leadingIcon = { Icon(Icons.Default.Policy, contentDescription = null, tint = ZevoraCyan) },
                             onClick = {
                                 showMenu = false
                                 onNavigateToLegal("terms")
@@ -222,7 +222,7 @@ fun ProfileScreen(
                         )
                         DropdownMenuItem(
                             text = { Text("Privacy Policy", color = TextPrimary) },
-                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = TokCyan) },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = ZevoraCyan) },
                             onClick = {
                                 showMenu = false
                                 onNavigateToLegal("privacy")
@@ -255,7 +255,7 @@ fun ProfileScreen(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    text = "thileli dz v${BuildConfig.VERSION_NAME} " +
+                                    text = "ZEVORA v${BuildConfig.VERSION_NAME} " +
                                         "(${BuildConfig.VERSION_CODE}) · " +
                                         "${BuildConfig.GIT_COMMIT}",
                                     color = TextMuted,
@@ -292,14 +292,14 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .size(90.dp)
                                 .clip(CircleShape)
-                                .border(2.dp, TokCyan, CircleShape)
+                                .border(2.dp, ZevoraCyan, CircleShape)
                         )
                         if (profileUser?.role == "admin") {
                             Box(
                                 modifier = Modifier
                                     .size(24.dp)
                                     .clip(CircleShape)
-                                    .background(TokRed),
+                                    .background(ZevoraRed),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
@@ -326,7 +326,7 @@ fun ProfileScreen(
                         Icon(
                             imageVector = Icons.Default.Verified,
                             contentDescription = "Verified",
-                            tint = TokCyan,
+                            tint = ZevoraCyan,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -353,12 +353,12 @@ fun ProfileScreen(
                         if (isMyProfile) {
                             Button(
                                 onClick = { showEditProfileDialog = true },
-                                colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated),
+                                colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated),
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(42.dp)
-                                    .border(1.dp, TokBorder, RoundedCornerShape(12.dp))
+                                    .border(1.dp, ZevoraBorder, RoundedCornerShape(12.dp))
                                     .testTag("edit_profile_button")
                             ) {
                                 Icon(
@@ -378,7 +378,7 @@ fun ProfileScreen(
                                     }
                                 },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isFollowing) TokDarkElevated else TokRed
+                                    containerColor = if (isFollowing) ZevoraDarkElevated else ZevoraRed
                                 ),
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
@@ -405,11 +405,11 @@ fun ProfileScreen(
                             onClick = {
                                 Toast.makeText(context, "Profile link copied!", Toast.LENGTH_SHORT).show()
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated),
+                            colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .size(42.dp)
-                                .border(1.dp, TokBorder, RoundedCornerShape(12.dp))
+                                .border(1.dp, ZevoraBorder, RoundedCornerShape(12.dp))
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
@@ -440,12 +440,12 @@ fun ProfileScreen(
             item {
                 TabRow(
                     selectedTabIndex = selectedTab,
-                    containerColor = TokDarkBg,
+                    containerColor = ZevoraDarkBg,
                     contentColor = TextPrimary,
                     indicator = { tabPositions ->
                         TabRowDefaults.SecondaryIndicator(
                             Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                            color = if (selectedTab == 0) TokCyan else TokRed
+                            color = if (selectedTab == 0) ZevoraCyan else ZevoraRed
                         )
                     }
                 ) {
@@ -504,7 +504,7 @@ fun ProfileScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .aspectRatio(0.8f)
-                                    .background(TokDarkElevated)
+                                    .background(ZevoraDarkElevated)
                                     .clickable { onSelectVideo(video) }
                             ) {
                                 AsyncImage(
@@ -565,10 +565,10 @@ fun ProfileScreen(
         Dialog(onDismissRequest = { showEditProfileDialog = false }) {
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+                colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, TokBorder, RoundedCornerShape(20.dp))
+                    .border(1.dp, ZevoraBorder, RoundedCornerShape(20.dp))
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
@@ -587,8 +587,8 @@ fun ProfileScreen(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextPrimary,
                             unfocusedTextColor = TextPrimary,
-                            focusedBorderColor = TokCyan,
-                            unfocusedBorderColor = TokBorder
+                            focusedBorderColor = ZevoraCyan,
+                            unfocusedBorderColor = ZevoraBorder
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -602,8 +602,8 @@ fun ProfileScreen(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextPrimary,
                             unfocusedTextColor = TextPrimary,
-                            focusedBorderColor = TokCyan,
-                            unfocusedBorderColor = TokBorder
+                            focusedBorderColor = ZevoraCyan,
+                            unfocusedBorderColor = ZevoraBorder
                         ),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -618,8 +618,8 @@ fun ProfileScreen(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextPrimary,
                             unfocusedTextColor = TextPrimary,
-                            focusedBorderColor = TokCyan,
-                            unfocusedBorderColor = TokBorder
+                            focusedBorderColor = ZevoraCyan,
+                            unfocusedBorderColor = ZevoraBorder
                         ),
                         minLines = 2,
                         maxLines = 4,
@@ -635,8 +635,8 @@ fun ProfileScreen(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextPrimary,
                             unfocusedTextColor = TextPrimary,
-                            focusedBorderColor = TokCyan,
-                            unfocusedBorderColor = TokBorder
+                            focusedBorderColor = ZevoraCyan,
+                            unfocusedBorderColor = ZevoraBorder
                         ),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
@@ -672,7 +672,7 @@ fun ProfileScreen(
                                     }
                                 }
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = TokCyan),
+                            colors = ButtonDefaults.buttonColors(containerColor = ZevoraCyan),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("Save", color = Color.Black, fontWeight = FontWeight.Bold)
@@ -688,10 +688,10 @@ fun ProfileScreen(
         Dialog(onDismissRequest = { showDeleteAccountDialog = false }) {
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+                colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, TokBorder, RoundedCornerShape(20.dp))
+                    .border(1.dp, ZevoraBorder, RoundedCornerShape(20.dp))
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
@@ -702,7 +702,7 @@ fun ProfileScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "This permanently deletes your account, videos, likes and comments from thileli dz servers right now. This cannot be undone.",
+                        text = "This permanently deletes your account, videos, likes and comments from ZEVORA servers right now. This cannot be undone.",
                         color = TextSecondary,
                         fontSize = 12.5.sp,
                         lineHeight = 17.sp

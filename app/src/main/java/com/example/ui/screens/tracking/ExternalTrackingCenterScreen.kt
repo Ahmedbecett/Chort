@@ -83,7 +83,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.local.entities.ReportEntity
 import com.example.data.local.entities.UserEntity
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.StatusPending
@@ -91,12 +91,12 @@ import com.example.ui.theme.StatusResolved
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -105,7 +105,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExternalTrackingCenterScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -127,14 +127,14 @@ fun ExternalTrackingCenterScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
     ) {
         // TOP APP BAR
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(TokDarkSurface)
+                .background(ZevoraDarkSurface)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -153,14 +153,14 @@ fun ExternalTrackingCenterScreen(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(TokCyan.copy(alpha = 0.2f))
-                    .border(1.dp, TokCyan, CircleShape),
+                    .background(ZevoraCyan.copy(alpha = 0.2f))
+                    .border(1.dp, ZevoraCyan, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Shield,
                     contentDescription = null,
-                    tint = TokCyan,
+                    tint = ZevoraCyan,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -179,12 +179,12 @@ fun ExternalTrackingCenterScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
-                            .background(TokRed.copy(alpha = 0.2f))
+                            .background(ZevoraRed.copy(alpha = 0.2f))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = "PORTAL",
-                            color = TokRed,
+                            color = ZevoraRed,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.ExtraBold
                         )
@@ -213,7 +213,7 @@ fun ExternalTrackingCenterScreen(
                 Icon(
                     imageVector = Icons.Default.Download,
                     contentDescription = "Export Report",
-                    tint = TokCyan
+                    tint = ZevoraCyan
                 )
             }
         }
@@ -229,14 +229,14 @@ fun ExternalTrackingCenterScreen(
                 title = "المسجلين",
                 count = allUsers.size.toString(),
                 subtext = "${allUsers.count { it.status == "active" }} نشط",
-                accentColor = TokCyan,
+                accentColor = ZevoraCyan,
                 modifier = Modifier.weight(1f)
             )
             KpiCard(
                 title = "البلاغات",
                 count = allReports.size.toString(),
                 subtext = "${allReports.count { it.status == "pending" }} قيد الفحص",
-                accentColor = TokRed,
+                accentColor = ZevoraRed,
                 modifier = Modifier.weight(1f)
             )
             KpiCard(
@@ -258,14 +258,14 @@ fun ExternalTrackingCenterScreen(
         // TABS
         TabRow(
             selectedTabIndex = selectedTab,
-            containerColor = TokDarkSurface,
+            containerColor = ZevoraDarkSurface,
             contentColor = TextPrimary,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
                     Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
                     color = when (selectedTab) {
-                        0 -> TokCyan
-                        1 -> TokRed
+                        0 -> ZevoraCyan
+                        1 -> ZevoraRed
                         else -> AccentGold
                     }
                 )
@@ -404,7 +404,7 @@ fun ExternalTrackingCenterScreen(
             onDismissRequest = { showExportDialog = false },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Download, contentDescription = null, tint = TokCyan)
+                    Icon(Icons.Default.Download, contentDescription = null, tint = ZevoraCyan)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("تقرير التتبع والتدقيق (Audit Summary)")
                 }
@@ -422,12 +422,12 @@ fun ExternalTrackingCenterScreen(
                             .fillMaxWidth()
                             .height(180.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(TokDarkElevated)
+                            .background(ZevoraDarkElevated)
                             .padding(8.dp)
                     ) {
                         Text(
                             text = csvSummary,
-                            color = TokCyan,
+                            color = ZevoraCyan,
                             fontSize = 10.sp,
                             lineHeight = 14.sp
                         )
@@ -441,7 +441,7 @@ fun ExternalTrackingCenterScreen(
                         Toast.makeText(context, "تم نسخ التقرير كاملاً للحافظة!", Toast.LENGTH_SHORT).show()
                         showExportDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = TokCyan)
+                    colors = ButtonDefaults.buttonColors(containerColor = ZevoraCyan)
                 ) {
                     Text("نسخ التقرير (Copy)", color = Color.Black, fontWeight = FontWeight.Bold)
                 }
@@ -451,7 +451,7 @@ fun ExternalTrackingCenterScreen(
                     Text("إغلاق", color = TextSecondary)
                 }
             },
-            containerColor = TokDarkSurface
+            containerColor = ZevoraDarkSurface
         )
     }
 }
@@ -467,8 +467,8 @@ private fun KpiCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, TokBorder)
+        colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, ZevoraBorder)
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Text(text = title, color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
@@ -518,14 +518,14 @@ private fun UsersTrackerSection(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
             placeholder = { Text("بحث عن مستخدم بالاسم، البريد أو المعرف...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TokCyan) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = ZevoraCyan) },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary,
-                focusedBorderColor = TokCyan,
-                unfocusedBorderColor = TokBorder,
-                focusedContainerColor = TokDarkSurface,
-                unfocusedContainerColor = TokDarkSurface
+                focusedBorderColor = ZevoraCyan,
+                unfocusedBorderColor = ZevoraBorder,
+                focusedContainerColor = ZevoraDarkSurface,
+                unfocusedContainerColor = ZevoraDarkSurface
             ),
             shape = RoundedCornerShape(12.dp),
             singleLine = true,
@@ -549,14 +549,14 @@ private fun UsersTrackerSection(
                     onClick = { onFilterStatusChange(key) },
                     label = { Text(label, fontSize = 11.5.sp) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = TokCyan,
+                        selectedContainerColor = ZevoraCyan,
                         selectedLabelColor = Color.Black,
-                        containerColor = TokDarkSurface,
+                        containerColor = ZevoraDarkSurface,
                         labelColor = TextSecondary
                     ),
                     border = FilterChipDefaults.filterChipBorder(
-                        borderColor = TokBorder,
-                        selectedBorderColor = TokCyan,
+                        borderColor = ZevoraBorder,
+                        selectedBorderColor = ZevoraCyan,
                         enabled = true,
                         selected = filterStatus == key
                     )
@@ -598,13 +598,13 @@ private fun UserTrackingCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+        colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
             when (user.status) {
                 "banned" -> StatusBanned.copy(alpha = 0.5f)
                 "suspended" -> StatusPending.copy(alpha = 0.5f)
-                else -> TokBorder
+                else -> ZevoraBorder
             }
         )
     ) {
@@ -619,7 +619,7 @@ private fun UserTrackingCard(
                     modifier = Modifier
                         .size(46.dp)
                         .clip(CircleShape)
-                        .background(TokDarkElevated)
+                        .background(ZevoraDarkElevated)
                 )
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -644,7 +644,7 @@ private fun UserTrackingCard(
                     }
                     Text(
                         text = "@${user.username} • ID: ${user.id}",
-                        color = TokCyan,
+                        color = ZevoraCyan,
                         fontSize = 11.5.sp
                     )
                     Text(
@@ -683,7 +683,7 @@ private fun UserTrackingCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(TokDarkElevated)
+                    .background(ZevoraDarkElevated)
                     .padding(8.dp),
                 horizontalArrangement = Arrangement.SpaceAround
             ) {
@@ -752,7 +752,7 @@ private fun UserTrackingCard(
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = if (user.role == "admin") AccentGold else TextSecondary
                     ),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, TokBorder),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ZevoraBorder),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.height(34.dp)
                 ) {
@@ -805,14 +805,14 @@ private fun ReportsTrackerSection(
                     onClick = { onFilterStatusChange(key) },
                     label = { Text(label, fontSize = 11.5.sp) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = TokRed,
+                        selectedContainerColor = ZevoraRed,
                         selectedLabelColor = Color.White,
-                        containerColor = TokDarkSurface,
+                        containerColor = ZevoraDarkSurface,
                         labelColor = TextSecondary
                     ),
                     border = FilterChipDefaults.filterChipBorder(
-                        borderColor = TokBorder,
-                        selectedBorderColor = TokRed,
+                        borderColor = ZevoraBorder,
+                        selectedBorderColor = ZevoraRed,
                         enabled = true,
                         selected = filterStatus == key
                     )
@@ -878,10 +878,10 @@ private fun ReportTrackingCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+        colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            if (report.status == "pending") TokRed.copy(alpha = 0.6f) else TokBorder
+            if (report.status == "pending") ZevoraRed.copy(alpha = 0.6f) else ZevoraBorder
         )
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -896,8 +896,8 @@ private fun ReportTrackingCard(
                             .clip(RoundedCornerShape(6.dp))
                             .background(
                                 when (report.targetType) {
-                                    "video" -> TokRed.copy(alpha = 0.2f)
-                                    "user" -> TokCyan.copy(alpha = 0.2f)
+                                    "video" -> ZevoraRed.copy(alpha = 0.2f)
+                                    "user" -> ZevoraCyan.copy(alpha = 0.2f)
                                     else -> AccentGold.copy(alpha = 0.2f)
                                 }
                             )
@@ -906,8 +906,8 @@ private fun ReportTrackingCard(
                         Text(
                             text = report.targetType.uppercase(),
                             color = when (report.targetType) {
-                                "video" -> TokRed
-                                "user" -> TokCyan
+                                "video" -> ZevoraRed
+                                "user" -> ZevoraCyan
                                 else -> AccentGold
                             },
                             fontSize = 10.sp,
@@ -944,7 +944,7 @@ private fun ReportTrackingCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(6.dp))
-                        .background(TokDarkElevated)
+                        .background(ZevoraDarkElevated)
                         .padding(8.dp)
                 ) {
                     Text(
@@ -960,14 +960,14 @@ private fun ReportTrackingCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "المُبلِّغ: @${report.reporterUsername}",
-                    color = TokCyan,
+                    color = ZevoraCyan,
                     fontSize = 11.sp
                 )
                 if (report.targetOwnerUsername.isNotBlank()) {
                     Text(text = " • ", color = TextMuted)
                     Text(
                         text = "المُبلَّغ عنه: @${report.targetOwnerUsername}",
-                        color = TokRed,
+                        color = ZevoraRed,
                         fontSize = 11.sp
                     )
                 }
@@ -984,7 +984,7 @@ private fun ReportTrackingCard(
                     if (report.targetType == "video") {
                         Button(
                             onClick = onDeleteContent,
-                            colors = ButtonDefaults.buttonColors(containerColor = TokRed),
+                            colors = ButtonDefaults.buttonColors(containerColor = ZevoraRed),
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier.weight(1f).height(34.dp)
                         ) {
@@ -1009,7 +1009,7 @@ private fun ReportTrackingCard(
                     OutlinedButton(
                         onClick = { onResolve("rejected", "تم فحص المحتوى ولا يخالف المعايير") },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, TokBorder),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, ZevoraBorder),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.height(34.dp)
                     ) {
@@ -1058,20 +1058,20 @@ private fun AuditAndAnalyticsSection(
 
         Card(
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
-            border = androidx.compose.foundation.BorderStroke(1.dp, TokBorder)
+            colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, ZevoraBorder)
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Text(text = "معدل سرعة الاستجابة للبلاغات", color = TextSecondary, fontSize = 12.sp)
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(text = "0.8 دقيقة", color = TokCyan, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(text = "0.8 دقيقة", color = ZevoraCyan, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = "(أسرع من معيار الصناعة بـ 85%)", color = StatusResolved, fontSize = 11.sp)
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
-                HorizontalDivider(color = TokBorder)
+                HorizontalDivider(color = ZevoraBorder)
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(text = "سجل الإجراءات والعقوبات الأخيرة", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
@@ -1089,10 +1089,10 @@ private fun AuditAndAnalyticsSection(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
-                                Text(text = "إجراء: ${viol.actionTaken}", color = TokRed, fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                                Text(text = "إجراء: ${viol.actionTaken}", color = ZevoraRed, fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
                                 Text(text = "السبب: ${viol.reason}", color = TextMuted, fontSize = 10.sp)
                             }
-                            Text(text = "بواسطة @${viol.adminUsername}", color = TokCyan, fontSize = 10.5.sp)
+                            Text(text = "بواسطة @${viol.adminUsername}", color = ZevoraCyan, fontSize = 10.5.sp)
                         }
                     }
                 }

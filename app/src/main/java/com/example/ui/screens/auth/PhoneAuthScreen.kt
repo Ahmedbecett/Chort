@@ -54,18 +54,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.example.data.repository.TokPulseRepository
-import com.example.ui.components.ChortMark
+import com.example.data.repository.ZevoraRepository
+import com.example.ui.components.ZevoraMark
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 
 data class CountryCode(val name: String, val dial: String, val flag: String)
@@ -93,15 +93,21 @@ val COMMON_COUNTRY_CODES = listOf(
 /**
  * Phone-number entry with a country picker. Sends a one-time SMS code,
  * then hands the verified E.164 number to the OTP screen.
+ *
+ * Registration codes are sent through Firebase Phone Auth and the issued
+ * [verificationId] is forwarded via [onCodeSent]; when Firebase verifies
+ * instantly (no SMS needed) [onAutoVerified] fires instead. Recovery codes
+ * come from the production backend (verificationId is null there).
  */
 @Composable
 fun PhoneAuthScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     mode: String = "register",
     title: String = "Enter your phone number",
     subtitle: String = "We'll text you a 6-digit code to confirm it's really you.",
-    onCodeSent: (phone: String, cooldownSeconds: Int, expiresInSeconds: Int, devOtp: String?) -> Unit,
-    onBack: () -> Unit
+    onCodeSent: (phone: String, cooldownSeconds: Int, expiresInSeconds: Int, verificationId: String?) -> Unit,
+    onBack: () -> Unit,
+    onAutoVerified: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     var country by remember { mutableStateOf(COMMON_COUNTRY_CODES.first()) }
@@ -128,7 +134,7 @@ fun PhoneAuthScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
@@ -148,7 +154,7 @@ fun PhoneAuthScreen(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
-            ChortMark(size = 36.dp)
+            ZevoraMark(size = 36.dp)
             Spacer(modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.width(48.dp))
         }
@@ -195,8 +201,8 @@ fun PhoneAuthScreen(
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(14.dp))
-                    .background(TokDarkSurface)
-                    .border(1.dp, TokBorder, RoundedCornerShape(14.dp))
+                    .background(ZevoraDarkSurface)
+                    .border(1.dp, ZevoraBorder, RoundedCornerShape(14.dp))
                     .clickable { showPicker = true }
                     .padding(horizontal = 12.dp, vertical = 15.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -219,13 +225,13 @@ fun PhoneAuthScreen(
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = TokDarkSurface,
-                    unfocusedContainerColor = TokDarkSurface,
-                    focusedBorderColor = TokCyan,
-                    unfocusedBorderColor = TokBorder,
+                    focusedContainerColor = ZevoraDarkSurface,
+                    unfocusedContainerColor = ZevoraDarkSurface,
+                    focusedBorderColor = ZevoraCyan,
+                    unfocusedBorderColor = ZevoraBorder,
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    cursorColor = TokCyan
+                    cursorColor = ZevoraCyan
                 ),
                 modifier = Modifier.weight(1f)
             )
@@ -251,52 +257,43 @@ fun PhoneAuthScreen(
                 }
                 isLoading = true
                 errorMessage = null
-                if (mode != "recovery" && activity != null) {
-                    repository.sendFirebasePhoneOtp(
-                        activity = activity,
-                        phone = fullPhone,
-                        onCodeSent = { _ ->
-                            isLoading = false
-                            onCodeSent(fullPhone, 60, 600, null)
-                        },
-                        onAutoVerified = { _ ->
-                            isLoading = false
-                            onCodeSent(fullPhone, 60, 600, null)
-                        },
-                        onError = { fbErr ->
-                            scope.launch {
-                                val result = repository.requestPhoneOtp(fullPhone)
-                                isLoading = false
-                                if (result.isSuccess) {
-                                    val otp = result.getOrThrow()
-                                    onCodeSent(fullPhone, otp.resendCooldownSeconds, otp.expiresInSeconds, otp.devOtp)
-                                } else {
-                                    errorMessage = fbErr.ifBlank { result.exceptionOrNull()?.message }
-                                }
-                            }
-                        }
-                    )
-                } else {
+                if (mode == "recovery") {
                     scope.launch {
-                        val result = if (mode == "recovery") {
-                            repository.requestRecoveryOtp(fullPhone)
-                        } else {
-                            repository.requestPhoneOtp(fullPhone)
-                        }
+                        val result = repository.requestRecoveryOtp(fullPhone)
                         isLoading = false
                         if (result.isSuccess) {
                             val otp = result.getOrThrow()
-                            onCodeSent(fullPhone, otp.resendCooldownSeconds, otp.expiresInSeconds, otp.devOtp)
+                            onCodeSent(fullPhone, otp.resendCooldownSeconds, otp.expiresInSeconds, null)
                         } else {
                             errorMessage = result.exceptionOrNull()?.message
                         }
                     }
+                } else if (activity != null) {
+                    repository.sendFirebasePhoneOtp(
+                        activity = activity,
+                        phone = fullPhone,
+                        onCodeSent = { verificationId ->
+                            isLoading = false
+                            onCodeSent(fullPhone, 60, 600, verificationId)
+                        },
+                        onAutoVerified = {
+                            isLoading = false
+                            onAutoVerified()
+                        },
+                        onError = { fbErr ->
+                            isLoading = false
+                            errorMessage = fbErr.ifBlank { "Could not send the code. Please try again." }
+                        }
+                    )
+                } else {
+                    isLoading = false
+                    errorMessage = "Phone verification is unavailable right now. Please try again."
                 }
             },
             enabled = !isLoading,
             colors = ButtonDefaults.buttonColors(
-                containerColor = TokRed,
-                disabledContainerColor = TokDarkElevated
+                containerColor = ZevoraRed,
+                disabledContainerColor = ZevoraDarkElevated
             ),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
@@ -333,8 +330,8 @@ private fun CountryPickerDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
-                .background(TokDarkSurface)
-                .border(1.dp, TokBorder, RoundedCornerShape(20.dp))
+                .background(ZevoraDarkSurface)
+                .border(1.dp, ZevoraBorder, RoundedCornerShape(20.dp))
                 .padding(vertical = 12.dp)
         ) {
             Text(
@@ -350,7 +347,7 @@ private fun CountryPickerDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { onSelect(c) }
-                            .background(if (c == selected) TokCyan.copy(alpha = 0.08f) else Color.Transparent)
+                            .background(if (c == selected) ZevoraCyan.copy(alpha = 0.08f) else Color.Transparent)
                             .padding(horizontal = 18.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -365,7 +362,7 @@ private fun CountryPickerDialog(
                         Text(text = c.dial, color = TextSecondary, fontSize = 14.sp)
                         if (c == selected) {
                             Spacer(modifier = Modifier.width(8.dp))
-                            Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = TokCyan, modifier = Modifier.size(18.dp))
+                            Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = ZevoraCyan, modifier = Modifier.size(18.dp))
                         }
                     }
                 }

@@ -54,12 +54,12 @@ import com.example.ui.theme.StatusResolved
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 
 data class DmMessage(
     val id: String,
@@ -89,7 +89,7 @@ fun DirectMessageScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
             .imePadding()
     ) {
@@ -97,7 +97,7 @@ fun DirectMessageScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(TokDarkSurface)
+                .background(ZevoraDarkSurface)
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -122,7 +122,7 @@ fun DirectMessageScreen(
                         .size(10.dp)
                         .clip(CircleShape)
                         .background(StatusResolved)
-                        .border(1.5.dp, TokDarkSurface, CircleShape)
+                        .border(1.5.dp, ZevoraDarkSurface, CircleShape)
                 )
             }
 
@@ -137,7 +137,7 @@ fun DirectMessageScreen(
                 )
                 Text(
                     text = "@$recipientUsername • Active now",
-                    color = TokCyan,
+                    color = ZevoraCyan,
                     fontSize = 11.sp
                 )
             }
@@ -161,7 +161,7 @@ fun DirectMessageScreen(
         ) {
             items(messages, key = { it.id }) { msg ->
                 val alignment = if (msg.senderIsMe) Alignment.End else Alignment.Start
-                val bubbleColor = if (msg.senderIsMe) TokRed else TokDarkElevated
+                val bubbleColor = if (msg.senderIsMe) ZevoraRed else ZevoraDarkElevated
                 val textColor = Color.White
 
                 Column(
@@ -201,7 +201,7 @@ fun DirectMessageScreen(
                             Icon(
                                 imageVector = Icons.Default.DoneAll,
                                 contentDescription = "Read",
-                                tint = TokCyan,
+                                tint = ZevoraCyan,
                                 modifier = Modifier.size(12.dp)
                             )
                         }
@@ -214,7 +214,7 @@ fun DirectMessageScreen(
         LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(TokDarkSurface)
+                .background(ZevoraDarkSurface)
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -243,7 +243,7 @@ fun DirectMessageScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(TokDarkSurface)
+                .background(ZevoraDarkSurface)
                 .navigationBarsPadding()
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -263,10 +263,10 @@ fun DirectMessageScreen(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    focusedBorderColor = TokBorder,
-                    unfocusedBorderColor = TokBorder,
-                    focusedContainerColor = TokDarkElevated,
-                    unfocusedContainerColor = TokDarkElevated
+                    focusedBorderColor = ZevoraBorder,
+                    unfocusedBorderColor = ZevoraBorder,
+                    focusedContainerColor = ZevoraDarkElevated,
+                    unfocusedContainerColor = ZevoraDarkElevated
                 ),
                 shape = RoundedCornerShape(20.dp),
                 singleLine = true,
@@ -294,7 +294,7 @@ fun DirectMessageScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Send",
-                        tint = TokCyan
+                        tint = ZevoraCyan
                     )
                 }
             } else {
@@ -302,7 +302,7 @@ fun DirectMessageScreen(
                     Icon(
                         imageVector = Icons.Default.Mic,
                         contentDescription = "Voice note",
-                        tint = TokRed
+                        tint = ZevoraRed
                     )
                 }
             }

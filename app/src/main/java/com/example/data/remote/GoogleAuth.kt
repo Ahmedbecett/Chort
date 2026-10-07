@@ -12,7 +12,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 /**
  * Official Google sign-in via Android Credential Manager.
  *
- * Returns the raw Google ID token; the Chort backend verifies it with
+ * Returns the raw Google ID token; the ZEVORA backend verifies it with
  * Google (tokeninfo) before creating/linking the account, so the app
  * never invents identity. The backend GOOGLE_CLIENT_ID must equal the
  * same web client id used here (R.string.default_web_client_id).

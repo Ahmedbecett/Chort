@@ -47,18 +47,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.remote.FacebookAuth
 import com.example.data.remote.GoogleAuth
-import com.example.data.repository.TokPulseRepository
-import com.example.ui.components.ChortLogo
+import com.example.data.repository.ZevoraRepository
+import com.example.ui.components.ZevoraLogo
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 
 /**
@@ -67,7 +67,7 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun WelcomeAuthScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     onAuthSuccess: () -> Unit,
     onUseEmail: () -> Unit,
     onUsePhone: () -> Unit,
@@ -95,7 +95,7 @@ fun WelcomeAuthScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 20.dp)
@@ -108,7 +108,7 @@ fun WelcomeAuthScreen(
             visible = entered,
             enter = slideInVertically(initialOffsetY = { -24 }) + fadeIn()
         ) {
-            ChortLogo(
+            ZevoraLogo(
                 size = 92.dp,
                 tagline = "Watch. Create. Belong."
             )
@@ -190,7 +190,7 @@ fun WelcomeAuthScreen(
         AuthMethodButton(
             label = "Continue with phone number",
             icon = Icons.Default.PhoneAndroid,
-            brandColor = TokCyan,
+            brandColor = ZevoraCyan,
             letterColor = Color.Black,
             isLoading = false,
             enabled = busyMethod == null,
@@ -202,7 +202,7 @@ fun WelcomeAuthScreen(
         AuthMethodButton(
             label = "Continue with email",
             icon = Icons.Default.Email,
-            brandColor = TokRed,
+            brandColor = ZevoraRed,
             letterColor = Color.White,
             isLoading = false,
             enabled = busyMethod == null,
@@ -213,7 +213,7 @@ fun WelcomeAuthScreen(
 
         Text(
             text = "Trouble signing in? Recover your account",
-            color = TokCyan,
+            color = ZevoraCyan,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.clickable(onClick = onRecoverAccount)
@@ -232,7 +232,7 @@ fun WelcomeAuthScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "By continuing you agree to the thileli dz Terms of Service and Privacy Policy.",
+            text = "By continuing you agree to the ZEVORA Terms of Service and Privacy Policy.",
             color = TextMuted,
             fontSize = 11.sp,
             textAlign = TextAlign.Center,
@@ -257,8 +257,8 @@ private fun AuthMethodButton(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(if (enabled) TokDarkSurface else TokDarkElevated)
-            .border(1.dp, TokBorder, RoundedCornerShape(16.dp))
+            .background(if (enabled) ZevoraDarkSurface else ZevoraDarkElevated)
+            .border(1.dp, ZevoraBorder, RoundedCornerShape(16.dp))
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,

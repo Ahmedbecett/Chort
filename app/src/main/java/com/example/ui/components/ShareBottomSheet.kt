@@ -51,11 +51,11 @@ import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,7 +70,7 @@ fun ShareBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = TokDarkSurface,
+        containerColor = ZevoraDarkSurface,
         dragHandle = null
     ) {
         Column(
@@ -104,7 +104,7 @@ fun ShareBottomSheet(
                 }
             }
 
-            HorizontalDivider(color = TokBorder, thickness = 0.5.dp)
+            HorizontalDivider(color = ZevoraBorder, thickness = 0.5.dp)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -128,10 +128,10 @@ fun ShareBottomSheet(
                         title = "Copy Link",
                         icon = Icons.Default.Link,
                         bgColor = Color(0xFF25F4EE).copy(alpha = 0.2f),
-                        iconTint = TokCyan,
+                        iconTint = ZevoraCyan,
                         onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText("thileli dz Video", "https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream")
+                            val clip = ClipData.newPlainText("ZEVORA Video", "https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream")
                             clipboard.setPrimaryClip(clip)
                             Toast.makeText(context, "Link copied to clipboard!", Toast.LENGTH_SHORT).show()
                             onDismiss()
@@ -142,13 +142,13 @@ fun ShareBottomSheet(
                     ShareTargetIcon(
                         title = "System Share",
                         icon = Icons.Default.Share,
-                        bgColor = TokRed.copy(alpha = 0.2f),
-                        iconTint = TokRed,
+                        bgColor = ZevoraRed.copy(alpha = 0.2f),
+                        iconTint = ZevoraRed,
                         onClick = {
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "Check out this clip on thileli dz!")
-                                putExtra(Intent.EXTRA_TEXT, "Watch @${video.creatorUsername}'s video on thileli dz: ${video.caption} https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream")
+                                putExtra(Intent.EXTRA_SUBJECT, "Check out this clip on ZEVORA!")
+                                putExtra(Intent.EXTRA_TEXT, "Watch @${video.creatorUsername}'s video on ZEVORA: ${video.caption} https://chort-nine.vercel.app/api/v1/videos/${video.id}/stream")
                             }
                             context.startActivity(Intent.createChooser(intent, "Share via"))
                             onDismiss()
@@ -214,7 +214,7 @@ fun ShareBottomSheet(
                     ShareTargetIcon(
                         title = "Not Interested",
                         icon = Icons.Outlined.NotInterested,
-                        bgColor = TokDarkElevated,
+                        bgColor = ZevoraDarkElevated,
                         iconTint = TextSecondary,
                         onClick = {
                             Toast.makeText(context, "We will show fewer videos like this", Toast.LENGTH_SHORT).show()

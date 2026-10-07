@@ -478,7 +478,7 @@ data class LoginRecordsResponse(
 // Retrofit API Service
 // -------------------------------------------------------------
 
-interface TokPulseApiService {
+interface ZevoraApiService {
 
     @GET("api/v1/health")
     suspend fun healthCheck(): Response<HealthResponse>
@@ -630,7 +630,7 @@ interface TokPulseApiService {
 // Singleton Client
 // -------------------------------------------------------------
 
-object TokPulseApiClient {
+object ZevoraApiClient {
     // Single clear public production Vercel Base URL
     const val BASE_URL = "https://chort-nine.vercel.app/"
 
@@ -678,13 +678,13 @@ object TokPulseApiClient {
         })
         .build()
 
-    val api: TokPulseApiService by lazy {
+    val api: ZevoraApiService by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
-            .create(TokPulseApiService::class.java)
+            .create(ZevoraApiService::class.java)
     }
 
     fun getCanonicalStreamUrl(videoId: String): String = "${BASE_URL}api/v1/videos/$videoId/stream"

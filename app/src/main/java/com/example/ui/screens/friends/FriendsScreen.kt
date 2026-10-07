@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.entities.CommentEntity
 import com.example.data.local.entities.VideoEntity
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.components.CommentBottomSheet
 import com.example.ui.components.ReportDialog
 import com.example.ui.components.ShareBottomSheet
@@ -55,11 +55,11 @@ import com.example.ui.screens.feed.VideoFeedItem
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 
 /**
@@ -69,7 +69,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FriendsScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     onNavigateToSearch: () -> Unit,
     onNavigateToProfile: (String) -> Unit,
     onNavigateToCreate: () -> Unit,
@@ -156,7 +156,7 @@ fun FriendsScreen(
             ) {
                 Text(
                     text = "Showing one creator",
-                    color = TokCyan,
+                    color = ZevoraCyan,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -184,7 +184,7 @@ fun FriendsScreen(
                     Icon(
                         imageVector = Icons.Default.Groups,
                         contentDescription = "No friends videos",
-                        tint = TokCyan,
+                        tint = ZevoraCyan,
                         modifier = Modifier.size(54.dp)
                     )
                     Spacer(modifier = Modifier.height(14.dp))
@@ -205,7 +205,7 @@ fun FriendsScreen(
                     Spacer(modifier = Modifier.height(18.dp))
                     Button(
                         onClick = onNavigateToSearch,
-                        colors = ButtonDefaults.buttonColors(containerColor = TokRed),
+                        colors = ButtonDefaults.buttonColors(containerColor = ZevoraRed),
                         shape = RoundedCornerShape(20.dp)
                     ) {
                         Text("Find creators", color = Color.White, fontWeight = FontWeight.Bold)

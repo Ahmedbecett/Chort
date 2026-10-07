@@ -44,18 +44,18 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.repository.TokPulseRepository
-import com.example.ui.components.ChortMark
+import com.example.data.repository.ZevoraRepository
+import com.example.ui.components.ZevoraMark
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 
 /**
  * Account recovery, step by step:
@@ -65,7 +65,7 @@ import com.example.ui.theme.TokRed
  */
 @Composable
 fun RecoveryScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     onRecovered: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -73,7 +73,6 @@ fun RecoveryScreen(
     var phone by remember { mutableStateOf("") }
     var cooldown by remember { mutableStateOf(60) }
     var expiresIn by remember { mutableStateOf(600) }
-    var devOtp by remember { mutableStateOf<String?>(null) }
     var newPassword by remember { mutableStateOf("") }
 
     when (step) {
@@ -82,11 +81,10 @@ fun RecoveryScreen(
             mode = "recovery",
             title = "Recover your account",
             subtitle = "Enter the phone number linked to your account. We'll text you a code.",
-            onCodeSent = { sentPhone, sentCooldown, sentExpires, sentDevOtp ->
+            onCodeSent = { sentPhone, sentCooldown, sentExpires, _ ->
                 phone = sentPhone
                 cooldown = sentCooldown
                 expiresIn = sentExpires
-                devOtp = sentDevOtp
                 step = 1
             },
             onBack = onBack
@@ -106,7 +104,6 @@ fun RecoveryScreen(
             phone = phone,
             cooldownSeconds = cooldown,
             expiresInSeconds = expiresIn,
-            devOtp = devOtp,
             newPassword = newPassword.ifBlank { null },
             onSuccess = onRecovered,
             onBack = { step = 1 }
@@ -127,7 +124,7 @@ private fun NewPasswordStep(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
@@ -147,7 +144,7 @@ private fun NewPasswordStep(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
-            ChortMark(size = 36.dp)
+            ZevoraMark(size = 36.dp)
             Spacer(modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.width(48.dp))
         }
@@ -193,13 +190,13 @@ private fun NewPasswordStep(
             singleLine = true,
             shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = TokDarkSurface,
-                unfocusedContainerColor = TokDarkSurface,
-                focusedBorderColor = TokCyan,
-                unfocusedBorderColor = TokBorder,
+                focusedContainerColor = ZevoraDarkSurface,
+                unfocusedContainerColor = ZevoraDarkSurface,
+                focusedBorderColor = ZevoraCyan,
+                unfocusedBorderColor = ZevoraBorder,
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary,
-                cursorColor = TokCyan
+                cursorColor = ZevoraCyan
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -214,13 +211,13 @@ private fun NewPasswordStep(
             singleLine = true,
             shape = RoundedCornerShape(14.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = TokDarkSurface,
-                unfocusedContainerColor = TokDarkSurface,
-                focusedBorderColor = TokCyan,
-                unfocusedBorderColor = TokBorder,
+                focusedContainerColor = ZevoraDarkSurface,
+                unfocusedContainerColor = ZevoraDarkSurface,
+                focusedBorderColor = ZevoraCyan,
+                unfocusedBorderColor = ZevoraBorder,
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary,
-                cursorColor = TokCyan
+                cursorColor = ZevoraCyan
             ),
             modifier = Modifier.fillMaxWidth()
         )
@@ -241,8 +238,8 @@ private fun NewPasswordStep(
                 onContinue(password)
             },
             colors = ButtonDefaults.buttonColors(
-                containerColor = TokRed,
-                disabledContainerColor = TokDarkElevated
+                containerColor = ZevoraRed,
+                disabledContainerColor = ZevoraDarkElevated
             ),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier

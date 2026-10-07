@@ -74,17 +74,17 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.local.entities.UserEntity
 import com.example.data.local.entities.VideoEntity
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 
 data class SoundSearchResult(
@@ -96,7 +96,7 @@ data class SoundSearchResult(
 
 @Composable
 fun DiscoverScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     onNavigateToProfile: (String) -> Unit,
     onSelectVideo: (VideoEntity) -> Unit,
     onNavigateToSound: (String) -> Unit = {},
@@ -198,7 +198,7 @@ fun DiscoverScreen(
             }
         }
         if (tagMap.isEmpty()) {
-            listOf(Pair("#chort", "Official"), Pair("#fyp", "Trending"), Pair("#viral", "Featured"))
+            listOf(Pair("#zevora", "Official"), Pair("#fyp", "Trending"), Pair("#viral", "Featured"))
         } else {
             tagMap.entries.sortedByDescending { it.value }.map { Pair(it.key, "${it.value} clips") }
         }
@@ -212,14 +212,14 @@ fun DiscoverScreen(
         pool += dynamicTags.take(8).map { it.first }
         pool += allSounds.take(6).map { it.title }
         pool += allUsers.filter { it.role != "admin" }.take(6).map { "@${it.username}" }
-        if (pool.isEmpty()) pool += listOf("#chort", "#fyp", "#viral", "#newhere")
+        if (pool.isEmpty()) pool += listOf("#zevora", "#fyp", "#viral", "#newhere")
         pool.distinct().shuffled(java.util.Random(suggestionSeed * 31L + 7))
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
             .testTag("discover_screen")
     ) {
@@ -246,7 +246,7 @@ fun DiscoverScreen(
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = TokCyan,
+                        tint = ZevoraCyan,
                         modifier = Modifier.size(20.dp)
                     )
                 },
@@ -265,10 +265,10 @@ fun DiscoverScreen(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = TextPrimary,
                     unfocusedTextColor = TextPrimary,
-                    focusedBorderColor = TokCyan,
-                    unfocusedBorderColor = TokBorder,
-                    focusedContainerColor = TokDarkElevated,
-                    unfocusedContainerColor = TokDarkElevated
+                    focusedBorderColor = ZevoraCyan,
+                    unfocusedBorderColor = ZevoraBorder,
+                    focusedContainerColor = ZevoraDarkElevated,
+                    unfocusedContainerColor = ZevoraDarkElevated
                 ),
                 shape = RoundedCornerShape(24.dp),
                 singleLine = true,
@@ -281,7 +281,7 @@ fun DiscoverScreen(
             )
             Text(
                 text = "Search",
-                color = TokRed,
+                color = ZevoraRed,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
@@ -304,14 +304,14 @@ fun DiscoverScreen(
                     onClick = { selectedFilter = filter },
                     label = { Text(filter, fontSize = 12.sp) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = TokRed,
+                        selectedContainerColor = ZevoraRed,
                         selectedLabelColor = Color.White,
-                        containerColor = TokDarkElevated,
+                        containerColor = ZevoraDarkElevated,
                         labelColor = TextSecondary
                     ),
                     border = FilterChipDefaults.filterChipBorder(
-                        borderColor = TokBorder,
-                        selectedBorderColor = TokRed,
+                        borderColor = ZevoraBorder,
+                        selectedBorderColor = ZevoraRed,
                         enabled = true,
                         selected = selectedFilter == filter
                     ),
@@ -335,7 +335,7 @@ fun DiscoverScreen(
                     Icon(
                         imageVector = Icons.Default.SearchOff,
                         contentDescription = "No results",
-                        tint = TokRed,
+                        tint = ZevoraRed,
                         modifier = Modifier.size(56.dp)
                     )
                     Spacer(modifier = Modifier.height(14.dp))
@@ -356,11 +356,11 @@ fun DiscoverScreen(
                     Spacer(modifier = Modifier.height(18.dp))
                     Button(
                         onClick = { searchQuery = "" },
-                        colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated),
+                        colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.border(1.dp, TokBorder, RoundedCornerShape(12.dp))
+                        modifier = Modifier.border(1.dp, ZevoraBorder, RoundedCornerShape(12.dp))
                     ) {
-                        Text("Reset Search", color = TokCyan, fontWeight = FontWeight.SemiBold)
+                        Text("Reset Search", color = ZevoraCyan, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -480,12 +480,12 @@ fun DiscoverScreen(
                                 modifier = Modifier
                                     .size(7.dp)
                                     .clip(CircleShape)
-                                    .background(if (hot) TokRed else TextMuted)
+                                    .background(if (hot) ZevoraRed else TextMuted)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = suggestion,
-                                color = if (hot) TokRed else TextPrimary,
+                                color = if (hot) ZevoraRed else TextPrimary,
                                 fontSize = 15.sp,
                                 fontWeight = if (hot) FontWeight.Bold else FontWeight.Normal,
                                 maxLines = 1,
@@ -507,7 +507,7 @@ fun DiscoverScreen(
                             Icon(
                                 imageVector = Icons.Default.TrendingUp,
                                 contentDescription = "Trending",
-                                tint = TokCyan,
+                                tint = ZevoraCyan,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -528,16 +528,16 @@ fun DiscoverScreen(
                             items(dynamicTags) { (tag, count) ->
                                 Card(
                                     shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = TokDarkElevated),
+                                    colors = CardDefaults.cardColors(containerColor = ZevoraDarkElevated),
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(12.dp))
                                         .clickable { searchQuery = tag.removePrefix("#") }
-                                        .border(1.dp, TokBorder, RoundedCornerShape(12.dp))
+                                        .border(1.dp, ZevoraBorder, RoundedCornerShape(12.dp))
                                 ) {
                                     Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
                                         Text(
                                             text = tag,
-                                            color = TokCyan,
+                                            color = ZevoraCyan,
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Bold
                                         )
@@ -583,11 +583,11 @@ fun DiscoverScreen(
                     items(searchResultsSounds.take(6)) { sound ->
                         Card(
                             shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+                            colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 14.dp, vertical = 4.dp)
-                                .border(1.dp, TokBorder, RoundedCornerShape(14.dp))
+                                .border(1.dp, ZevoraBorder, RoundedCornerShape(14.dp))
                                 .clickable { onNavigateToSound(sound.title) }
                         ) {
                             Row(
@@ -600,8 +600,8 @@ fun DiscoverScreen(
                                     modifier = Modifier
                                         .size(46.dp)
                                         .clip(CircleShape)
-                                        .background(TokDarkElevated)
-                                        .border(1.5.dp, TokCyan, CircleShape),
+                                        .background(ZevoraDarkElevated)
+                                        .border(1.5.dp, ZevoraCyan, CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -636,7 +636,7 @@ fun DiscoverScreen(
 
                                 Button(
                                     onClick = { onNavigateToSound(sound.title) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = TokRed),
+                                    colors = ButtonDefaults.buttonColors(containerColor = ZevoraRed),
                                     shape = RoundedCornerShape(12.dp),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                                     modifier = Modifier.height(32.dp)
@@ -728,10 +728,10 @@ private fun CreatorCard(
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+        colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
         modifier = Modifier
             .width(130.dp)
-            .border(1.dp, TokBorder, RoundedCornerShape(16.dp))
+            .border(1.dp, ZevoraBorder, RoundedCornerShape(16.dp))
             .clickable { onProfileClick() }
     ) {
         Column(
@@ -747,7 +747,7 @@ private fun CreatorCard(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .border(1.5.dp, TokCyan, CircleShape)
+                    .border(1.5.dp, ZevoraCyan, CircleShape)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -774,7 +774,7 @@ private fun CreatorCard(
             Button(
                 onClick = onToggleFollow,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isFollowing) TokDarkElevated else TokRed
+                    containerColor = if (isFollowing) ZevoraDarkElevated else ZevoraRed
                 ),
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
@@ -798,12 +798,12 @@ private fun VideoGridCard(
 ) {
     Card(
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+        colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
-            .border(1.dp, TokBorder, RoundedCornerShape(12.dp))
+            .border(1.dp, ZevoraBorder, RoundedCornerShape(12.dp))
     ) {
         Box(
             modifier = Modifier

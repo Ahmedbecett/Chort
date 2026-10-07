@@ -4,18 +4,20 @@ verify_apk.py - Prove that a built APK really contains the current source code.
 
 Why this exists
 ---------------
-Chort shipped a stale APK: the committed artifact kept versionCode 20200 /
-versionName "2.2.0" identical to the source, so a build made *before* the
-speaker-icon migration was indistinguishable from a fresh one and kept being
-installed on-device.
+ZEVORA once shipped a stale APK: the artifact kept the same
+versionCode/versionName as the source, so a build made *before* a fix was
+indistinguishable from a fresh one and kept being installed on-device.
 
 This script performs binary-level verification of the APK against the source
 tree, so "the APK reflects the latest source" is a checked fact, not a claim:
 
   1. Manifest identity      - versionCode / versionName / package / minSdk.
-  2. Signature              - signature schemes + signer certificate.
+  2. Signature              - signature schemes + production signer certificate
+                              (must be the stable release key, never a debug
+                              or per-build temporary key).
   3. Global DEX string scan - strings that only exist in the *current* source
-                              must be present in the APK.
+                              must be present in the APK; legacy-brand and
+                              removed-API markers must be absent.
   4. Class-level DEX check  - com.example.ui.components.VideoPlayerViewKt must
                               NOT contain the removed top-end speaker indicator
                               (Alignment.TopEnd + VolumeUp/VolumeOff icons),
@@ -30,8 +32,8 @@ Exit code 0 = every check passed. Non-zero = at least one check failed.
 
 Usage:
   python3 scripts/verify_apk.py \
-      --apk release/Chort-v1.1.0-release.apk \
-      --old-apk /tmp/old/Chort-v2.2.0-release.apk \
+      --apk release/ZEVORA-v3.0.0-release.apk \
+      --old-apk /tmp/old/Chort-v2.4.6-release.apk \
       --report release/VERIFICATION_REPORT.md
 """
 
@@ -59,9 +61,27 @@ REQUIRED_DEX_STRINGS = [
     ("player_retry_button", "VideoPlayerView.kt - real retry UI testTag"),
     ("player_skip_button", "VideoPlayerView.kt - skip control testTag"),
     ("Failed to decode/stream media", "VideoPlayerView.kt - playback error path"),
-    ("Primary API error", "TokPulseRepository.kt - primary cluster fallback"),
-    ("https://chort-nine.vercel.app/", "TokPulseApi.kt - production cluster"),
-    ("thileli dz-Android/", "VideoPlayerView.kt - version-stamped User-Agent"),
+    ("Primary API error", "ZevoraRepository.kt - primary cluster fallback"),
+    ("https://chort-nine.vercel.app/", "ZevoraApi.kt - production cluster"),
+    ("ZEVORA-Android/", "VideoPlayerView.kt - version-stamped User-Agent"),
+    ("ZEVORA • v3.0.0", "SplashScreen.kt - 3.0.0 splash stamp"),
+    (
+        "Verification session expired. Please resend the code.",
+        "OtpScreen.kt - Firebase OTP rewrite (3.0.0)",
+    ),
+]
+
+# Markers that must be ABSENT from the DEX: legacy branding and removed APIs.
+# (The one deliberate exception is FeedScreen.kt's backward-compatibility check
+# for old "thileli dz" sound titles, so only the old User-Agent - never shipped
+# in 3.0.0 - is asserted here, not the bare legacy word.)
+FORBIDDEN_DEX_STRINGS = [
+    ("thileli dz-Android/", "legacy User-Agent replaced by ZEVORA-Android/"),
+    ("tokpulse.com", "legacy placeholder domain replaced by zevora.app"),
+    ("chort.app", "legacy placeholder domain replaced by zevora.app"),
+    ("devSwitchToAdmin", "removed dev admin backdoor"),
+    ("requestPhoneOtp", "removed server OTP endpoint"),
+    ("verifyPhoneOtp", "removed server OTP endpoint"),
 ]
 
 # Markers that must be ABSENT from VideoPlayerViewKt: they belonged to the
@@ -231,9 +251,12 @@ def check_signature(sdk: Path, apk: Path) -> str:
         "(v1 is unnecessary for minSdk 24 and is not emitted by AGP)",
     )
     record(
-        "Production signer (not the Android debug key)",
-        "Android Debug" not in signer and signer != "?",
-        signer,
+        "Production signer is the stable release key (CN=Ahmed Becetti)",
+        "Ahmed Becetti" in signer
+        and "Android Debug" not in signer
+        and "ZEVORA Build" not in signer,
+        signer + " | debug or per-build temporary keys are rejected so future "
+        "releases keep updating without an uninstall",
     )
     return signer
 
@@ -249,6 +272,16 @@ def check_dex_strings(apk: Path, source_commit: str | None) -> None:
         not missing,
         f"{len(REQUIRED_DEX_STRINGS) - len(missing)}/{len(REQUIRED_DEX_STRINGS)} found"
         + (f" | MISSING: {missing}" if missing else ""),
+    )
+
+    leaked = []
+    for needle, origin in FORBIDDEN_DEX_STRINGS:
+        if blob_contains(blob, needle):
+            leaked.append(f"{needle} ({origin})")
+    record(
+        "Legacy-brand / removed-API markers absent from DEX",
+        not leaked,
+        "no legacy markers compiled in" if not leaked else f"LEAKED: {leaked}",
     )
 
     if source_commit and source_commit != "unknown":

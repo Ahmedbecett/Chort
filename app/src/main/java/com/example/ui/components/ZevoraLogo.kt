@@ -30,12 +30,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.ThileliFont
+import com.example.ui.theme.ZevoraFont
 import com.example.ui.theme.ZevoraCyan
 import com.example.ui.theme.ZevoraRed
 
 /**
- * Original thileli dz brand mark: an eighth-note whose head is a play
+ * Original ZEVORA brand mark: an eighth-note whose head is a play
  * triangle, drawn with a neon glow (soft cyan/red light layers behind a
  * crisp white core). Still by design - the glow does the talking.
  */
@@ -78,11 +78,11 @@ fun ZevoraLogo(
         if (showWordmark) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "thileli dz",
+                text = "ZEVORA",
                 color = TextPrimary,
                 fontSize = 30.sp,
                 fontWeight = FontWeight.ExtraBold,
-                fontFamily = ThileliFont,
+                fontFamily = ZevoraFont,
                 letterSpacing = 1.sp,
                 textAlign = TextAlign.Center
             )
@@ -93,7 +93,7 @@ fun ZevoraLogo(
                     color = TextSecondary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    fontFamily = ThileliFont,
+                    fontFamily = ZevoraFont,
                     textAlign = TextAlign.Center
                 )
             }
@@ -142,15 +142,3 @@ private fun DrawScope.drawNoteMark(color: Color, ox: Float, oy: Float, s: Float,
         color = color
     )
 }
-
-
-/** Legacy source aliases kept temporarily so unchanged feature modules compile. */
-@Deprecated("Use ZevoraLogo")
-@Composable
-fun ChortLogo(size: Dp = 88.dp, showWordmark: Boolean = true, tagline: String? = null, modifier: Modifier = Modifier) =
-    ZevoraLogo(size = size, showWordmark = showWordmark, tagline = tagline, modifier = modifier)
-
-@Deprecated("Use ZevoraMark")
-@Composable
-fun ChortMark(size: Dp = 40.dp, modifier: Modifier = Modifier) =
-    ZevoraMark(size = size, modifier = modifier)
