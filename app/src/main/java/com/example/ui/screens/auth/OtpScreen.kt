@@ -84,7 +84,6 @@ fun OtpScreen(
     expiresInSeconds: Int,
     displayName: String? = null,
     newPassword: String? = null,
-    devOtp: String? = null,
     onSuccess: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -96,7 +95,7 @@ fun OtpScreen(
     var successMessage by remember { mutableStateOf<String?>(null) }
     var secondsLeft by remember { mutableIntStateOf(expiresInSeconds) }
     var cooldownLeft by remember { mutableIntStateOf(cooldownSeconds) }
-    var setupCode by remember(devOtp) { mutableStateOf(devOtp) }
+    var  by remember(devOtp) { mutableStateOf(devOtp) }
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -155,7 +154,7 @@ fun OtpScreen(
                 val otp = result.getOrThrow()
                 cooldownLeft = otp.resendCooldownSeconds
                 secondsLeft = otp.expiresInSeconds
-                setupCode = otp.devOtp
+                 = otp.devOtp
                 code = ""
                 successMessage = "A fresh code is on its way."
             } else {
@@ -219,10 +218,10 @@ fun OtpScreen(
             fontWeight = FontWeight.SemiBold
         )
         // Setup mode (no SMS provider yet): the server returns the code itself.
-        if (!setupCode.isNullOrBlank()) {
+        if (!.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "Setup mode — your code is ${setupCode!!.trim()}",
+                text = "Setup mode — your code is ${!!.trim()}",
                 color = AccentGold,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
