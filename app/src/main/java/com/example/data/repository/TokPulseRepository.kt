@@ -39,15 +39,13 @@ import com.example.data.remote.OAuthGoogleRequest
 import com.example.data.remote.OtpResponse
 import com.example.data.remote.ChangePasswordRequest
 import com.example.data.remote.UpdateUserRequest
-import com.example.data.remote.PhoneRequestBody
-import com.example.data.remote.PhoneVerifyRequest
 import com.example.data.remote.RecoverConfirmRequest
 import com.example.data.remote.RecoverRequestBody
 import com.example.data.remote.RegisterRequest
 import com.example.data.remote.ResolveReportRequest
 import com.example.data.remote.ResolveReportResponse
 import com.example.data.remote.ShareRequest
-import com.example.data.remote.ZevoraApiClient
+import com.example.data.remote.TokPulseApiClient
 import com.example.data.remote.UploadTicketRequest
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -70,10 +68,10 @@ import java.io.InputStream
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-class ZevoraRepository(private val context: Context) {
+class TokPulseRepository(private val context: Context) {
 
-    private val TAG = "ZevoraRepository"
-    private val sharedPrefs = context.getSharedPreferences("zevora_session", Context.MODE_PRIVATE)
+    private val TAG = "TokPulseRepository"
+    private val sharedPrefs = context.getSharedPreferences("tokpulse_session", Context.MODE_PRIVATE)
     private val db = AppDatabase.getInstance(context)
     private val dao = db.appDao()
     val firebaseService = FirebaseService(context)
@@ -112,11 +110,11 @@ class ZevoraRepository(private val context: Context) {
             val savedUserId = sharedPrefs.getString("user_id", null)
 
             if (!savedToken.isNullOrBlank()) {
-                ZevoraApiClient.setAuthToken(savedToken)
+                TokPulseApiClient.setAuthToken(savedToken)
             }
             // Expired/revoked token observed by the HTTP layer: forget the saved
             // token so the next launch returns to login instead of failing silently.
-            ZevoraApiClient.onUnauthorized = {
+            TokPulseApiClient.onUnauthorized = {
                 try {
                     sharedPrefs.edit().remove("auth_token").apply()
                 } catch (_: Exception) {}
@@ -134,7 +132,7 @@ class ZevoraRepository(private val context: Context) {
             // a local user, and never auto-grant admin: identity comes only
             // from a real login whose session restores above.
 
-            // Sync video feed from Vercel API and Database
+            // Sync the canonical server feed; Room is cache only
             try {
                 val cached = dao.getAllActiveVideosSync()
                 if (cached.isNotEmpty()) {
@@ -162,13 +160,13 @@ class ZevoraRepository(private val context: Context) {
             Log.w(TAG, "cleanup notice: ${e.message}")
         }
 
-        // 1. Fetch real feed from production Vercel API
+        // 1. Fetch the canonical feed from the configured API
         var syncedCount = 0
         feedCursor = null
         feedHasMore = true
         try {
             val feedResponse = try {
-                ZevoraApiClient.api.getFeed(limit = 20)
+                TokPulseApiClient.api.getFeed(limit = 20)
             } catch (e: Exception) {
                 Log.w(TAG, "Primary API error: ${e.message}")
                 null
@@ -193,12 +191,12 @@ class ZevoraRepository(private val context: Context) {
                 }
                 feedCursor = feedBody.nextCursor
                 feedHasMore = feedBody.hasMore
-                Log.i(TAG, "Successfully synced ${entities.size} valid videos from Vercel API")
+                Log.i(TAG, "Successfully synced ${entities.size} valid videos from canonical API")
             } else {
                 Log.w(TAG, "Feed response empty or unsuccessful")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Vercel API feed sync exception: ${e.message}", e)
+            Log.e(TAG, "Canonical API feed sync exception: ${e.message}", e)
         }
 
         // 2. Also sync with Firebase Firestore if available
@@ -209,10 +207,10 @@ class ZevoraRepository(private val context: Context) {
                     dao.insertVideos(cloudVideos)
                 }
 
+                // Admin operations are authorized by the backend/Firebase security layer.
+                // A local email or locally cached role is never sufficient to grant admin access.
                 val user = _currentUser.value
-                val isUserAdmin = user?.role == "admin" ||
-                    user?.email?.equals("ahmedbecetti35@gmail.com", true) == true ||
-                    user?.email?.equals("ahmedbecetti41@gmail.com", true) == true
+                val isUserAdmin = user?.role == "admin"
 
                 if (isUserAdmin) {
                     val cloudUsers = firebaseService.fetchUsersAdminFirestore()
@@ -246,7 +244,7 @@ class ZevoraRepository(private val context: Context) {
 
     suspend fun refreshVideoUrl(videoId: String): String = withContext(Dispatchers.IO) {
         val existing = dao.getVideoById(videoId)
-        val canonicalUrl = ZevoraApiClient.getCanonicalStreamUrl(videoId)
+        val canonicalUrl = TokPulseApiClient.getCanonicalStreamUrl(videoId)
         if (existing != null) {
             dao.updateVideo(existing.copy(videoUrl = canonicalUrl))
         }
@@ -267,7 +265,7 @@ class ZevoraRepository(private val context: Context) {
                 dao.getAllActiveVideosSync().map { it.id }.take(300)
             } catch (_: Exception) { emptyList() }
             val resp = try {
-                ZevoraApiClient.api.getFeed(cursor = feedCursor, limit = 20, seen = seenIds.joinToString(","))
+                TokPulseApiClient.api.getFeed(cursor = feedCursor, limit = 20, seen = seenIds.joinToString(","))
             } catch (e: Exception) {
                 Log.w(TAG, "loadMoreFeed network error: ${e.message}")
                 return@withContext Result.failure(e)
@@ -307,10 +305,10 @@ class ZevoraRepository(private val context: Context) {
 
     /** Shared API-video -> Room-entity mapping (first page and appended pages). */
     private fun apiVideoToEntity(apiVid: ApiVideo): VideoEntity {
-        val directStream = ZevoraApiClient.getCanonicalStreamUrl(apiVid.id)
+        val directStream = TokPulseApiClient.getCanonicalStreamUrl(apiVid.id)
         val url = (apiVid.videoUrl ?: apiVid.streamUrl ?: directStream).trim()
         val thumb = apiVid.thumbnailUrl?.takeIf { it.isNotBlank() && !it.contains("#t=") }
-            ?: "${ZevoraApiClient.BASE_URL}api/v1/videos/${apiVid.id}/thumbnail"
+            ?: "${TokPulseApiClient.BASE_URL}api/v1/videos/${apiVid.id}/thumbnail"
         val isExt = apiVid.id.startsWith("pex_") ||
             apiVid.id.startsWith("cov_") ||
             apiVid.id.startsWith("pix_") ||
@@ -320,28 +318,28 @@ class ZevoraRepository(private val context: Context) {
             id = apiVid.id,
             creatorId = apiVid.creatorId,
             creatorUsername = apiVid.creatorUsername,
-            creatorAvatar = apiVid.creatorAvatar ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+            creatorAvatar = apiVid.creatorAvatar ?: "",
             videoUrl = url,
             thumbnailUrl = thumb,
             caption = apiVid.caption,
-            musicTitle = apiVid.musicTitle ?: "Original Audio",
-            tags = if (isExt) "#licensed,#stock" else "#thileli dz,#fyp,#viral",
+            musicTitle = apiVid.musicTitle ?: "",
+            tags = if (isExt) "#licensed,#stock" else "",
             likesCount = apiVid.likesCount,
             commentsCount = apiVid.commentsCount,
             sharesCount = apiVid.sharesCount,
             viewsCount = apiVid.viewsCount,
-            source = apiVid.source ?: if (isExt) "licensed" else "thileli dz",
-            provider = apiVid.provider ?: if (isExt) "licensed" else "thileli dz",
+            source = apiVid.source ?: if (isExt) "licensed" else "",
+            provider = apiVid.provider ?: if (isExt) "licensed" else "",
             isExternal = isExt,
             attributionUrl = apiVid.attributionUrl ?: "",
             photographerUrl = apiVid.photographerUrl ?: "",
-            createdAt = if (apiVid.createdAt > 0) apiVid.createdAt else System.currentTimeMillis()
+            createdAt = apiVid.createdAt
         )
     }
 
     suspend fun logout() = withContext(Dispatchers.IO) {
         try {
-            ZevoraApiClient.api.logout()
+            TokPulseApiClient.api.logout()
         } catch (_: Exception) {
         }
         try {
@@ -349,7 +347,7 @@ class ZevoraRepository(private val context: Context) {
         } catch (_: Exception) {
         }
         sharedPrefs.edit().clear().apply()
-        ZevoraApiClient.setAuthToken(null)
+        TokPulseApiClient.setAuthToken(null)
         firebaseService.signOut()
         _currentUserId.value = null
         _currentUser.value = null
@@ -374,7 +372,7 @@ class ZevoraRepository(private val context: Context) {
         displayName: String
     ): Result<UserEntity> = withContext(Dispatchers.IO) {
         try {
-            val response = ZevoraApiClient.api.register(
+            val response = TokPulseApiClient.api.register(
                 RegisterRequest(
                     email = email.trim(),
                     username = username.trim(),
@@ -389,7 +387,7 @@ class ZevoraRepository(private val context: Context) {
                 if (apiUser != null) {
                     val token = body.token
                     if (!token.isNullOrBlank()) {
-                        ZevoraApiClient.setAuthToken(token)
+                        TokPulseApiClient.setAuthToken(token)
                         sharedPrefs.edit()
                             .putString("auth_token", token)
                             .putString("user_id", apiUser.id)
@@ -402,7 +400,7 @@ class ZevoraRepository(private val context: Context) {
                         displayName = apiUser.displayName ?: displayName.ifBlank { apiUser.username },
                         email = apiUser.email,
                         passwordHash = "JWT_SECURED",
-                        avatarUrl = apiUser.avatarUrl ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+                        avatarUrl = apiUser.avatarUrl ?: "",
                         bio = apiUser.bio ?: "",
                         followersCount = apiUser.followersCount ?: 0,
                         followingCount = apiUser.followingCount ?: 0,
@@ -442,9 +440,33 @@ class ZevoraRepository(private val context: Context) {
         fbResult
     }
 
+    private suspend fun exchangeFirebaseSession(): AuthResponse? {
+        val idToken = firebaseService.getCurrentIdToken(false) ?: return null
+        return try {
+            val response = TokPulseApiClient.api.firebaseExchange(FirebaseTokenRequest(idToken))
+            val body = response.body()
+            if (response.isSuccessful && body?.user != null) {
+                body.token?.takeIf { it.isNotBlank() }?.let { TokPulseApiClient.setAuthToken(it); sharedPrefs.edit().putString("auth_token",it).putString("user_id",body.user.id).apply() }
+                body
+            } else null
+        } catch(e:Exception) { Log.w(TAG,"Firebase backend exchange notice: ${e.message}"); null }
+    }
+
     suspend fun signInWithEmail(identifier: String, password: String): Result<UserEntity> = withContext(Dispatchers.IO) {
         try {
-            val response = ZevoraApiClient.api.login(
+            val firebaseResult = firebaseService.signInWithEmail(identifier, password)
+            if (firebaseResult.isSuccess) {
+                val body = exchangeFirebaseSession()
+                body?.user?.let { apiUser ->
+                    val userEntity = UserEntity(id=apiUser.id,username=apiUser.username,displayName=apiUser.displayName?:apiUser.username,email=apiUser.email,passwordHash="JWT_SECURED",avatarUrl=apiUser.avatarUrl?:"",bio=apiUser.bio?:"",followersCount=apiUser.followersCount?:0,followingCount=apiUser.followingCount?:0,totalLikes=0,role=(apiUser.role?:"user").lowercase(),status="active",createdAt=System.currentTimeMillis())
+                    dao.insertUser(userEntity); _currentUserId.value=userEntity.id; _currentUser.value=userEntity; syncWithCloud()
+                    return@withContext Result.success(userEntity)
+                }
+            }
+        } catch(e:Exception) { Log.w(TAG,"Firebase-first email sign-in notice: ${e.message}") }
+
+        try {
+            val response = TokPulseApiClient.api.login(
                 LoginRequest(
                     identifier = identifier.trim(),
                     password = password.trim()
@@ -457,7 +479,7 @@ class ZevoraRepository(private val context: Context) {
                 if (apiUser != null) {
                     val token = body.token
                     if (!token.isNullOrBlank()) {
-                        ZevoraApiClient.setAuthToken(token)
+                        TokPulseApiClient.setAuthToken(token)
                         sharedPrefs.edit()
                             .putString("auth_token", token)
                             .putString("user_id", apiUser.id)
@@ -470,7 +492,7 @@ class ZevoraRepository(private val context: Context) {
                         displayName = apiUser.displayName ?: apiUser.username,
                         email = apiUser.email,
                         passwordHash = "JWT_SECURED",
-                        avatarUrl = apiUser.avatarUrl ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300",
+                        avatarUrl = apiUser.avatarUrl ?: "",
                         bio = apiUser.bio ?: "",
                         followersCount = apiUser.followersCount ?: 0,
                         followingCount = apiUser.followingCount ?: 0,
@@ -513,13 +535,10 @@ class ZevoraRepository(private val context: Context) {
     suspend fun signInWithGoogle(): Result<UserEntity> = withContext(Dispatchers.IO) {
         val result = firebaseService.signInWithGoogle()
         if (result.isSuccess) {
-            val user = result.getOrThrow()
-            dao.insertUser(user)
-            _currentUserId.value = user.id
-            _currentUser.value = user
-            syncWithCloud()
-        }
-        result
+            val apiUser = exchangeFirebaseSession()?.user
+            val user = apiUser?.let { u -> UserEntity(id=u.id,username=u.username,displayName=u.displayName?:u.username,email=u.email,passwordHash="JWT_SECURED",avatarUrl=u.avatarUrl?:"",bio=u.bio?:"",followersCount=u.followersCount?:0,followingCount=u.followingCount?:0,totalLikes=0,role=(u.role?:"user").lowercase(),status="active",createdAt=System.currentTimeMillis()) } ?: result.getOrThrow()
+            dao.insertUser(user); _currentUserId.value=user.id; _currentUser.value=user; syncWithCloud(); Result.success(user)
+        } else result
     }
 
     // --- BACKEND AUTH: Google / Facebook / Phone / Recovery ---
@@ -540,7 +559,7 @@ class ZevoraRepository(private val context: Context) {
         val apiUser: ApiUser = body.user ?: return null
         val token = body.token
         if (!token.isNullOrBlank()) {
-            ZevoraApiClient.setAuthToken(token)
+            TokPulseApiClient.setAuthToken(token)
             sharedPrefs.edit()
                 .putString("auth_token", token)
                 .putString("user_id", apiUser.id)
@@ -553,7 +572,7 @@ class ZevoraRepository(private val context: Context) {
             email = apiUser.email,
             passwordHash = "JWT_SECURED",
             avatarUrl = apiUser.avatarUrl
-                ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${apiUser.username}",
+                ?: "",
             bio = apiUser.bio ?: "",
             followersCount = apiUser.followersCount ?: 0,
             followingCount = apiUser.followingCount ?: 0,
@@ -578,7 +597,7 @@ class ZevoraRepository(private val context: Context) {
 
             // 2. Exchange token with backend server
             try {
-                val response = ZevoraApiClient.api.oauthGoogle(OAuthGoogleRequest(idToken))
+                val response = TokPulseApiClient.api.oauthGoogle(OAuthGoogleRequest(idToken))
                 val body = response.body()
                 if (response.isSuccessful && body?.user != null) {
                     val user = persistBackendSession(body, "") ?: return@withContext Result.failure(
@@ -610,7 +629,7 @@ class ZevoraRepository(private val context: Context) {
                 return@withContext Result.failure(it)
             }
             try {
-                val response = ZevoraApiClient.api.oauthFacebook(OAuthFacebookRequest(accessToken))
+                val response = TokPulseApiClient.api.oauthFacebook(OAuthFacebookRequest(accessToken))
                 val body = response.body()
                 if (response.isSuccessful && body?.user != null) {
                     val user = persistBackendSession(body, "") ?: return@withContext Result.failure(
@@ -631,59 +650,6 @@ class ZevoraRepository(private val context: Context) {
                 }
             } catch (e: Exception) {
                 Result.failure(Exception(e.message ?: "Facebook sign-in failed."))
-            }
-        }
-
-    suspend fun requestPhoneOtp(phone: String): Result<OtpResponse> =
-        withContext(Dispatchers.IO) {
-            try {
-                val response = ZevoraApiClient.api.phoneRequest(PhoneRequestBody(phone.trim()))
-                val body = response.body()
-                if (response.isSuccessful && body != null && body.sent) {
-                    Result.success(body)
-                } else {
-                    Result.failure(
-                        Exception(
-                            body?.error
-                                ?: backendError(
-                                    response.errorBody()?.string(),
-                                    response.code(),
-                                    "Could not send the code"
-                                )
-                        )
-                    )
-                }
-            } catch (e: Exception) {
-                Result.failure(Exception(e.message ?: "Could not send the code."))
-            }
-        }
-
-    suspend fun verifyPhoneOtp(phone: String, code: String, name: String? = null): Result<UserEntity> =
-        withContext(Dispatchers.IO) {
-            try {
-                val response = ZevoraApiClient.api.phoneVerify(
-                    PhoneVerifyRequest(phone.trim(), code.trim(), name?.trim()?.ifBlank { null })
-                )
-                val body = response.body()
-                if ((response.isSuccessful || response.code() == 201) && body?.user != null) {
-                    val user = persistBackendSession(body, name ?: "") ?: return@withContext Result.failure(
-                        Exception("Phone verification returned an empty profile.")
-                    )
-                    syncWithCloud()
-                    Result.success(user)
-                } else {
-                    Result.failure(
-                        Exception(
-                            backendError(
-                                response.errorBody()?.string(),
-                                response.code(),
-                                "Verification failed"
-                            )
-                        )
-                    )
-                }
-            } catch (e: Exception) {
-                Result.failure(Exception(e.message ?: "Verification failed."))
             }
         }
 
@@ -738,35 +704,18 @@ class ZevoraRepository(private val context: Context) {
             dao.insertUser(user)
             _currentUserId.value = user.id
             _currentUser.value = user
-            try {
-                ZevoraApiClient.api.phoneVerify(
-                    PhoneVerifyRequest(phone.trim(), code.trim(), name?.trim()?.ifBlank { null })
-                )
-            } catch (_: Exception) {}
             syncWithCloud()
             return@withContext Result.success(user)
         }
-        // Fallback to backend verify
-        try {
-            val response = ZevoraApiClient.api.phoneVerify(
-                PhoneVerifyRequest(phone.trim(), code.trim(), name?.trim()?.ifBlank { null })
-            )
-            val body = response.body()
-            if ((response.isSuccessful || response.code() == 201) && body?.user != null) {
-                val user = persistBackendSession(body, name ?: "") ?: return@withContext Result.failure(
-                    Exception("Phone verification returned an empty profile.")
-                )
-                syncWithCloud()
-                return@withContext Result.success(user)
-            }
-        } catch (_: Exception) {}
+        // Registration phone verification is Firebase-only. Never fall back
+        // to a second OTP backend or accept a backend-generated code.
         fbResult
     }
 
     suspend fun requestRecoveryOtp(phone: String): Result<OtpResponse> =
         withContext(Dispatchers.IO) {
             try {
-                val response = ZevoraApiClient.api.recoverRequest(RecoverRequestBody(phone.trim()))
+                val response = TokPulseApiClient.api.recoverRequest(RecoverRequestBody(phone.trim()))
                 val body = response.body()
                 if (response.isSuccessful && body != null && body.sent) {
                     Result.success(body)
@@ -793,7 +742,7 @@ class ZevoraRepository(private val context: Context) {
     ): Result<UserEntity> =
         withContext(Dispatchers.IO) {
             try {
-                val response = ZevoraApiClient.api.recoverConfirm(
+                val response = TokPulseApiClient.api.recoverConfirm(
                     RecoverConfirmRequest(phone.trim(), code.trim(), newPassword)
                 )
                 val body = response.body()
@@ -822,7 +771,7 @@ class ZevoraRepository(private val context: Context) {
     suspend fun getLinkedProviders(): Result<List<LinkedProvider>> =
         withContext(Dispatchers.IO) {
             try {
-                val response = ZevoraApiClient.api.linkedProviders()
+                val response = TokPulseApiClient.api.linkedProviders()
                 if (response.isSuccessful && response.body() != null) {
                     Result.success(response.body()!!.providers)
                 } else {
@@ -847,7 +796,7 @@ class ZevoraRepository(private val context: Context) {
                 return@withContext Result.failure(it)
             }
             try {
-                val response = ZevoraApiClient.api.linkProvider(
+                val response = TokPulseApiClient.api.linkProvider(
                     LinkProviderRequest(provider = "google", idToken = idToken)
                 )
                 if (response.isSuccessful && response.body()?.linked == true) {
@@ -875,7 +824,7 @@ class ZevoraRepository(private val context: Context) {
                 return@withContext Result.failure(it)
             }
             try {
-                val response = ZevoraApiClient.api.linkProvider(
+                val response = TokPulseApiClient.api.linkProvider(
                     LinkProviderRequest(provider = "facebook", accessToken = accessToken)
                 )
                 if (response.isSuccessful && response.body()?.linked == true) {
@@ -900,7 +849,7 @@ class ZevoraRepository(private val context: Context) {
     // --- LIVE SERVER DATA: notifications / sessions / admin ---
 
     /**
-     * Pulls real notifications from the ZEVORA API into the local inbox.
+     * Pulls real notifications from the Chort API into the local inbox.
      * Actor profiles are resolved best-effort (cache first, profile API
      * second) so rows always show genuine usernames/avatars.
      */
@@ -909,7 +858,7 @@ class ZevoraRepository(private val context: Context) {
             Exception("Sign in to load notifications.")
         )
         try {
-            val response = ZevoraApiClient.api.getNotifications(me, 1, 30)
+            val response = TokPulseApiClient.api.getNotifications(me, 1, 30)
             val body = response.body()
             if (!response.isSuccessful || body == null) {
                 return@withContext Result.failure(
@@ -925,7 +874,7 @@ class ZevoraRepository(private val context: Context) {
                         actorName = cached.username
                         actorAvatar = cached.avatarUrl
                     } else {
-                        val profile = ZevoraApiClient.api.getUserProfile(n.actorId)
+                        val profile = TokPulseApiClient.api.getUserProfile(n.actorId)
                         val remote = profile.body()?.user
                         if (profile.isSuccessful && remote != null) {
                             actorName = remote.username
@@ -938,7 +887,7 @@ class ZevoraRepository(private val context: Context) {
                                     email = "",
                                     passwordHash = "REMOTE",
                                     avatarUrl = remote.avatarUrl
-                                        ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${remote.username}",
+                                        ?: "",
                                     bio = remote.bio ?: "",
                                     followersCount = remote.followersCount,
                                     followingCount = remote.followingCount,
@@ -958,7 +907,7 @@ class ZevoraRepository(private val context: Context) {
                     actorId = n.actorId,
                     actorUsername = actorName ?: "user_${n.actorId.take(6)}",
                     actorAvatar = actorAvatar
-                        ?: "https://api.dicebear.com/7.x/avataaars/png?seed=${n.actorId}",
+                        ?: "",
                     type = n.type,
                     message = n.message,
                     videoId = n.referenceId,
@@ -978,7 +927,7 @@ class ZevoraRepository(private val context: Context) {
             Exception("Sign in first.")
         )
         return@withContext try {
-            val response = ZevoraApiClient.api.readNotifications(me, NotificationsReadRequest())
+            val response = TokPulseApiClient.api.readNotifications(me, NotificationsReadRequest())
             dao.markNotificationsAsRead(me)
             Result.success(response.body()?.marked ?: 0)
         } catch (e: Exception) {
@@ -992,7 +941,7 @@ class ZevoraRepository(private val context: Context) {
 
     suspend fun listMySessions(): Result<List<ApiSession>> = withContext(Dispatchers.IO) {
         try {
-            val response = ZevoraApiClient.api.listSessions()
+            val response = TokPulseApiClient.api.listSessions()
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!.sessions)
             } else {
@@ -1010,7 +959,7 @@ class ZevoraRepository(private val context: Context) {
     suspend fun revokeMySession(sessionId: String): Result<Boolean> =
         withContext(Dispatchers.IO) {
             try {
-                val response = ZevoraApiClient.api.revokeSession(sessionId)
+                val response = TokPulseApiClient.api.revokeSession(sessionId)
                 if (response.isSuccessful && response.body()?.revoked == true) {
                     Result.success(true)
                 } else {
@@ -1028,7 +977,7 @@ class ZevoraRepository(private val context: Context) {
     suspend fun getAdminLogins(page: Int = 1): Result<LoginRecordsResponse> =
         withContext(Dispatchers.IO) {
             try {
-                val response = ZevoraApiClient.api.adminLogins(page, 20)
+                val response = TokPulseApiClient.api.adminLogins(page, 20)
                 if (response.isSuccessful && response.body() != null) {
                     Result.success(response.body()!!)
                 } else {
@@ -1046,9 +995,8 @@ class ZevoraRepository(private val context: Context) {
     suspend fun getAdminReports(status: String? = null, page: Int = 1): Result<AdminReportsResponse> =
         withContext(Dispatchers.IO) {
             try {
-                val response = ZevoraApiClient.api.adminReports(status, page, 20)
-                if (response.isSuccessful && response.body() != null) {
-                    Result.success(response.body()!!)
+                val response = TokPulseApiClient.api.adminReports(status, page, 20)
+                if (response.isSuccessful && response.body() != null) {                    Result.success(response.body()!!)
                 } else {
                     Result.failure(
                         Exception(
@@ -1064,7 +1012,7 @@ class ZevoraRepository(private val context: Context) {
     suspend fun getAdminOverview(): Result<AdminOverviewResponse> =
         withContext(Dispatchers.IO) {
             try {
-                val response = ZevoraApiClient.api.adminOverview()
+                val response = TokPulseApiClient.api.adminOverview()
                 if (response.isSuccessful && response.body() != null) {
                     Result.success(response.body()!!)
                 } else {
@@ -1082,7 +1030,7 @@ class ZevoraRepository(private val context: Context) {
     suspend fun resolveAdminReport(reportId: String, action: String): Result<ResolveReportResponse> =
         withContext(Dispatchers.IO) {
             try {
-                val response = ZevoraApiClient.api.resolveReport(reportId, ResolveReportRequest(action))
+                val response = TokPulseApiClient.api.resolveReport(reportId, ResolveReportRequest(action))
                 if (response.isSuccessful && response.body() != null) {
                     Result.success(response.body()!!)
                 } else {
@@ -1096,28 +1044,6 @@ class ZevoraRepository(private val context: Context) {
                 Result.failure(Exception(e.message ?: "Could not resolve report."))
             }
         }
-
-    suspend fun devSwitchToAdmin(): UserEntity = withContext(Dispatchers.IO) {
-        val adminUser = UserEntity(
-            id = "user_admin",
-            username = "admin",
-            displayName = "Admin Ahmed",
-            email = "ahmedbecetti35@gmail.com",
-            passwordHash = "PROTECTED",
-            avatarUrl = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300",
-            bio = "thileli dz Administrator & Moderation Lead.",
-            followersCount = 0,
-            followingCount = 0,
-            totalLikes = 0,
-            role = "admin",
-            status = "active",
-            createdAt = System.currentTimeMillis()
-        )
-        dao.insertUser(adminUser)
-        _currentUserId.value = adminUser.id
-        _currentUser.value = adminUser
-        adminUser
-    }
 
     // --- VIDEO FEED & DETAILS ---
 
@@ -1133,9 +1059,9 @@ class ZevoraRepository(private val context: Context) {
         val user = _currentUser.value ?: return@withContext false
         val isLiked = dao.countLike(videoId, user.id) > 0
 
-        // Background call to Vercel API
+        // Background call to canonical API
         try {
-            ZevoraApiClient.api.toggleLike(videoId, LikeRequest(user.id))
+            TokPulseApiClient.api.toggleLike(videoId, LikeRequest(user.id))
         } catch (e: Exception) {
             Log.w(TAG, "Vercel toggleLike notice: ${e.message}")
         }
@@ -1181,7 +1107,7 @@ class ZevoraRepository(private val context: Context) {
     suspend fun recordVideoView(videoId: String) = withContext(Dispatchers.IO) {
         dao.incrementViews(videoId)
         try {
-            ZevoraApiClient.api.recordView(videoId)
+            TokPulseApiClient.api.recordView(videoId)
         } catch (e: Exception) {
             Log.w(TAG, "Vercel recordView notice: ${e.message}")
         }
@@ -1194,7 +1120,7 @@ class ZevoraRepository(private val context: Context) {
         dao.incrementShares(videoId)
         val user = _currentUser.value
         try {
-            ZevoraApiClient.api.recordShare(videoId, ShareRequest(userId = user?.id))
+            TokPulseApiClient.api.recordShare(videoId, ShareRequest(userId = user?.id))
         } catch (e: Exception) {
             Log.w(TAG, "Vercel recordShare notice: ${e.message}")
         }
@@ -1217,9 +1143,9 @@ class ZevoraRepository(private val context: Context) {
         dao.insertComment(comment)
         dao.updateCommentsCount(videoId, 1)
 
-        // Background call to Vercel API
+        // Background call to canonical API
         try {
-            ZevoraApiClient.api.addComment(videoId, AddCommentRequest(user.id, text))
+            TokPulseApiClient.api.addComment(videoId, AddCommentRequest(user.id, text))
         } catch (e: Exception) {
             Log.w(TAG, "Vercel addComment notice: ${e.message}")
         }
@@ -1250,7 +1176,7 @@ class ZevoraRepository(private val context: Context) {
         dao.deleteComment(commentId)
         dao.updateCommentsCount(videoId, -1)
         try {
-            ZevoraApiClient.api.deleteComment(videoId, commentId)
+            TokPulseApiClient.api.deleteComment(videoId, commentId)
         } catch (e: Exception) {
             Log.w(TAG, "Vercel deleteComment notice: ${e.message}")
         }
@@ -1305,7 +1231,7 @@ class ZevoraRepository(private val context: Context) {
                     actorUsername = user.username,
                     actorAvatar = user.avatarUrl,
                     type = "follow",
-                    message = "started following you on thileli dz!"
+                    message = "started following you on ZEVORA!"
                 )
             )
             true
@@ -1327,15 +1253,15 @@ class ZevoraRepository(private val context: Context) {
         videoUri: Uri? = null,
         onProgress: ((Float) -> Unit)? = null
     ): Result<VideoEntity> = withContext(Dispatchers.IO) {
-        val user = _currentUser.value
-        val creatorId = user?.id ?: "creator_guest"
-        val creatorName = user?.username ?: "creator"
-        val creatorAvatar = user?.avatarUrl ?: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
+        val user = _currentUser.value ?: return@withContext Result.failure(IllegalStateException("Authentication is required to upload a video."))
+        val creatorId = user.id
+        val creatorName = user.username
+        val creatorAvatar = user.avatarUrl
 
         try {
             // 1. Upload ticket: the server mints the videoId + storage keys.
             val ticketResp = try {
-                ZevoraApiClient.api.requestUploadUrl(
+                TokPulseApiClient.api.requestUploadUrl(
                     UploadTicketRequest(
                         filename = "video_${System.currentTimeMillis()}.mp4",
                         contentType = "video/mp4",
@@ -1406,13 +1332,13 @@ class ZevoraRepository(private val context: Context) {
 
             // 3. Complete in Postgres — the response carries the EXACT stored record.
             val completeResp = try {
-                ZevoraApiClient.api.completeUpload(
+                TokPulseApiClient.api.completeUpload(
                     CompleteUploadRequest(
                         videoId = videoId,
                         userId = creatorId,
                         caption = caption,
                         videoUrl = finalVideoUrl,
-                        thumbnailUrl = realThumbUrl ?: "${ZevoraApiClient.BASE_URL}api/v1/videos/$videoId/thumbnail",
+                        thumbnailUrl = realThumbUrl ?: "${TokPulseApiClient.BASE_URL}api/v1/videos/$videoId/thumbnail",
                         musicTitle = musicTitle,
                         aspectRatio = "9:16",
                         objectKey = objectKey
@@ -1435,7 +1361,7 @@ class ZevoraRepository(private val context: Context) {
                 creatorAvatar = serverVideo.creatorAvatar ?: creatorAvatar,
                 videoUrl = (serverVideo.videoUrl ?: serverVideo.streamUrl ?: finalVideoUrl).trim(),
                 thumbnailUrl = serverVideo.thumbnailUrl?.takeIf { it.isNotBlank() && !it.contains("#t=") }
-                    ?: "${ZevoraApiClient.BASE_URL}api/v1/videos/${serverVideo.id}/thumbnail",
+                    ?: "${TokPulseApiClient.BASE_URL}api/v1/videos/${serverVideo.id}/thumbnail",
                 caption = serverVideo.caption,
                 musicTitle = serverVideo.musicTitle ?: musicTitle.ifBlank { "Original Sound - $creatorName" },
                 tags = tags,
@@ -1564,7 +1490,7 @@ class ZevoraRepository(private val context: Context) {
         val clean = query.trim()
         if (clean.isBlank()) return@withContext
         try {
-            val response = ZevoraApiClient.api.search(clean)
+            val response = TokPulseApiClient.api.search(clean)
             if (response.isSuccessful && response.body() != null) {
                 val body = response.body()!!
                 if (body.videos.isNotEmpty()) {
@@ -1577,13 +1503,13 @@ class ZevoraRepository(private val context: Context) {
                             videoUrl = apiVid.streamUrl ?: "",
                             thumbnailUrl = apiVid.thumbnailUrl ?: "",
                             caption = apiVid.caption,
-                            musicTitle = apiVid.musicTitle ?: "Original Audio",
-                            tags = "#zevora,#fyp",
+                            musicTitle = apiVid.musicTitle ?: "",
+                            tags = "",
                             likesCount = apiVid.likesCount,
                             commentsCount = apiVid.commentsCount,
                             sharesCount = apiVid.sharesCount,
                             viewsCount = apiVid.viewsCount,
-                            createdAt = if (apiVid.createdAt > 0) apiVid.createdAt else System.currentTimeMillis()
+                            createdAt = apiVid.createdAt
                         )
                     }
                     dao.insertVideos(entities)
@@ -1594,7 +1520,7 @@ class ZevoraRepository(private val context: Context) {
                             id = u.id,
                             username = u.username,
                             displayName = u.displayName ?: u.username,
-                            email = "${u.username}@zevora.social",
+                            email = "${u.username}@tokpulse.social",
                             passwordHash = "EXTERNAL",
                             avatarUrl = u.avatarUrl ?: "",
                             bio = u.bio ?: "",
@@ -1636,7 +1562,7 @@ class ZevoraRepository(private val context: Context) {
         // Server first: the database owns username uniqueness + the canonical copy.
         var serverOk = false
         try {
-            val resp = ZevoraApiClient.api.updateUser(
+            val resp = TokPulseApiClient.api.updateUser(
                 user.id,
                 UpdateUserRequest(
                     username = username.trim().takeIf { it.isNotBlank() },
@@ -1679,7 +1605,7 @@ class ZevoraRepository(private val context: Context) {
                 return@withContext Result.failure(Exception("New password must be 6-100 characters"))
             }
             try {
-                val resp = ZevoraApiClient.api.changePassword(ChangePasswordRequest(currentPassword, newPassword))
+                val resp = TokPulseApiClient.api.changePassword(ChangePasswordRequest(currentPassword, newPassword))
                 if (resp.isSuccessful && resp.body()?.changed == true) {
                     Result.success("Password changed. Other devices were signed out.")
                 } else {
@@ -1694,7 +1620,7 @@ class ZevoraRepository(private val context: Context) {
     suspend fun deleteAccount(): Result<String> = withContext(Dispatchers.IO) {
         val user = _currentUser.value ?: return@withContext Result.failure(Exception("Log in first"))
         try {
-            val resp = ZevoraApiClient.api.deleteUser(user.id)
+            val resp = TokPulseApiClient.api.deleteUser(user.id)
             if (!resp.isSuccessful) {
                 return@withContext Result.failure(
                     Exception(backendError(resp.errorBody()?.string(), resp.code(), "Account deletion failed"))
@@ -1770,7 +1696,7 @@ class ZevoraRepository(private val context: Context) {
         dao.deleteVideo(videoId)
         dao.setVideoDeleted(videoId, true)
         val apiSuccess = try {
-            val resp = ZevoraApiClient.api.deleteVideo(videoId)
+            val resp = TokPulseApiClient.api.deleteVideo(videoId)
             resp.isSuccessful
         } catch (e: Exception) {
             Log.w(TAG, "Vercel deleteVideo notice: ${e.message}")
