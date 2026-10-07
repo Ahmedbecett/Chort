@@ -454,7 +454,7 @@ fun ZevoraApp() {
 
             // Bottom Navigation overlay positioned at bottom center
             if (showBottomNav) {
-                TokPulseBottomNavigation(
+                ZevoraBottomNavigation(
                     currentScreen = currentScreen,
                     isFeedScreen = (currentScreen == "feed"),
                     unreadBadgeCount = unreadNotifications,
@@ -477,7 +477,7 @@ fun ZevoraApp() {
 }
 
 @Composable
-fun TokPulseBottomNavigation(
+fun ZevoraBottomNavigation(
     currentScreen: String,
     isFeedScreen: Boolean,
     unreadBadgeCount: Int,
@@ -538,7 +538,7 @@ fun TokPulseBottomNavigation(
             )
 
             // Distinctive thileli dz Center Create '+' Button
-            ZEVORACenterCreateButton(
+            ZevoraCenterCreateButton(
                 onClick = { onNavigate("upload") }
             )
 
@@ -618,7 +618,7 @@ private fun BottomNavItem(
 }
 
 @Composable
-private fun ZEVORACenterCreateButton(onClick: () -> Unit) {
+private fun ZevoraCenterCreateButton(onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clickable(onClick = onClick)
