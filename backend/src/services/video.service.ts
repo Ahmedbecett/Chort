@@ -59,6 +59,7 @@ export class VideoService {
   static async resolvePlayableStreamUrl(videoId: string, originalKey?: string | null, fallbackUrl?: string | null): Promise<string> {
     // Externally-hosted bytes (Android Firebase fallback): the stored https URL
     // IS the playable file; never presign a non-existent S3 key for it.
+    if (fallbackUrl && /^https:\/\//i.test(fallbackUrl) && /\.m3u8(?:\?|$)/i.test(fallbackUrl)) return fallbackUrl;
     if (originalKey && originalKey.startsWith('external/')) {
       if (fallbackUrl && /^https:\/\//i.test(fallbackUrl)) return fallbackUrl;
     }
