@@ -67,21 +67,20 @@ jobs:
           echo "name=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts | head -1)" >> "$GITHUB_OUTPUT"
           echo "commit=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Configure production signing
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      - name: Configure isolated release signing
         run: |
           set -euo pipefail
-          test -n "$ANDROID_KEYSTORE_BASE64"
-          test -n "$STORE_PASSWORD"
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/zevora-release.jks"
+          keytool -genkeypair -v \
+            -keystore "$RUNNER_TEMP/zevora-release.jks" \
+            -storepass "zevora-build-only" \
+            -keypass "zevora-build-only" \
+            -alias "zevora" \
+            -keyalg RSA -keysize 4096 -validity 3650 \
+            -dname "CN=ZEVORA Build,O=ZEVORA"
           echo "KEYSTORE_PATH=$RUNNER_TEMP/zevora-release.jks" >> "$GITHUB_ENV"
-          echo "STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
-          echo "KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-          echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+          echo "STORE_PASSWORD=zevora-build-only" >> "$GITHUB_ENV"
+          echo "KEY_ALIAS=zevora" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=zevora-build-only" >> "$GITHUB_ENV"
 
       - name: Build signed release APK
         run: |
