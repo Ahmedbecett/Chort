@@ -1,19 +1,20 @@
-# 📱 Chort (thileli dz) - Scalable Short-Video Social Platform
+===== ZEVORA_BUNDLE_PATH: README.md =====
+# 📱 ZEVORA — Scalable Short-Video Social Platform
 
-[![Latest Release](https://img.shields.io/badge/Latest%20Release-v2.4.6%20(Build%2020406)-brightgreen.svg?style=for-the-badge&logo=android)](https://github.com/Ahmedbecett/Chort/releases/tag/v2.4.6)
-[![Direct APK Download](https://img.shields.io/badge/Download%20APK-Chort--v2.4.6--release.apk-blue.svg?style=for-the-badge&logo=google-play)](https://github.com/Ahmedbecett/Chort/releases/download/v2.4.6/Chort-v2.4.6-release.apk)
+
+
 [![Android Build](https://img.shields.io/badge/Platform-Android%2014%2B%20%7C%20Compose-3DDC84.svg?style=for-the-badge&logo=android)](https://android.com)
 
 ---
 
-## 🚀 روابط التحميل المباشرة وإصدار التطبيق (Direct APK Downloads)
+
 
 > **الإصدار الحالي:** `v2.4.6` | **رقم البناء (versionCode):** `20406` | **تاريخ التحديث:** أكتوبر 2026
 
-- 📥 **[تحميل مباشر للإصدار v2.4.6 (Chort-v2.4.6-release.apk)](https://github.com/Ahmedbecett/Chort/releases/download/v2.4.6/Chort-v2.4.6-release.apk)**
-- ⚡ **[رابط دائم لأحدث إصدار (Always Latest APK): Chort-latest.apk](https://github.com/Ahmedbecett/Chort/releases/latest/download/Chort-latest.apk)**
-- 📦 **[جميع الإصدارات وسجلات البناء (Releases Page)](https://github.com/Ahmedbecett/Chort/releases)**
-- ⚙️ **[متابعة بناء الـ APK عبر GitHub Actions](https://github.com/Ahmedbecett/Chort/actions)**
+- 📥 **[تحميل مباشر للإصدار v2.4.6 (ZEVORA-v2.4.6-release.apk)](https://github.com/Ahmedbecett/ZEVORA/releases/download/v2.4.6/ZEVORA-v2.4.6-release.apk)**
+- ⚡ **[رابط دائم لأحدث إصدار (Always Latest APK): ZEVORA-latest.apk](https://github.com/Ahmedbecett/ZEVORA/releases/latest/download/ZEVORA-latest.apk)**
+- 📦 **[جميع الإصدارات وسجلات البناء (Releases Page)](https://github.com/Ahmedbecett/ZEVORA/releases)**
+- ⚙️ **[متابعة بناء الـ APK عبر GitHub Actions](https://github.com/Ahmedbecett/ZEVORA/actions)**
 
 ### 🛠️ التحديثات المطبقة في الإصدار v2.4.6:
 1. **تشغيل ورفع الفيديو:** دعم كامل لتشغيل الفيديوهات المختارة من الهاتف محلياً (`content://` و `file://`) وإصلاح خطأ `تعذر تشغيل الفيديو - Invalid or empty video URL`.
@@ -26,7 +27,7 @@
 
 ```
                           ┌───────────────────────────┐
-                          │     Chort Mobile App      │
+                          │     ZEVORA Mobile App      │
                           │   (Kotlin / Compose M3)   │
                           └─────────────┬─────────────┘
                                         │
@@ -104,7 +105,7 @@ Services will be accessible at:
 - **Interactions:** Live comments, likes, shares, user profiles, and follow system.
 - **Bottom Audio Control:** The mute/unmute speaker control lives in the lower audio bar (`feed_mute_button`); the old top-end speaker icon was removed.
 - **Admin Moderation Portal:** Dedicated dashboard for reviewing user reports, account status management, and policy compliance.
-- **Signed Release:** Signed with a 30-year production certificate (`CN=Ahmed Becetti`, `chort-release.jks`) supporting APK Signature Schemes v1/v2/v3.
+- **Signed Release:** signing material is supplied through CI/local environment secrets; no private keystore is committed.
 - **Verifiable Builds:** `versionCode`/`versionName` are bumped on every release, the source commit is stamped into `BuildConfig.GIT_COMMIT` and displayed in Profile, and `scripts/verify_apk.py` proves the APK matches the source tree.
 
 ---
@@ -114,8 +115,10 @@ Services will be accessible at:
 - **Developer:** Ahmed Becetti (أحمد بن ستي)
 - **Email:** [ahmedbecetti41@gmail.com](mailto:ahmedbecetti41@gmail.com)
 - **GitHub:** [@Ahmedbecett](https://github.com/Ahmedbecett)
-- **Repository:** [https://github.com/Ahmedbecett/Chort](https://github.com/Ahmedbecett/Chort)
+- **Repository:** [https://github.com/Ahmedbecett/ZEVORA](https://github.com/Ahmedbecett/ZEVORA)
 
 ---
 
-© 2026 Chort Video Social Platform. All rights reserved. Developed by Ahmed Becetti.
+© 2026 ZEVORA Video Social Platform.
+
+===== END ZEVORA_BUNDLE_FILE =====
