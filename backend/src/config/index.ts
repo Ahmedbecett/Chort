@@ -60,6 +60,8 @@ export const config = {
     devEcho: (process.env.NODE_ENV === 'production' || (process.env.OTP_DEV_ECHO || 'auto').trim().toLowerCase() === 'false') ? 'never' : 'auto',
   },
   feed: {
+    // External licensed-video providers are opt-in in production; the feed never injects them by default.
+    allowExternalVideos: (process.env.ENABLE_EXTERNAL_VIDEOS || 'false').trim().toLowerCase() === 'true',
     // When true (default), licensed seed videos must carry a verified audio
     // track before entering the feed. Set FEED_REQUIRE_EXTERNAL_AUDIO=false
     // to allow silent-but-valid licensed clips. Never applies to user uploads.
