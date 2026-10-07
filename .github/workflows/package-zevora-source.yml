@@ -1,0 +1,38 @@
+name: Package ZEVORA source
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    if: ${{ !contains(github.event.head_commit.message, 'chore: package ZEVORA source') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create source ZIP
+        run: |
+          rm -f ZEVORA-production-source.zip
+          zip -r ZEVORA-production-source.zip . \
+            -x ".git/*" \
+            -x "ZEVORA-production-source.zip" \
+            -x ".gradle/*" \
+            -x "**/build/*" \
+            -x "node_modules/*" \
+            -x "backend/node_modules/*" \
+            -x "web/node_modules/*"
+
+      - name: Commit ZIP
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ZEVORA-production-source.zip
+          git commit -m "chore: package ZEVORA source" || exit 0
+          git push origin HEAD:main
