@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: web/src/components/DownloadApkModal.tsx =====
 import React, { useState } from 'react';
 import { Download, ExternalLink, QrCode, CheckCircle2, ShieldCheck, X, Sparkles, Smartphone } from 'lucide-react';
 
@@ -150,4 +149,3 @@ export const DownloadApkModal: React.FC<DownloadApkModalProps> = ({ isOpen, onCl
   );
 };
 
-===== END ZEVORA_BUNDLE_FILE =====
