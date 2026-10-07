@@ -1,7 +1,7 @@
 {
-  "name": "chort-backend",
-  "version": "2.4.3",
-  "description": "Production Scalable Video Platform Backend for Chort (Short Video Streaming, Processing, Transcoding & CDN)",
+  "name": "zevora-backend",
+  "version": "3.0.0",
+  "description": "Production Scalable Video Platform Backend for ZEVORA (Short Video Streaming, Processing, Transcoding & CDN)",
   "main": "dist/server.js",
   "scripts": {
     "build": "prisma generate && (prisma db push --skip-generate || true) && tsc",

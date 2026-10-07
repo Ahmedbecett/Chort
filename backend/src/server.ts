@@ -77,8 +77,8 @@ app.use('/api/v1', apiRouter);
 // Root Status
 app.get('/', (req, res) => {
   res.json({
-    app: 'thileli dz High-Scale Video Platform Backend',
-    version: '2.4.3',
+    app: 'ZEVORA High-Scale Video Platform Backend',
+    version: '3.0.0',
     documentation: '/api/v1/health',
     status: 'ONLINE',
   });
@@ -101,7 +101,7 @@ app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
 
 if (!process.env.VERCEL) {
   app.listen(config.port, '0.0.0.0', () => {
-    console.log(`🚀 thileli dz API Server running on port ${config.port} (Production Mode)`);
+    console.log(`🚀 ZEVORA API Server running on port ${config.port} (Production Mode)`);
   });
 }
 

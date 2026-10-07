@@ -22,7 +22,7 @@ export const videoWorker = new Worker(
     const { videoId, rawKey } = job.data;
     console.log(`🚀 Starting FFmpeg HLS transcode job for: ${videoId}`);
 
-    const tempDir = path.join('/tmp', 'tokpulse-transcode', videoId);
+    const tempDir = path.join('/tmp', 'zevora-transcode', videoId);
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }

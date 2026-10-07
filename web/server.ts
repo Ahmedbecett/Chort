@@ -104,12 +104,12 @@ async function startServer() {
 
   app.get('/api/releases/latest', (req, res) => {
     res.json({
-      tag_name: 'v2.4.6',
-      name: 'Chort - الإصدار الأحدث المستقر v2.4.6',
-      download_url: 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.6/Chort-latest.apk',
-      versioned_download_url: 'https://github.com/Ahmedbecett/Chort/releases/download/v2.4.6/Chort-v2.4.6-release.apk',
-      source_zip_url: 'https://github.com/Ahmedbecett/Chort/archive/refs/tags/v2.4.6.zip',
-      html_url: 'https://github.com/Ahmedbecett/Chort/releases/tag/v2.4.6',
+      tag_name: 'v3.0.0',
+      name: 'ZEVORA - الإصدار الأحدث المستقر v3.0.0',
+      download_url: 'https://github.com/Ahmedbecett/Chort/releases/download/v3.0.0/ZEVORA-latest.apk',
+      versioned_download_url: 'https://github.com/Ahmedbecett/Chort/releases/download/v3.0.0/ZEVORA-v3.0.0-release.apk',
+      source_zip_url: 'https://github.com/Ahmedbecett/Chort/archive/refs/tags/v3.0.0.zip',
+      html_url: 'https://github.com/Ahmedbecett/Chort/releases/tag/v3.0.0',
       repo_url: 'https://github.com/Ahmedbecett/Chort',
     });
   });

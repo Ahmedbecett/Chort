@@ -50,7 +50,7 @@ export const PromoteModal: React.FC<PromoteModalProps> = ({ isOpen, onClose, vid
               <Rocket className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-base">ترويج الفيديوهات (Chort Promote)</h3>
+              <h3 className="font-bold text-white text-base">ترويج الفيديوهات (ZEVORA Promote)</h3>
               <p className="text-[11px] text-zinc-400">ضخ زيارات ومشاهدات حقيقية لمقاطعك عبر الولايات</p>
             </div>
           </div>

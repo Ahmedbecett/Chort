@@ -19,7 +19,7 @@ export const UploadVideoView: React.FC<UploadVideoViewProps> = ({
   const [videoUrl, setVideoUrl] = useState<string>(
     initialVideoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
   );
-  const [caption, setCaption] = useState('فيديو جديد على Chort 🇩🇿 شاركونا رأيكم! #الجزائر #dz #trending');
+  const [caption, setCaption] = useState('فيديو جديد على ZEVORA 🇩🇿 شاركونا رأيكم! #الجزائر #dz #trending');
   const [isUploading, setIsUploading] = useState(false);
   const [privacy, setPrivacy] = useState<'public' | 'friends' | 'private'>('public');
   const [allowComments, setAllowComments] = useState(true);
@@ -54,7 +54,7 @@ export const UploadVideoView: React.FC<UploadVideoViewProps> = ({
         url: videoUrl,
         thumbnail: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
         caption,
-        tags: ['algeria', 'dz', 'chort', 'video'],
+        tags: ['algeria', 'dz', 'zevora', 'video'],
       });
       setIsUploading(false);
       onVideoPublished(newVid);
@@ -175,7 +175,7 @@ export const UploadVideoView: React.FC<UploadVideoViewProps> = ({
             ) : (
               <>
                 <Upload className="w-4 h-4" />
-                <span>نشر الفيديو فوراً على Chort</span>
+                <span>نشر الفيديو فوراً على ZEVORA</span>
               </>
             )}
           </button>

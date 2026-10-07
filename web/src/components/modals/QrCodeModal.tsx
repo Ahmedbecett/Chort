@@ -82,7 +82,7 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ isOpen, onClose, user 
               <rect x="18" y="44" width="6" height="6" rx="1" fill="#000" />
               <rect x="28" y="38" width="6" height="6" rx="1" fill="#000" />
 
-              {/* Center Chort badge */}
+              {/* Center ZEVORA badge */}
               <rect x="37" y="37" width="26" height="26" rx="8" fill="#18181b" />
               <text x="50" y="55" fontSize="16" fontWeight="bold" fill="#ec4899" textAnchor="middle">C</text>
 

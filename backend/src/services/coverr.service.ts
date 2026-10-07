@@ -32,7 +32,7 @@ export class CoverrService {
 
   /**
    * Fetches portrait licensed videos from Coverr Videos API.
-   * Respects rate limits via caching and formats output for Chort feed.
+   * Respects rate limits via caching and formats output for ZEVORA feed.
    * Shape mirrors PexelsService so the dispatcher can swap providers safely.
    */
   public static async getVideos(options: {
@@ -94,7 +94,7 @@ export class CoverrService {
         headers: {
           Authorization: `Bearer ${config.coverr.apiKey}`,
           Accept: 'application/json',
-          'User-Agent': 'Chort-Video-Platform/2.2.0',
+          'User-Agent': 'ZEVORA-Video-Platform/3.0.0',
         },
       });
 

@@ -148,7 +148,7 @@ async function fetchRange(url: string, start: number, end: number | null): Promi
     headers: {
       Range: range,
       Accept: 'video/mp4,video/*,*/*',
-      'User-Agent': 'Chort-Video-Platform/2.2.0',
+      'User-Agent': 'ZEVORA-Video-Platform/3.0.0',
     },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     redirect: 'follow',

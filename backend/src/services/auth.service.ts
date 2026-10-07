@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma';
 import { config } from '../config';
 
 /**
- * Chort authentication core: Google/Facebook OAuth, phone+SMS OTP, account
+ * ZEVORA authentication core: Google/Facebook OAuth, phone+SMS OTP, account
  * linking, and phone-based recovery. Extends (never replaces) the existing
  * email/JWT/session system.
  *
@@ -13,10 +13,8 @@ import { config } from '../config';
  * - OTPs expire (TTL), attempts are capped, resends are cooldown-limited and
  *   hourly-capped per phone. Failures return 429/410 with clear messages.
  * - No secret is ever logged (only masked phone prefixes + provider statuses).
- * - DEV ECHO: when NO SMS provider is configured (setup mode), request-otp
- *   returns the code in `devOtp` so flows can be tested end to end. The
- *   moment Twilio is configured, echo disappears automatically.
- *   Set OTP_DEV_ECHO=false to disable echo entirely (kill switch).
+ * - No development echo: verification codes are delivered via Twilio SMS
+ *   only. There is no code path that returns the code in an API response.
  */
 
 export const OTP_PURPOSES = ['register', 'recovery'] as const;
@@ -74,13 +72,6 @@ export function isSmsConfigured(): boolean {
   return Boolean(t.accountSid && t.authToken && (t.fromNumber || t.messagingServiceSid));
 }
 
-/** Dev echo fires ONLY in non-production local/test mode when no SMS is configured. NEVER in production. */
-export function devEchoAllowed(): boolean {
-  if (config.nodeEnv === 'production') return false;
-  if (config.otp.devEcho === 'never') return false;
-  return !isSmsConfigured();
-}
-
 // ---------------------------------------------------------------------------
 // SMS delivery (Twilio Programmable Messaging)
 // ---------------------------------------------------------------------------
@@ -123,17 +114,16 @@ async function sendSmsViaTwilio(to: string, body: string): Promise<{ ok: boolean
 
 export interface OtpRequestResult {
   sent: boolean;
-  via: 'sms' | 'dev-echo' | 'failed';
+  via: 'sms' | 'failed';
   expiresInSeconds: number;
   resendCooldownSeconds: number;
-  devOtp?: string;
   error?: string;
 }
 
 export class AuthService {
   /**
    * Issue (or re-issue) an OTP for a phone+purpose. Creates/refreshes the
-   * hashed record, then delivers via SMS or setup-mode dev echo.
+   * hashed record, then delivers via Twilio SMS.
    */
   static async requestOtp(phoneRaw: string, purpose: OtpPurpose = 'register'): Promise<OtpRequestResult> {
     const phone = normalizePhone(phoneRaw);
@@ -189,12 +179,7 @@ export class AuthService {
     void record;
     const base = { expiresInSeconds: config.otp.ttlSeconds, resendCooldownSeconds: config.otp.cooldownSeconds };
 
-    if (devEchoAllowed()) {
-      console.warn(`OTP SETUP-MODE echo for ${maskPhone(phone)} (no SMS provider configured)`);
-      return { sent: true, via: 'dev-echo', ...base, devOtp: code };
-    }
-
-    const sms = await sendSmsViaTwilio(phone, `thileli dz code: ${code}. It expires in ${Math.round(config.otp.ttlSeconds / 60)} minutes.`);
+    const sms = await sendSmsViaTwilio(phone, `ZEVORA code: ${code}. It expires in ${Math.round(config.otp.ttlSeconds / 60)} minutes.`);
     if (!sms.ok) {
       return { sent: false, via: 'failed', ...base, error: sms.error || 'SMS delivery failed' };
     }
@@ -266,7 +251,7 @@ export class AuthService {
     ].filter(Boolean);
     const isAudValid = allowedAudiences.includes(data.aud) || String(data.aud || '').startsWith('358490968062');
     if (!data?.sub || !isAudValid) {
-      const err = new Error('Google credential was not issued for thileli dz');
+      const err = new Error('Google credential was not issued for ZEVORA');
       (err as any).statusCode = 401;
       throw err;
     }
@@ -438,7 +423,7 @@ export class AuthService {
     const { phone } = await AuthService.verifyOtp(phoneRaw, codeRaw, 'recovery');
     const user = await prisma.user.findFirst({ where: { phone }, include: { profile: true } });
     if (!user) {
-      const err = new Error('No thileli dz account is linked to this number');
+      const err = new Error('No ZEVORA account is linked to this number');
       (err as any).statusCode = 404;
       throw err;
     }

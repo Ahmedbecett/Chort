@@ -191,7 +191,7 @@ export const api = {
       shares: 0,
       saves: 0,
       views: 1,
-      tags: videoData.tags || ['chort', 'dz', 'video'],
+      tags: videoData.tags || ['zevora', 'dz', 'video'],
       isLiked: false,
       isSaved: false,
       createdAt: new Date().toISOString(),

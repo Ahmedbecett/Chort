@@ -18,7 +18,7 @@ export interface FeedQueryOptions {
 export class FeedService {
   /**
    * Real social feed served by the Feed Engine: per-viewer rotation, true
-   * cursor pagination across chort + licensed content, watch-history
+   * cursor pagination across ZEVORA + licensed content, watch-history
    * exclusion, and user-first ranking. No shared page cache on purpose — a
    * cached page would collapse every viewer back to one identical list.
    * (Provider slices stay cached 15min, media verdicts 24h, deeper down.)

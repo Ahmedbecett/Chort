@@ -1,7 +1,7 @@
 {
-  "name": "chort-platform",
-  "version": "2.2.0",
-  "description": "Chort Video Social Platform Backend and Monorepo",
+  "name": "zevora-platform",
+  "version": "3.0.0",
+  "description": "ZEVORA Video Social Platform Backend and Monorepo",
   "workspaces": [
     "backend"
   ],

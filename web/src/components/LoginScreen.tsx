@@ -154,7 +154,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onOpen
             C
           </div>
           <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-            Chort <span className="text-pink-500 text-xs font-medium">Short Videos</span>
+            ZEVORA <span className="text-pink-500 text-xs font-medium">Short Videos</span>
           </span>
         </div>
 
@@ -164,7 +164,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onOpen
           className="flex items-center gap-2 py-1.5 px-3 rounded-full text-xs font-semibold bg-gradient-to-r from-pink-600 to-cyan-600 hover:from-pink-500 hover:to-cyan-500 text-white shadow-md shadow-pink-600/20 active:scale-95 transition-all"
         >
           <Download className="w-3.5 h-3.5 animate-bounce" />
-          <span>تحميل APK (v2.4.6)</span>
+          <span>تحميل APK (v3.0.0)</span>
         </button>
       </div>
 
@@ -177,7 +177,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onOpen
             <span>تسجيل الدخول إلى حسابك</span>
           </div>
           <h1 className="text-2xl font-black text-white">
-            {method === 'otp' ? 'أدخل رمز التحقق (OTP)' : 'انضم إلى مجتمع Chort'}
+            {method === 'otp' ? 'أدخل رمز التحقق (OTP)' : 'انضم إلى مجتمع ZEVORA'}
           </h1>
           <p className="text-xs text-zinc-400 max-w-xs mx-auto">
             {method === 'otp'
@@ -434,11 +434,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onOpen
           <span>سياسة الخصوصية</span>
           <span>·</span>
           <button onClick={onOpenDownloadModal} className="text-pink-400 hover:underline font-medium">
-            تحميل أحدث إصدار APK v2.4.6
+            تحميل أحدث إصدار APK v3.0.0
           </button>
         </div>
         <p className="text-[11px] text-zinc-600">
-          Chort Short Videos © 2026 - جميع الحقوق محفوظة
+          ZEVORA Short Videos © 2026 - جميع الحقوق محفوظة
         </p>
       </div>
     </div>

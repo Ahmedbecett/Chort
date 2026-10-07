@@ -66,7 +66,7 @@ export const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
       action: onOpenQr,
     },
     {
-      title: 'Chort Studio (التحليلات)',
+      title: 'ZEVORA Studio (التحليلات)',
       subtitle: 'مخطط المشاهدات ونمو الجمهور',
       icon: BarChart3,
       iconColor: 'text-emerald-400',
@@ -119,7 +119,7 @@ export const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
                 </div>
                 <div>
                   <div className="text-xs font-bold text-white">تحميل APK الأحدث</div>
-                  <div className="text-[10px] text-emerald-400 font-mono">v2.4.6 من المستودع</div>
+                  <div className="text-[10px] text-emerald-400 font-mono">v3.0.0 من المستودع</div>
                 </div>
               </div>
               <ChevronLeft className="w-4 h-4 text-zinc-400" />

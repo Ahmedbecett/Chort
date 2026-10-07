@@ -108,7 +108,7 @@ export class PixabayService {
       const response = await fetch(endpoint, {
         headers: {
           Accept: 'application/json',
-          'User-Agent': 'Chort-Video-Platform/2.2.0',
+          'User-Agent': 'ZEVORA-Video-Platform/3.0.0',
         },
       });
 

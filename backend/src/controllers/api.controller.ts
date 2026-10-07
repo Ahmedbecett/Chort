@@ -139,9 +139,9 @@ export class ApiController {
 
     return res.status(200).json({
       status: 'UP',
-      service: 'thileli dz Video Platform API',
+      service: 'ZEVORA Video Platform API',
       timestamp: new Date().toISOString(),
-      version: '2.2.0',
+      version: '3.0.0',
       database: dbMessage,
       databaseConnected: isDbConnected,
       tablesCount: tablesCount,
@@ -164,7 +164,7 @@ export class ApiController {
       googleOAuthConfigured: Boolean(config.google.clientId),
       facebookOAuth: config.facebook.appId ? 'Facebook OAuth Active' : 'Facebook OAuth Not Configured (Set FACEBOOK_APP_ID)',
       facebookOAuthConfigured: Boolean(config.facebook.appId),
-      sms: isSmsConfigured() ? 'Twilio SMS Active' : 'SMS Not Configured (setup-mode OTP echo; set TWILIO_* to send real SMS)',
+      sms: isSmsConfigured() ? 'Twilio SMS Active' : 'SMS Not Configured (set TWILIO_* to send real SMS)',
       smsConfigured: isSmsConfigured(),
       cdn: config.cdn.baseUrl,
       vercelProduction: true,
@@ -524,7 +524,7 @@ export class ApiController {
       const video = await VideoService.completeUpload({
         videoId,
         userId: activeUserId,
-        caption: caption || 'New thileli dz Video',
+        caption: caption || 'New ZEVORA Video',
         videoUrl,
         thumbnailUrl,
         musicTitle,
@@ -810,7 +810,7 @@ export class ApiController {
       }
 
       // 2. High-res dynamic SVG poster
-      const title = (video?.caption || 'thileli dz Video').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 48);
+      const title = (video?.caption || 'ZEVORA Video').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 48);
       const creator = (video?.user?.username || 'creator').replace(/&/g, '&amp;');
 
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1280" viewBox="0 0 720 1280">
@@ -832,7 +832,7 @@ export class ApiController {
   <text x="360" y="700" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" text-anchor="middle">${title}</text>
   <text x="360" y="745" fill="#a0aec0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" text-anchor="middle">@${creator}</text>
   <rect x="290" y="1160" width="140" height="38" rx="19" fill="url(#accent)"/>
-  <text x="360" y="1185" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="900" text-anchor="middle" letter-spacing="2">CHORT</text>
+  <text x="360" y="1185" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="900" text-anchor="middle" letter-spacing="2">ZEVORA</text>
 </svg>`;
 
       res.setHeader('Content-Type', 'image/svg+xml');
@@ -1365,7 +1365,7 @@ export class ApiController {
       }
       const existing = await prisma.account.findUnique({ where: { provider_providerId: { provider, providerId: profile.sub } } });
       if (existing && existing.userId !== self.userId) {
-        return res.status(409).json({ error: 'That account is already linked to another thileli dz user.' });
+        return res.status(409).json({ error: 'That account is already linked to another ZEVORA user.' });
       }
       if (!existing) {
         await prisma.account.create({ data: { userId: self.userId, provider, providerId: profile.sub, email: profile.email || null } });

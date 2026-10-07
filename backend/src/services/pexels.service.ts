@@ -61,7 +61,7 @@ export class PexelsService {
 
   /**
    * Fetches portrait licensed videos from Pexels Video API.
-   * Respects rate limits via caching and formats output for Chort feed.
+   * Respects rate limits via caching and formats output for ZEVORA feed.
    */
   public static async getVideos(options: {
     query?: string;
@@ -116,7 +116,7 @@ export class PexelsService {
         headers: {
           Authorization: config.pexels.apiKey,
           Accept: 'application/json',
-          'User-Agent': 'Chort-Video-Platform/2.2.0',
+          'User-Agent': 'ZEVORA-Video-Platform/3.0.0',
         },
       });
 

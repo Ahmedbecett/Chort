@@ -43,8 +43,8 @@ export class VideoService {
           sharesCount: v.sharesCount,
           viewsCount: v.viewsCount,
           aspectRatio: v.aspectRatio,
-          source: 'chort',
-          provider: 'chort',
+          source: 'zevora',
+          provider: 'zevora',
           isExternal: false,
           createdAt,
         };
@@ -248,7 +248,7 @@ export class VideoService {
       data: {
         id: videoId,
         userId,
-        caption: caption || 'New Chort Video',
+        caption: caption || 'New ZEVORA Video',
         originalKey: storedKey,
         streamUrl: isExternalBytes ? clientVideoUrl : canonicalStreamUrl,
         thumbnailUrl: realThumbnail,
