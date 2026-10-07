@@ -56,28 +56,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.local.entities.NotificationEntity
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.components.StoriesRow
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.AccentGreen
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 
 /**
  * Inbox: stories on top, live activity (likes, comments, follows)
- * synced from the Chort server below. No placeholder content.
+ * synced from the ZEVORA server below. No placeholder content.
  */
 @Composable
 fun InboxScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     onNavigateToProfile: (String) -> Unit,
     onNavigateToSearch: () -> Unit = {},
     onNavigateToCreate: () -> Unit = {}
@@ -120,7 +120,7 @@ fun InboxScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
             .testTag("inbox_screen")
     ) {
@@ -139,7 +139,7 @@ fun InboxScreen(
                 Icon(
                     imageVector = Icons.Default.DoneAll,
                     contentDescription = "Mark all as read",
-                    tint = TokCyan,
+                    tint = ZevoraCyan,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -185,7 +185,7 @@ fun InboxScreen(
             if (isSyncing) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(
-                        color = TokCyan,
+                        color = ZevoraCyan,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(14.dp)
                     )
@@ -195,7 +195,7 @@ fun InboxScreen(
             } else if (syncError != null && notifications.isEmpty()) {
                 Text(
                     text = "Tap to retry",
-                    color = TokCyan,
+                    color = ZevoraCyan,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.clickable { sync() }
@@ -217,14 +217,14 @@ fun InboxScreen(
                     onClick = { selectedFilter = cat },
                     label = { Text(cat, fontSize = 12.sp) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = TokRed,
+                        selectedContainerColor = ZevoraRed,
                         selectedLabelColor = Color.White,
-                        containerColor = TokDarkElevated,
+                        containerColor = ZevoraDarkElevated,
                         labelColor = TextSecondary
                     ),
                     border = FilterChipDefaults.filterChipBorder(
-                        borderColor = TokBorder,
-                        selectedBorderColor = TokRed,
+                        borderColor = ZevoraBorder,
+                        selectedBorderColor = ZevoraRed,
                         enabled = true,
                         selected = selectedFilter == cat
                     ),
@@ -295,8 +295,8 @@ private fun NotificationCard(
     onActorClick: () -> Unit
 ) {
     val (typeIcon, iconColor) = when (notification.type) {
-        "like" -> Pair(Icons.Default.Favorite, TokRed)
-        "comment" -> Pair(Icons.Default.Comment, TokCyan)
+        "like" -> Pair(Icons.Default.Favorite, ZevoraRed)
+        "comment" -> Pair(Icons.Default.Comment, ZevoraCyan)
         "follow" -> Pair(Icons.Default.PersonAdd, AccentGreen)
         else -> Pair(Icons.Default.Security, AccentGold)
     }
@@ -304,13 +304,13 @@ private fun NotificationCard(
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (!notification.isRead) TokDarkElevated else TokDarkSurface
+            containerColor = if (!notification.isRead) ZevoraDarkElevated else ZevoraDarkSurface
         ),
         modifier = Modifier
             .fillMaxWidth()
             .border(
                 width = if (!notification.isRead) 1.dp else 0.5.dp,
-                color = if (!notification.isRead) TokCyan.copy(alpha = 0.5f) else TokBorder,
+                color = if (!notification.isRead) ZevoraCyan.copy(alpha = 0.5f) else ZevoraBorder,
                 shape = RoundedCornerShape(14.dp)
             )
             .clickable { onActorClick() }
@@ -363,7 +363,7 @@ private fun NotificationCard(
                             modifier = Modifier
                                 .size(6.dp)
                                 .clip(CircleShape)
-                                .background(TokRed)
+                                .background(ZevoraRed)
                         )
                     }
                 }

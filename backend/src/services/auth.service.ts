@@ -389,7 +389,7 @@ export class AuthService {
     }
     const user = await prisma.user.create({
       data: {
-        email: email || `${provider}_${providerId}@chort.app`,
+        email: email || '',
         username,
         passwordHash: 'OAUTH_OR_SESSION',
         role: 'USER',

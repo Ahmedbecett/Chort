@@ -18,7 +18,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraRed
 
 @Composable
 fun BurstHeart(
@@ -55,7 +55,7 @@ fun BurstHeart(
         Icon(
             imageVector = Icons.Default.Favorite,
             contentDescription = "Liked",
-            tint = TokRed,
+            tint = ZevoraRed,
             modifier = Modifier
                 .size(100.dp)
                 .scale(scale.value)

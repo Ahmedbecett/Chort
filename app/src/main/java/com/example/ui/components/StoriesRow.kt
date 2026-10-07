@@ -36,12 +36,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.local.entities.UserEntity
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraRed
 
 /**
  * Horizontal stories strip: a Create tile plus the people you follow,
@@ -49,7 +49,7 @@ import com.example.ui.theme.TokRed
  */
 @Composable
 fun StoriesRow(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     onCreateStory: () -> Unit,
     onStoryClick: (UserEntity) -> Unit,
     modifier: Modifier = Modifier
@@ -78,7 +78,7 @@ fun StoriesRow(
                         modifier = Modifier
                             .size(62.dp)
                             .clip(CircleShape)
-                            .background(TokDarkElevated)
+                            .background(ZevoraDarkElevated)
                             .border(1.5.dp, TextSecondary.copy(alpha = 0.4f), CircleShape)
                             .clickable(onClick = onCreateStory),
                         contentAlignment = Alignment.Center
@@ -105,7 +105,7 @@ fun StoriesRow(
                         modifier = Modifier
                             .size(20.dp)
                             .clip(CircleShape)
-                            .background(TokCyan)
+                            .background(ZevoraCyan)
                             .border(2.dp, Color.Black, CircleShape)
                             .clickable(onClick = onCreateStory),
                         contentAlignment = Alignment.Center
@@ -138,7 +138,7 @@ fun StoriesRow(
                     modifier = Modifier
                         .size(64.dp)
                         .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(TokCyan, TokRed)))
+                        .background(Brush.linearGradient(listOf(ZevoraCyan, ZevoraRed)))
                         .padding(2.5.dp)
                         .clip(CircleShape)
                         .background(Color.Black)

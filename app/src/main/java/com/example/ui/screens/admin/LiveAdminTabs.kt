@@ -54,26 +54,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.remote.ApiAdminReport
 import com.example.data.remote.ApiLoginRecord
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.StatusPending
 import com.example.ui.theme.StatusResolved
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 
 // ---------------------------------------------------------------------------
-// LIVE REPORTS: real moderation queue from the Chort API
+// LIVE REPORTS: real moderation queue from the ZEVORA API
 // ---------------------------------------------------------------------------
 
 @Composable
-fun LiveReportsTab(repository: TokPulseRepository) {
+fun LiveReportsTab(repository: ZevoraRepository) {
     val scope = rememberCoroutineScope()
     var statusFilter by remember { mutableStateOf<String?>(null) }
     var page by remember { mutableIntStateOf(1) }
@@ -129,9 +129,9 @@ fun LiveReportsTab(repository: TokPulseRepository) {
                     onClick = { statusFilter = value },
                     label = { Text(label, fontSize = 12.sp) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = TokRed,
+                        selectedContainerColor = ZevoraRed,
                         selectedLabelColor = Color.White,
-                        containerColor = TokDarkElevated,
+                        containerColor = ZevoraDarkElevated,
                         labelColor = TextSecondary
                     ),
                     shape = RoundedCornerShape(16.dp)
@@ -139,14 +139,14 @@ fun LiveReportsTab(repository: TokPulseRepository) {
             }
             Spacer(modifier = Modifier.weight(1f))
             IconButton(onClick = { load(page) }) {
-                Icon(imageVector = Icons.Default.Refresh, contentDescription = "Refresh", tint = TokCyan)
+                Icon(imageVector = Icons.Default.Refresh, contentDescription = "Refresh", tint = ZevoraCyan)
             }
         }
 
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = TokCyan)
+                    CircularProgressIndicator(color = ZevoraCyan)
                     Spacer(modifier = Modifier.height(10.dp))
                     Text("Loading live reports…", color = TextMuted, fontSize = 13.sp)
                 }
@@ -208,7 +208,7 @@ fun LiveReportsTab(repository: TokPulseRepository) {
                 Button(
                     onClick = { if (page > 1) load(page - 1) },
                     enabled = page > 1 && !isLoading,
-                    colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated)
+                    colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated)
                 ) {
                     Text("Previous", color = TextPrimary, fontSize = 13.sp)
                 }
@@ -216,7 +216,7 @@ fun LiveReportsTab(repository: TokPulseRepository) {
                 Button(
                     onClick = { if (hasMore) load(page + 1) },
                     enabled = hasMore && !isLoading,
-                    colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated)
+                    colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated)
                 ) {
                     Text("Next", color = TextPrimary, fontSize = 13.sp)
                 }
@@ -238,14 +238,14 @@ private fun LiveReportCard(
     }
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+        colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, TokBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, ZevoraBorder, RoundedCornerShape(14.dp))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(imageVector = Icons.Default.Flag, contentDescription = null, tint = TokRed, modifier = Modifier.size(18.dp))
+                Icon(imageVector = Icons.Default.Flag, contentDescription = null, tint = ZevoraRed, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = report.reason,
@@ -317,27 +317,27 @@ private fun LiveActionButton(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, TokCyan, RoundedCornerShape(20.dp))
+            .border(1.dp, ZevoraCyan, RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 7.dp)
     ) {
         if (busy) {
-            CircularProgressIndicator(color = TokCyan, strokeWidth = 2.dp, modifier = Modifier.size(14.dp))
+            CircularProgressIndicator(color = ZevoraCyan, strokeWidth = 2.dp, modifier = Modifier.size(14.dp))
             Spacer(modifier = Modifier.width(6.dp))
         } else {
-            Icon(imageVector = icon, contentDescription = null, tint = TokCyan, modifier = Modifier.size(15.dp))
+            Icon(imageVector = icon, contentDescription = null, tint = ZevoraCyan, modifier = Modifier.size(15.dp))
             Spacer(modifier = Modifier.width(6.dp))
         }
-        Text(text = label, color = TokCyan, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
+        Text(text = label, color = ZevoraCyan, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
 // ---------------------------------------------------------------------------
-// LOGINS: real sign-in records from the Chort API
+// LOGINS: real sign-in records from the ZEVORA API
 // ---------------------------------------------------------------------------
 
 @Composable
-fun LiveLoginsTab(repository: TokPulseRepository) {
+fun LiveLoginsTab(repository: ZevoraRepository) {
     val scope = rememberCoroutineScope()
     var page by remember { mutableIntStateOf(1) }
     var records by remember { mutableStateOf<List<ApiLoginRecord>>(emptyList()) }
@@ -381,14 +381,14 @@ fun LiveLoginsTab(repository: TokPulseRepository) {
                 fontWeight = FontWeight.Bold
             )
             IconButton(onClick = { load(page) }) {
-                Icon(imageVector = Icons.Default.Refresh, contentDescription = "Refresh", tint = TokCyan)
+                Icon(imageVector = Icons.Default.Refresh, contentDescription = "Refresh", tint = ZevoraCyan)
             }
         }
 
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = TokCyan)
+                    CircularProgressIndicator(color = ZevoraCyan)
                     Spacer(modifier = Modifier.height(10.dp))
                     Text("Loading login records…", color = TextMuted, fontSize = 13.sp)
                 }
@@ -437,7 +437,7 @@ fun LiveLoginsTab(repository: TokPulseRepository) {
                 Button(
                     onClick = { if (page > 1) load(page - 1) },
                     enabled = page > 1 && !isLoading,
-                    colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated)
+                    colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated)
                 ) {
                     Text("Previous", color = TextPrimary, fontSize = 13.sp)
                 }
@@ -445,7 +445,7 @@ fun LiveLoginsTab(repository: TokPulseRepository) {
                 Button(
                     onClick = { if (hasMore) load(page + 1) },
                     enabled = hasMore && !isLoading,
-                    colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated)
+                    colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated)
                 ) {
                     Text("Next", color = TextPrimary, fontSize = 13.sp)
                 }
@@ -458,10 +458,10 @@ fun LiveLoginsTab(repository: TokPulseRepository) {
 private fun LoginRecordCard(record: ApiLoginRecord) {
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+        colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, TokBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, ZevoraBorder, RoundedCornerShape(14.dp))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -483,12 +483,12 @@ private fun LoginRecordCard(record: ApiLoginRecord) {
                     Box(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(TokCyan.copy(alpha = 0.14f))
+                            .background(ZevoraCyan.copy(alpha = 0.14f))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = record.user!!.primaryProvider!!,
-                            color = TokCyan,
+                            color = ZevoraCyan,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )

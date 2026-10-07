@@ -10,7 +10,7 @@ import { SocialService } from '../services/social.service';
 import { NotificationService } from '../services/notification.service';
 import { ReportService } from '../services/report.service';
 import { HashtagService } from '../services/hashtag.service';
-import { AuthService, devEchoAllowed, isSmsConfigured, normalizePhone } from '../services/auth.service';
+import { AuthService, isSmsConfigured, normalizePhone } from '../services/auth.service';
 import { clampLimit, clampPage, parseFeedMode } from '../lib/validate';
 import { PexelsService } from '../services/pexels.service';
 import { CoverrService } from '../services/coverr.service';
@@ -166,7 +166,6 @@ export class ApiController {
       facebookOAuthConfigured: Boolean(config.facebook.appId),
       sms: isSmsConfigured() ? 'Twilio SMS Active' : 'SMS Not Configured (setup-mode OTP echo; set TWILIO_* to send real SMS)',
       smsConfigured: isSmsConfigured(),
-      otpDevEcho: devEchoAllowed(),
       cdn: config.cdn.baseUrl,
       vercelProduction: true,
     });

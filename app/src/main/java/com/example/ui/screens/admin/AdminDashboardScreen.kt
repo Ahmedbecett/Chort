@@ -88,7 +88,7 @@ import com.example.data.local.entities.UserEntity
 import com.example.data.local.entities.VideoEntity
 import com.example.data.local.entities.ViolationEntity
 import com.example.data.remote.AdminOverviewResponse
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.AccentGreen
 import com.example.ui.theme.AccentOrange
@@ -99,12 +99,12 @@ import com.example.ui.theme.StatusResolved
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -112,7 +112,7 @@ import java.util.Locale
 
 @Composable
 fun AdminDashboardScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     onBackToFeed: () -> Unit
 ) {
     val context = LocalContext.current
@@ -166,7 +166,7 @@ fun AdminDashboardScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
             .testTag("admin_dashboard_screen")
     ) {
@@ -174,7 +174,7 @@ fun AdminDashboardScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(TokDarkSurface)
+                .background(ZevoraDarkSurface)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -192,20 +192,20 @@ fun AdminDashboardScreen(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(TokRed.copy(alpha = 0.2f)),
+                        .background(ZevoraRed.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.AdminPanelSettings,
                         contentDescription = "Admin",
-                        tint = TokRed,
+                        tint = ZevoraRed,
                         modifier = Modifier.size(18.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
-                        text = "thileli dz Admin Center",
+                        text = "ZEVORA Admin Center",
                         color = TextPrimary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
@@ -219,7 +219,7 @@ fun AdminDashboardScreen(
             }
 
             val badgeColor = when {
-                overviewError != null -> TokRed
+                overviewError != null -> ZevoraRed
                 liveOverview != null -> AccentGreen
                 else -> TextMuted
             }
@@ -248,13 +248,13 @@ fun AdminDashboardScreen(
         // Sub Tabs
         ScrollableTabRow(
             selectedTabIndex = selectedTabIndex,
-            containerColor = TokDarkSurface,
+            containerColor = ZevoraDarkSurface,
             contentColor = TextPrimary,
             edgePadding = 12.dp,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
                     Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                    color = TokRed
+                    color = ZevoraRed
                 )
             }
         ) {
@@ -270,7 +270,7 @@ fun AdminDashboardScreen(
                                 Box(
                                     modifier = Modifier
                                         .clip(CircleShape)
-                                        .background(TokRed)
+                                        .background(ZevoraRed)
                                         .padding(horizontal = 5.dp, vertical = 1.dp)
                                 ) {
                                     Text("$pendingReports", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -445,13 +445,13 @@ private fun AdminOverviewTab(
                             lastSync != null -> "Last sync $lastSync • ${latencyMs}ms round-trip"
                             else -> "Waiting for server…"
                         },
-                        color = if (error != null) TokRed else TextMuted,
+                        color = if (error != null) ZevoraRed else TextMuted,
                         fontSize = 11.sp
                     )
                 }
                 if (isRefreshing) {
                     CircularProgressIndicator(
-                        color = TokRed,
+                        color = ZevoraRed,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(22.dp)
                     )
@@ -474,7 +474,7 @@ private fun AdminOverviewTab(
                     value = liveUsers?.toString() ?: "$totalUsers",
                     sub = if (serverOnline) "live server total" else "$activeUsers active on this device",
                     icon = Icons.Default.People,
-                    color = TokCyan,
+                    color = ZevoraCyan,
                     modifier = Modifier.weight(1f)
                 )
                 AdminStatCard(
@@ -482,7 +482,7 @@ private fun AdminOverviewTab(
                     value = liveVideos?.toString() ?: "$totalVideos",
                     sub = if (serverOnline) "${livePublic ?: 0} public on server" else "${formatCount(totalViews)} views on device",
                     icon = Icons.Default.Movie,
-                    color = TokRed,
+                    color = ZevoraRed,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -537,10 +537,10 @@ private fun AdminOverviewTab(
             }
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+                colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, TokBorder, RoundedCornerShape(16.dp))
+                    .border(1.dp, ZevoraBorder, RoundedCornerShape(16.dp))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     StatusRow(
@@ -549,21 +549,21 @@ private fun AdminOverviewTab(
                         ping = if (latencyMs >= 0) "measured round-trip ${latencyMs}ms" else "no response yet",
                         isOk = error == null && latencyMs >= 0 && latencyMs <= 2500
                     )
-                    HorizontalDivider(color = TokBorder, modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(color = ZevoraBorder, modifier = Modifier.padding(vertical = 8.dp))
                     StatusRow(
                         service = "Server Database",
                         status = if (serverOnline) "Connected" else "Unknown",
                         ping = overview?.serverTime?.let { "server clock $it" } ?: "verified via live /admin/overview",
                         isOk = serverOnline
                     )
-                    HorizontalDivider(color = TokBorder, modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(color = ZevoraBorder, modifier = Modifier.padding(vertical = 8.dp))
                     StatusRow(
                         service = "Device Cache (Room)",
                         status = "Available",
                         ping = "$totalUsers users • $totalVideos videos stored locally",
                         isOk = true
                     )
-                    HorizontalDivider(color = TokBorder, modifier = Modifier.padding(vertical = 8.dp))
+                    HorizontalDivider(color = ZevoraBorder, modifier = Modifier.padding(vertical = 8.dp))
                     StatusRow(
                         service = "Moderation Queue",
                         status = if (livePending > 0) "$livePending Pending" else "Clear",
@@ -576,7 +576,7 @@ private fun AdminOverviewTab(
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = "Last error: $error",
-                    color = TokRed,
+                    color = ZevoraRed,
                     fontSize = 11.sp
                 )
             }
@@ -622,8 +622,8 @@ private fun AdminStatCard(
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
-        modifier = modifier.border(1.dp, TokBorder, RoundedCornerShape(16.dp))
+        colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
+        modifier = modifier.border(1.dp, ZevoraBorder, RoundedCornerShape(16.dp))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -679,9 +679,9 @@ private fun AdminReportsTab(
                     onClick = { statusFilter = f },
                     label = { Text(f, fontSize = 12.sp) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = TokRed,
+                        selectedContainerColor = ZevoraRed,
                         selectedLabelColor = Color.White,
-                        containerColor = TokDarkElevated,
+                        containerColor = ZevoraDarkElevated,
                         labelColor = TextSecondary
                     ),
                     shape = RoundedCornerShape(14.dp)
@@ -716,10 +716,10 @@ private fun AdminReportsTab(
         Dialog(onDismissRequest = { reportUnderAction = null }) {
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+                colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, TokBorder, RoundedCornerShape(20.dp))
+                    .border(1.dp, ZevoraBorder, RoundedCornerShape(20.dp))
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
@@ -731,7 +731,7 @@ private fun AdminReportsTab(
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = "Target: ${rep.targetType.uppercase()} (ID: ${rep.targetId})",
-                        color = TokCyan,
+                        color = ZevoraCyan,
                         fontSize = 12.sp
                     )
                     Text(
@@ -751,7 +751,7 @@ private fun AdminReportsTab(
                             onResolveReport(rep.id, "resolved", "Dismissed after safety review: No policy violation found.")
                             reportUnderAction = null
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated),
+                        colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Dismiss - No Violation Found", color = TextPrimary, fontSize = 12.sp)
@@ -779,7 +779,7 @@ private fun AdminReportsTab(
                             onPenalizeUser(rep.targetId, rep.targetOwnerUsername.ifBlank { "reported_creator" }, rep.reason, rep.description, rep.targetSnippet, "temporary_suspension")
                             reportUnderAction = null
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = TokRed),
+                        colors = ButtonDefaults.buttonColors(containerColor = ZevoraRed),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Suspend Creator (7 Days)", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -813,15 +813,15 @@ private fun ReportCard(
         "pending" -> StatusPending
         "resolved" -> StatusResolved
         "rejected" -> StatusBanned
-        else -> TokCyan
+        else -> ZevoraCyan
     }
 
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+        colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, TokBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, ZevoraBorder, RoundedCornerShape(14.dp))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -833,12 +833,12 @@ private fun ReportCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(TokDarkElevated)
+                            .background(ZevoraDarkElevated)
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = report.targetType.uppercase(),
-                            color = TokCyan,
+                            color = ZevoraCyan,
                             fontSize = 10.5.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -889,7 +889,7 @@ private fun ReportCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(TokDarkElevated)
+                        .background(ZevoraDarkElevated)
                         .padding(8.dp)
                 ) {
                     Text(
@@ -913,14 +913,14 @@ private fun ReportCard(
             Spacer(modifier = Modifier.height(10.dp))
             Button(
                 onClick = onTakeAction,
-                colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated),
+                colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(34.dp)
-                    .border(1.dp, TokBorder, RoundedCornerShape(10.dp))
+                    .border(1.dp, ZevoraBorder, RoundedCornerShape(10.dp))
             ) {
-                Icon(Icons.Default.Gavel, contentDescription = null, tint = TokRed, modifier = Modifier.size(14.dp))
+                Icon(Icons.Default.Gavel, contentDescription = null, tint = ZevoraRed, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Inspect & Moderation Actions", color = TextPrimary, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
             }
@@ -957,8 +957,8 @@ private fun AdminUsersTab(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary,
-                focusedBorderColor = TokCyan,
-                unfocusedBorderColor = TokBorder
+                focusedBorderColor = ZevoraCyan,
+                unfocusedBorderColor = ZevoraBorder
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -1002,10 +1002,10 @@ private fun AdminUserCard(
 
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+        colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, TokBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, ZevoraBorder, RoundedCornerShape(14.dp))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -1036,7 +1036,7 @@ private fun AdminUserCard(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(TokRed)
+                                    .background(ZevoraRed)
                                     .padding(horizontal = 4.dp, vertical = 1.dp)
                             ) {
                                 Text("ADMIN", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
@@ -1089,12 +1089,12 @@ private fun AdminUserCard(
                     } else {
                         Button(
                             onClick = onSuspend,
-                            colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated),
+                            colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated),
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(32.dp)
-                                .border(1.dp, TokBorder, RoundedCornerShape(8.dp))
+                                .border(1.dp, ZevoraBorder, RoundedCornerShape(8.dp))
                         ) {
                             Text("Suspend 7d", color = StatusPending, fontSize = 11.sp)
                         }
@@ -1114,11 +1114,11 @@ private fun AdminUserCard(
 
                     Button(
                         onClick = onDelete,
-                        colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated),
+                        colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .size(32.dp)
-                            .border(1.dp, TokBorder, RoundedCornerShape(8.dp))
+                            .border(1.dp, ZevoraBorder, RoundedCornerShape(8.dp))
                     ) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete", tint = StatusBanned, modifier = Modifier.size(16.dp))
                     }
@@ -1153,8 +1153,8 @@ private fun AdminVideosTab(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary,
-                focusedBorderColor = TokCyan,
-                unfocusedBorderColor = TokBorder
+                focusedBorderColor = ZevoraCyan,
+                unfocusedBorderColor = ZevoraBorder
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -1187,10 +1187,10 @@ private fun AdminVideoCard(
 ) {
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+        colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, TokBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, ZevoraBorder, RoundedCornerShape(14.dp))
     ) {
         Row(
             modifier = Modifier
@@ -1212,7 +1212,7 @@ private fun AdminVideoCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "@${video.creatorUsername}",
-                    color = TokCyan,
+                    color = ZevoraCyan,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -1269,10 +1269,10 @@ private fun AdminViolationsTab(violations: List<ViolationEntity>) {
             items(violations, key = { it.id }) { viol ->
                 Card(
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+                    colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, TokBorder, RoundedCornerShape(14.dp))
+                        .border(1.dp, ZevoraBorder, RoundedCornerShape(14.dp))
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Row(
@@ -1300,7 +1300,7 @@ private fun AdminViolationsTab(violations: List<ViolationEntity>) {
                         )
                         Text(
                             text = "Type: ${viol.violationType}",
-                            color = TokCyan,
+                            color = ZevoraCyan,
                             fontSize = 12.sp
                         )
                         Text(
@@ -1343,10 +1343,10 @@ private fun AdminPrivacyTab(
             items(requests, key = { it.id }) { req ->
                 Card(
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
+                    colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, TokBorder, RoundedCornerShape(14.dp))
+                        .border(1.dp, ZevoraBorder, RoundedCornerShape(14.dp))
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Row(
@@ -1408,7 +1408,7 @@ private fun AdminPrivacyTab(
 
                                 Button(
                                     onClick = { onProcessRequest(req.id, "rejected") },
-                                    colors = ButtonDefaults.buttonColors(containerColor = TokDarkElevated),
+                                    colors = ButtonDefaults.buttonColors(containerColor = ZevoraDarkElevated),
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier
                                         .weight(1f)

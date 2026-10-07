@@ -99,7 +99,7 @@ data class ApiVideo(
     val sharesCount: Int = 0,
     val viewsCount: Int = 0,
     val aspectRatio: String? = "9:16",
-    val source: String? = "chort",
+    val source: String? = "zevora",
     val provider: String? = null,
     val attributionUrl: String? = null,
     val photographerUrl: String? = null,
@@ -296,8 +296,6 @@ data class OtpResponse(
     val expiresInSeconds: Int = 600,
     val resendCooldownSeconds: Int = 60,
     val accountFound: Boolean? = null,
-    // Setup-mode only: present while no SMS provider is configured server-side.
-    val devOtp: String? = null,
     val error: String? = null
 )
 
@@ -487,7 +485,7 @@ data class LoginRecordsResponse(
 // Retrofit API Service
 // -------------------------------------------------------------
 
-interface TokPulseApiService {
+interface ZevoraApiService {
 
     @GET("api/v1/health")
     suspend fun healthCheck(): Response<HealthResponse>
@@ -642,7 +640,7 @@ interface TokPulseApiService {
 // Singleton Client
 // -------------------------------------------------------------
 
-object TokPulseApiClient {
+object ZevoraApiClient {
     // Single clear public production Vercel Base URL
     const val BASE_URL = "https://chort-nine.vercel.app/"
 
@@ -690,13 +688,13 @@ object TokPulseApiClient {
         })
         .build()
 
-    val api: TokPulseApiService by lazy {
+    val api: ZevoraApiService by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
-            .create(TokPulseApiService::class.java)
+            .create(ZevoraApiService::class.java)
     }
 
     fun getCanonicalStreamUrl(videoId: String): String = "${BASE_URL}api/v1/videos/$videoId/stream"

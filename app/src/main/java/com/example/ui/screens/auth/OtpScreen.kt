@@ -52,19 +52,18 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.repository.TokPulseRepository
-import com.example.ui.components.ChortMark
-import com.example.ui.theme.AccentGold
+import com.example.data.repository.ZevoraRepository
+import com.example.ui.components.ZevoraMark
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -77,14 +76,13 @@ enum class OtpMode { REGISTER, RECOVERY }
  */
 @Composable
 fun OtpScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     mode: OtpMode,
     phone: String,
     cooldownSeconds: Int,
     expiresInSeconds: Int,
     displayName: String? = null,
     newPassword: String? = null,
-    devOtp: String? = null,
     onSuccess: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -96,7 +94,6 @@ fun OtpScreen(
     var successMessage by remember { mutableStateOf<String?>(null) }
     var secondsLeft by remember { mutableIntStateOf(expiresInSeconds) }
     var cooldownLeft by remember { mutableIntStateOf(cooldownSeconds) }
-    var setupCode by remember(devOtp) { mutableStateOf(devOtp) }
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -126,7 +123,7 @@ fun OtpScreen(
                     repository.verifyPhoneOtp(phone, code, displayName)
                 }
                 if (result.isSuccess) {
-                    successMessage = if (mode == OtpMode.RECOVERY) "Account recovered. Welcome back!" else "Phone verified. Welcome to thileli dz!"
+                    successMessage = if (mode == OtpMode.RECOVERY) "Account recovered. Welcome back!" else "Phone verified. Welcome to ZEVORA!"
                     delay(700)
                     onSuccess()
                 } else {
@@ -155,8 +152,7 @@ fun OtpScreen(
                 val otp = result.getOrThrow()
                 cooldownLeft = otp.resendCooldownSeconds
                 secondsLeft = otp.expiresInSeconds
-                setupCode = otp.devOtp
-                code = ""
+                 code = ""
                 successMessage = "A fresh code is on its way."
             } else {
                 errorMessage = result.exceptionOrNull()?.message
@@ -167,7 +163,7 @@ fun OtpScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
@@ -187,7 +183,7 @@ fun OtpScreen(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
-            ChortMark(size = 36.dp)
+            ZevoraMark(size = 36.dp)
             Spacer(modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.width(48.dp))
         }
@@ -214,22 +210,10 @@ fun OtpScreen(
             } else {
                 "This code has expired - request a new one below."
             },
-            color = if (secondsLeft > 0) TokCyan else StatusBanned,
+            color = if (secondsLeft > 0) ZevoraCyan else StatusBanned,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold
         )
-        // Setup mode (no SMS provider yet): the server returns the code itself.
-        if (!setupCode.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = "Setup mode — your code is ${setupCode!!.trim()}",
-                color = AccentGold,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-        }
-
         Spacer(modifier = Modifier.height(24.dp))
 
         // Digit boxes over a hidden input for reliable keyboards + paste.
@@ -262,14 +246,14 @@ fun OtpScreen(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(TokDarkSurface)
+                            .background(ZevoraDarkSurface)
                             .border(
                                 1.5.dp,
                                 when {
                                     errorMessage != null -> StatusBanned
-                                    filled -> TokCyan
+                                    filled -> ZevoraCyan
                                     i == code.length -> TextSecondary
-                                    else -> TokBorder
+                                    else -> ZevoraBorder
                                 },
                                 RoundedCornerShape(14.dp)
                             ),
@@ -305,8 +289,8 @@ fun OtpScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(TokCyan.copy(alpha = 0.14f))
-                    .border(1.dp, TokCyan, RoundedCornerShape(12.dp))
+                    .background(ZevoraCyan.copy(alpha = 0.14f))
+                    .border(1.dp, ZevoraCyan, RoundedCornerShape(12.dp))
                     .padding(12.dp)
             ) {
                 Text(text = successMessage ?: "", color = Color.White, fontSize = 13.sp, textAlign = TextAlign.Center)
@@ -319,8 +303,8 @@ fun OtpScreen(
             onClick = { verify() },
             enabled = code.length == 6 && !isVerifying,
             colors = ButtonDefaults.buttonColors(
-                containerColor = TokRed,
-                disabledContainerColor = TokDarkElevated
+                containerColor = ZevoraRed,
+                disabledContainerColor = ZevoraDarkElevated
             ),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
@@ -345,7 +329,7 @@ fun OtpScreen(
 
         if (isResending) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(color = TokCyan, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+                CircularProgressIndicator(color = ZevoraCyan, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Sending a new code…", color = TextSecondary, fontSize = 13.sp)
             }
@@ -358,7 +342,7 @@ fun OtpScreen(
         } else {
             Text(
                 text = "Didn't get it? Resend code",
-                color = TokCyan,
+                color = ZevoraCyan,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.clickable { resend() }

@@ -32,13 +32,14 @@ android {
     targetSdk = 36
 
     // ------------------------------------------------------------------
-    // VERSION BUMP (was versionCode 20200 / versionName "2.2.0").
-    // The previous APK shipped with the exact same versionCode/versionName
-    // as the source, which made stale builds indistinguishable from new
-    // ones on-device. Bump BOTH on every release.
+    // ZEVORA 3.0.0 REBUILD (was versionCode 20501 / versionName "2.5.1").
+    // Full rebuild from the ZEVORA source: production cleanup merged in,
+    // mock screens/data removed, identity rebranded to ZEVORA, stable
+    // production signing. Bump BOTH on every release so a stale APK can
+    // never be mistaken for the current build on-device.
     // ------------------------------------------------------------------
-    versionCode = 20501
-    versionName = "2.5.1"
+    versionCode = 30000
+    versionName = "3.0.0"
 
     // Commit stamp compiled into BuildConfig.GIT_COMMIT so any APK can be
     // traced back to the exact git revision it was built from.

@@ -64,22 +64,22 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraDarkSurface
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 
 @Composable
 fun AuthScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     onAuthSuccess: () -> Unit,
     onBackToOptions: (() -> Unit)? = null
 ) {
@@ -99,7 +99,7 @@ fun AuthScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
@@ -135,19 +135,19 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // thileli dz Header Icon
+        // ZEVORA Header Icon
         Box(
             modifier = Modifier
                 .size(72.dp)
                 .clip(CircleShape)
-                .background(TokDarkElevated)
-                .border(2.dp, TokRed, CircleShape),
+                .background(ZevoraDarkElevated)
+                .border(2.dp, ZevoraRed, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.Security,
-                contentDescription = "thileli dz",
-                tint = TokCyan,
+                contentDescription = "ZEVORA",
+                tint = ZevoraCyan,
                 modifier = Modifier.size(38.dp)
             )
         }
@@ -155,7 +155,7 @@ fun AuthScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "thileli dz",
+            text = "ZEVORA",
             color = TextPrimary,
             fontSize = 30.sp,
             fontWeight = FontWeight.ExtraBold,
@@ -164,7 +164,7 @@ fun AuthScreen(
 
         Text(
             text = "Cloud Firestore & Object Storage Connected",
-            color = TokCyan,
+            color = ZevoraCyan,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold
         )
@@ -205,8 +205,8 @@ fun AuthScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(TokCyan.copy(alpha = 0.2f))
-                    .border(1.dp, TokCyan, RoundedCornerShape(12.dp))
+                    .background(ZevoraCyan.copy(alpha = 0.2f))
+                    .border(1.dp, ZevoraCyan, RoundedCornerShape(12.dp))
                     .padding(12.dp)
             ) {
                 Text(
@@ -224,20 +224,20 @@ fun AuthScreen(
         // Authentication Card with Tabs
         Card(
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = TokDarkSurface),
-            border = androidx.compose.foundation.BorderStroke(1.dp, TokBorder),
+            colors = CardDefaults.cardColors(containerColor = ZevoraDarkSurface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, ZevoraBorder),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(18.dp)) {
                 // Tab Row for Sign In / Register
                 TabRow(
                     selectedTabIndex = selectedTab,
-                    containerColor = TokDarkSurface,
+                    containerColor = ZevoraDarkSurface,
                     contentColor = TextPrimary,
                     indicator = { tabPositions ->
                         TabRowDefaults.SecondaryIndicator(
                             Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                            color = if (selectedTab == 0) TokCyan else TokRed
+                            color = if (selectedTab == 0) ZevoraCyan else ZevoraRed
                         )
                     }
                 ) {
@@ -283,14 +283,14 @@ fun AuthScreen(
                         value = displayName,
                         onValueChange = { displayName = it },
                         placeholder = { Text("e.g. Ahmed Becetti", color = TextMuted) },
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = TokCyan) },
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = ZevoraCyan) },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextPrimary,
                             unfocusedTextColor = TextPrimary,
-                            focusedBorderColor = TokCyan,
-                            unfocusedBorderColor = TokBorder
+                            focusedBorderColor = ZevoraCyan,
+                            unfocusedBorderColor = ZevoraBorder
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -305,14 +305,14 @@ fun AuthScreen(
                         value = username,
                         onValueChange = { username = it },
                         placeholder = { Text("e.g. ahmed_creator", color = TextMuted) },
-                        leadingIcon = { Icon(Icons.Default.AccountCircle, contentDescription = null, tint = TokCyan) },
+                        leadingIcon = { Icon(Icons.Default.AccountCircle, contentDescription = null, tint = ZevoraCyan) },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = TextPrimary,
                             unfocusedTextColor = TextPrimary,
-                            focusedBorderColor = TokCyan,
-                            unfocusedBorderColor = TokBorder
+                            focusedBorderColor = ZevoraCyan,
+                            unfocusedBorderColor = ZevoraBorder
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -328,16 +328,16 @@ fun AuthScreen(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    placeholder = { Text("creator@tokpulse.com", color = TextMuted) },
-                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = TokCyan) },
+                    placeholder = { Text("creator@zevora.app", color = TextMuted) },
+                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = ZevoraCyan) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextPrimary,
                         unfocusedTextColor = TextPrimary,
-                        focusedBorderColor = TokCyan,
-                        unfocusedBorderColor = TokBorder
+                        focusedBorderColor = ZevoraCyan,
+                        unfocusedBorderColor = ZevoraBorder
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -353,7 +353,7 @@ fun AuthScreen(
                     value = password,
                     onValueChange = { password = it },
                     placeholder = { Text("At least 6 characters", color = TextMuted) },
-                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = TokCyan) },
+                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = ZevoraCyan) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -361,8 +361,8 @@ fun AuthScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextPrimary,
                         unfocusedTextColor = TextPrimary,
-                        focusedBorderColor = TokCyan,
-                        unfocusedBorderColor = TokBorder
+                        focusedBorderColor = ZevoraCyan,
+                        unfocusedBorderColor = ZevoraBorder
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -421,7 +421,7 @@ fun AuthScreen(
                         }
                     },
                     enabled = !isLoading,
-                    colors = ButtonDefaults.buttonColors(containerColor = if (selectedTab == 1) TokRed else TokCyan),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (selectedTab == 1) ZevoraRed else ZevoraCyan),
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -450,9 +450,9 @@ fun AuthScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = TokBorder)
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = ZevoraBorder)
                     Text("  OR  ", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = TokBorder)
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = ZevoraBorder)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -503,75 +503,10 @@ fun AuthScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(18.dp))
-
-        // Quick Admin Login Card
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = TokDarkElevated),
-            border = androidx.compose.foundation.BorderStroke(1.dp, TokRed.copy(alpha = 0.5f)),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.AdminPanelSettings,
-                        contentDescription = "Admin Access",
-                        tint = TokRed,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Direct Admin Access (Ahmed Becetti)",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = "Grants immediate Administrator privileges: view user snapshots, moderation dashboard, violation logs, and policy controls.",
-                    color = TextMuted,
-                    fontSize = 11.5.sp,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Button(
-                    onClick = {
-                        scope.launch {
-                            val admin = repository.devSwitchToAdmin()
-                            Toast.makeText(context, "Logged in as Admin (${admin.displayName})", Toast.LENGTH_SHORT).show()
-                            onAuthSuccess()
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = TokRed),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                        .testTag("admin_login_button")
-                ) {
-                    Text(
-                        text = "Enter as Platform Admin",
-                        color = Color.White,
-                        fontSize = 13.5.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "thileli dz Platform • Production Infrastructure Active",
+            text = "ZEVORA Platform • Production Infrastructure Active",
             color = TextMuted,
             fontSize = 11.sp
         )

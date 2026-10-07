@@ -68,10 +68,10 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraRed
 
-import com.example.data.remote.TokPulseApiClient
+import com.example.data.remote.ZevoraApiClient
 
 private const val TAG = "VideoPlayerView"
 
@@ -129,7 +129,7 @@ fun VideoPlayerView(
             .setReadTimeoutMs(25000)
             .setAllowCrossProtocolRedirects(true)
             .setKeepPostFor302Redirects(true)
-            .setUserAgent("thileli dz-Android/${BuildConfig.VERSION_NAME} (Linux; Android)")
+            .setUserAgent("ZEVORA-Android/${BuildConfig.VERSION_NAME} (Linux; Android)")
 
         val dataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(context, httpDataSourceFactory)
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dataSourceFactory)
@@ -181,7 +181,7 @@ fun VideoPlayerView(
                             refreshAttempted = true
                             isBuffering = true
                             hasError = false
-                            val refreshedStreamUrl = TokPulseApiClient.getCanonicalStreamUrl(effectiveVideoId)
+                            val refreshedStreamUrl = ZevoraApiClient.getCanonicalStreamUrl(effectiveVideoId)
                             Log.i(TAG, "Refreshing stream URL via $refreshedStreamUrl")
                             try {
                                 val mediaItem = MediaItem.Builder()
@@ -231,7 +231,7 @@ fun VideoPlayerView(
                         isBuffering = false
                     }
                 } else if (effectiveVideoId != null) {
-                    val canonicalStream = TokPulseApiClient.getCanonicalStreamUrl(effectiveVideoId)
+                    val canonicalStream = ZevoraApiClient.getCanonicalStreamUrl(effectiveVideoId)
                     val mediaItem = MediaItem.Builder()
                         .setUri(Uri.parse(canonicalStream))
                         .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_MP4)
@@ -327,7 +327,7 @@ fun VideoPlayerView(
         // Buffering loader
         if (isBuffering && isCurrentPage && !hasError) {
             CircularProgressIndicator(
-                color = TokCyan,
+                color = ZevoraCyan,
                 strokeWidth = 3.dp,
                 modifier = Modifier.size(44.dp)
             )
@@ -346,7 +346,7 @@ fun VideoPlayerView(
                 Icon(
                     imageVector = Icons.Default.Warning,
                     contentDescription = "Playback Error",
-                    tint = TokRed,
+                    tint = ZevoraRed,
                     modifier = Modifier.size(36.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -378,7 +378,7 @@ fun VideoPlayerView(
                             onRetry?.invoke()
                             retryTrigger++
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = TokCyan),
+                        colors = ButtonDefaults.buttonColors(containerColor = ZevoraCyan),
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier.testTag("player_retry_button")
                     ) {

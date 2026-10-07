@@ -65,7 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.remote.FacebookAuth
-import com.example.ui.components.ChortMark
+import com.example.ui.components.ZevoraMark
 import com.example.ui.screens.admin.AdminDashboardScreen
 import com.example.ui.screens.auth.AuthScreen
 import com.example.ui.screens.auth.OtpMode
@@ -74,7 +74,6 @@ import com.example.ui.screens.auth.PhoneAuthScreen
 import com.example.ui.screens.auth.RecoveryScreen
 import com.example.ui.screens.auth.SplashScreen
 import com.example.ui.screens.auth.WelcomeAuthScreen
-import com.example.ui.screens.chat.DirectMessageScreen
 import com.example.ui.screens.discover.DiscoverScreen
 import com.example.ui.screens.feed.FeedScreen
 import com.example.ui.screens.friends.FriendsScreen
@@ -87,16 +86,16 @@ import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.sound.SoundDetailScreen
 import com.example.ui.screens.tracking.ExternalTrackingCenterScreen
 import com.example.ui.screens.upload.UploadScreen
-import com.example.ui.theme.TokPulseTheme
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraTheme
+import com.example.ui.theme.ZevoraRed
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            TokPulseTheme {
-                TokPulseApp()
+            ZevoraTheme {
+                ZevoraApp()
             }
         }
     }
@@ -112,9 +111,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TokPulseApp() {
+fun ZevoraApp() {
     val context = LocalContext.current
-    val repository = TokPulseApplication.instance.repository
+    val repository = ZevoraApplication.instance.repository
     val currentUser by repository.currentUser.collectAsState()
     val unreadNotifications by repository.getUnreadCount(currentUser?.id ?: "user_me").collectAsState(initial = 0)
 
@@ -123,17 +122,16 @@ fun TokPulseApp() {
 
     // Screens: "splash" | auth: "welcome","email","phone","otp","recover" |
     // main: "feed","friends","upload","inbox","profile" | sub: "discover","settings",
-    // "admin","legal","live","sound","chat","tracking"
+    // "admin","legal","live","sound","tracking"
     var currentScreen by remember { mutableStateOf("splash") }
     var viewingProfileUserId by remember { mutableStateOf<String?>(null) }
-    var selectedSoundTitle by remember { mutableStateOf("Original Sound - thileli dz Creator") }
+    var selectedSoundTitle by remember { mutableStateOf("Original Sound") }
     var legalType by remember { mutableStateOf("terms") } // "terms" or "privacy"
 
     // OTP handoff state (phone flow)
     var otpPhone by remember { mutableStateOf("") }
     var otpCooldown by remember { mutableIntStateOf(60) }
     var otpExpiresIn by remember { mutableIntStateOf(600) }
-    var otpDevCode by remember { mutableStateOf<String?>(null) }
 
     fun goHome() {
         viewingProfileUserId = null
@@ -149,7 +147,7 @@ fun TokPulseApp() {
     BackHandler(enabled = currentScreen != "feed" && currentScreen != "splash" && currentScreen != "welcome") {
         if (currentScreen == "profile" && viewingProfileUserId != null) {
             viewingProfileUserId = null
-        } else if (currentScreen in listOf("live", "sound", "chat", "tracking", "discover")) {
+        } else if (currentScreen in listOf("live", "sound", "tracking", "discover")) {
             currentScreen = "feed"
         } else if (currentScreen == "change_password") {
             currentScreen = "settings"
@@ -181,7 +179,7 @@ fun TokPulseApp() {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(TokRed.copy(alpha = 0.95f))
+                        .background(ZevoraRed.copy(alpha = 0.95f))
                         .statusBarsPadding()
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -245,11 +243,10 @@ fun TokPulseApp() {
                     "phone" -> {
                         PhoneAuthScreen(
                             repository = repository,
-                            onCodeSent = { phone, cooldown, expires, devOtp ->
+                            onCodeSent = { phone, cooldown, expires ->
                                 otpPhone = phone
                                 otpCooldown = cooldown
                                 otpExpiresIn = expires
-                                otpDevCode = devOtp
                                 currentScreen = "otp"
                             },
                             onBack = { goWelcome() }
@@ -263,7 +260,6 @@ fun TokPulseApp() {
                             phone = otpPhone,
                             cooldownSeconds = otpCooldown,
                             expiresInSeconds = otpExpiresIn,
-                            devOtp = otpDevCode,
                             onSuccess = { goHome() },
                             onBack = { currentScreen = "phone" }
                         )
@@ -356,6 +352,7 @@ fun TokPulseApp() {
 
                     "live" -> {
                         LiveStreamScreen(
+                            repository = repository,
                             onClose = { currentScreen = "feed" }
                         )
                     }
@@ -367,12 +364,6 @@ fun TokPulseApp() {
                             onBack = { currentScreen = "feed" },
                             onUseSound = { currentScreen = "upload" },
                             onSelectVideo = { _ -> currentScreen = "feed" }
-                        )
-                    }
-
-                    "chat" -> {
-                        DirectMessageScreen(
-                            onBack = { currentScreen = "inbox" }
                         )
                     }
 
@@ -454,7 +445,7 @@ fun TokPulseApp() {
 
             // Bottom Navigation overlay positioned at bottom center
             if (showBottomNav) {
-                TokPulseBottomNavigation(
+                ZevoraBottomNavigation(
                     currentScreen = currentScreen,
                     isFeedScreen = (currentScreen == "feed"),
                     unreadBadgeCount = unreadNotifications,
@@ -477,7 +468,7 @@ fun TokPulseApp() {
 }
 
 @Composable
-fun TokPulseBottomNavigation(
+fun ZevoraBottomNavigation(
     currentScreen: String,
     isFeedScreen: Boolean,
     unreadBadgeCount: Int,
@@ -537,8 +528,8 @@ fun TokPulseBottomNavigation(
                 testTag = "nav_friends"
             )
 
-            // Distinctive thileli dz Center Create '+' Button
-            ChortCenterCreateButton(
+            // Distinctive ZEVORA Center Create '+' Button
+            ZevoraCenterCreateButton(
                 onClick = { onNavigate("upload") }
             )
 
@@ -594,7 +585,7 @@ private fun BottomNavItem(
                     modifier = Modifier
                         .offset(x = 8.dp, y = (-4).dp)
                         .clip(CircleShape)
-                        .background(TokRed)
+                        .background(ZevoraRed)
                         .padding(horizontal = 4.dp, vertical = 1.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -618,7 +609,7 @@ private fun BottomNavItem(
 }
 
 @Composable
-private fun ChortCenterCreateButton(onClick: () -> Unit) {
+private fun ZevoraCenterCreateButton(onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clickable(onClick = onClick)
@@ -626,7 +617,7 @@ private fun ChortCenterCreateButton(onClick: () -> Unit) {
             .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center
     ) {
-        // thileli dz mark as the center action, framed by the brand gradient
-        ChortMark(size = 44.dp)
+        // ZEVORA mark as the center action, framed by the brand gradient
+        ZevoraMark(size = 44.dp)
     }
 }

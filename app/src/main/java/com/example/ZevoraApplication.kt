@@ -7,17 +7,17 @@ import coil.decode.SvgDecoder
 import coil.decode.VideoFrameDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 
-class TokPulseApplication : Application(), ImageLoaderFactory {
+class ZevoraApplication : Application(), ImageLoaderFactory {
 
-    lateinit var repository: TokPulseRepository
+    lateinit var repository: ZevoraRepository
         private set
 
     override fun onCreate() {
         super.onCreate()
         instance = this
-        repository = TokPulseRepository(this)
+        repository = ZevoraRepository(this)
     }
 
     override fun newImageLoader(): ImageLoader {
@@ -42,7 +42,7 @@ class TokPulseApplication : Application(), ImageLoaderFactory {
     }
 
     companion object {
-        lateinit var instance: TokPulseApplication
+        lateinit var instance: ZevoraApplication
             private set
     }
 }

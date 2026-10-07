@@ -69,20 +69,20 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.theme.AccentGold
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraRed
 
 @Composable
 fun SoundDetailScreen(
     soundTitle: String,
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     onBack: () -> Unit,
     onUseSound: () -> Unit,
     onSelectVideo: (String) -> Unit
@@ -172,7 +172,7 @@ fun SoundDetailScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
     ) {
         // TOP BAR
@@ -218,7 +218,7 @@ fun SoundDetailScreen(
                     .size(90.dp)
                     .clip(CircleShape)
                     .background(Color.Black)
-                    .border(3.dp, TokDarkElevated, CircleShape),
+                    .border(3.dp, ZevoraDarkElevated, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Box(
@@ -233,7 +233,7 @@ fun SoundDetailScreen(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(TokRed),
+                            .background(ZevoraRed),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -273,8 +273,8 @@ fun SoundDetailScreen(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "thileli dz Verified Audio • ${if (isPlaying) "Playing now" else "Tap play to listen"}",
-                    color = TokCyan,
+                    text = "ZEVORA Verified Audio • ${if (isPlaying) "Playing now" else "Tap play to listen"}",
+                    color = ZevoraCyan,
                     fontSize = 12.sp
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -304,7 +304,7 @@ fun SoundDetailScreen(
         ) {
             Button(
                 onClick = onUseSound,
-                colors = ButtonDefaults.buttonColors(containerColor = TokRed),
+                colors = ButtonDefaults.buttonColors(containerColor = ZevoraRed),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .weight(1f)
@@ -334,7 +334,7 @@ fun SoundDetailScreen(
                 ),
                 border = androidx.compose.foundation.BorderStroke(
                     1.dp,
-                    if (isBookmarked) AccentGold else TokBorder
+                    if (isBookmarked) AccentGold else ZevoraBorder
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.height(44.dp)
@@ -373,7 +373,7 @@ fun SoundDetailScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(160.dp)
-                        .background(TokDarkElevated)
+                        .background(ZevoraDarkElevated)
                         .clickable { onSelectVideo(video.id) }
                 ) {
                     if (video.thumbnailUrl.isNotBlank()) {

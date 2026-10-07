@@ -44,20 +44,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraBorder
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 
 /** In-app password change: the server verifies the current password. */
 @Composable
 fun ChangePasswordScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     onBack: () -> Unit,
     onChanged: () -> Unit
 ) {
@@ -73,7 +73,7 @@ fun ChangePasswordScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(TokDarkBg)
+            .background(ZevoraDarkBg)
             .statusBarsPadding()
             .imePadding()
             .padding(horizontal = 24.dp)
@@ -91,7 +91,7 @@ fun ChangePasswordScreen(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
-            Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = TokRed)
+            Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = ZevoraRed)
             Spacer(modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.padding(24.dp))
         }
@@ -153,7 +153,7 @@ fun ChangePasswordScreen(
                 }
             },
             enabled = !isSaving && current.isNotBlank() && next.isNotBlank(),
-            colors = ButtonDefaults.buttonColors(containerColor = TokRed),
+            colors = ButtonDefaults.buttonColors(containerColor = ZevoraRed),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
@@ -204,8 +204,8 @@ private fun PasswordField(
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = TextPrimary,
             unfocusedTextColor = TextPrimary,
-            focusedBorderColor = TokRed,
-            unfocusedBorderColor = TokBorder
+            focusedBorderColor = ZevoraRed,
+            unfocusedBorderColor = ZevoraBorder
         ),
         shape = RoundedCornerShape(14.dp),
         modifier = Modifier.fillMaxWidth()

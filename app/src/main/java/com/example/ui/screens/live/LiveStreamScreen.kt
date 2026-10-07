@@ -1,20 +1,7 @@
 package com.example.ui.screens.live
 
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,478 +10,214 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import com.example.ui.theme.AccentGold
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TokBorder
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokDarkBg
-import com.example.ui.theme.TokDarkElevated
-import com.example.ui.theme.TokDarkSurface
-import com.example.ui.theme.TokRed
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraDarkBg
+import com.example.ui.theme.ZevoraDarkElevated
+import com.example.ui.theme.ZevoraRed
 
-data class LiveChatMessage(
-    val username: String,
-    val message: String,
-    val badgeColor: Color = TokCyan
-)
-
-data class LiveGift(
-    val id: String,
-    val name: String,
-    val emoji: String,
-    val coins: Int
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * ZEVORA LIVE lobby.
+ *
+ * Production rule: never simulate a broadcast. There is no streaming server
+ * wired yet, so this screen shows the real signed-in identity and explains
+ * that LIVE activates with the streaming-server rollout — no fake viewers,
+ * no scripted chat, no placeholder host.
+ */
 @Composable
 fun LiveStreamScreen(
+    repository: ZevoraRepository,
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
-    var viewerCount by remember { mutableIntStateOf(14820) }
-    var userCoins by remember { mutableIntStateOf(2500) }
-    var showGiftSheet by remember { mutableStateOf(false) }
-    var activeGiftBurst by remember { mutableStateOf<LiveGift?>(null) }
-
-    var commentInput by remember { mutableStateOf("") }
-    val chatMessages = remember {
-        mutableStateListOf(
-            LiveChatMessage("sara_vibe", "Welcome to the LIVE stream everyone!! 🔥", TokCyan),
-            LiveChatMessage("dj_marcus", "The sound quality is unreal today 🎧", TokRed),
-            LiveChatMessage("lina_dance", "Can you show the next choreo move?? ✨", AccentGold),
-            LiveChatMessage("ahmed_99", "Greetings from Dubai! Amazing vibes 🌴", TokCyan)
-        )
-    }
-
-    // Auto-feed incoming live comments for authentic TikTok feel
-    LaunchedEffect(Unit) {
-        val extraComments = listOf(
-            LiveChatMessage("skater_boy", "Let's win this PK battle!! 🚀"),
-            LiveChatMessage("nora_fashion", "Dropped 5 roses! Keep it up 🌹"),
-            LiveChatMessage("tech_guru", "Followed the host! 💫"),
-            LiveChatMessage("zack_beats", "BASS BOOSTED TO THE MAX 🔊"),
-            LiveChatMessage("yasmin_art", "This is so fun to watch haha ❤️")
-        )
-        for (msg in extraComments) {
-            delay(3500)
-            chatMessages.add(msg)
-            if (chatMessages.size > 20) chatMessages.removeAt(0)
-            viewerCount += (1..5).random()
-        }
-    }
+    val currentUser by repository.currentUser.collectAsState()
+    val displayName = currentUser?.displayName?.takeIf { it.isNotBlank() }
+        ?: currentUser?.username?.takeIf { it.isNotBlank() }
+        ?: "Creator"
+    val initial = displayName.trim().firstOrNull()?.uppercase() ?: "Z"
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(ZevoraDarkBg)
     ) {
-        // Simulated Live Video Feed Background
-        AsyncImage(
-            model = "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=1000",
-            contentDescription = "Host Live Broadcast",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // Gradient overlay for contrast
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.6f),
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.85f)
-                        )
-                    )
-                )
-        )
-
-        // TOP LIVE HEADER
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Host Pill
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color.Black.copy(alpha = 0.6f))
-                    .padding(end = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AsyncImage(
-                    model = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300",
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Column {
-                    Text(
-                        text = "Pulse Live Studio",
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(TokRed)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "${viewerCount / 1000}k viewers",
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontSize = 10.sp
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(TokRed)
-                        .clickable { Toast.makeText(context, "Followed Live Host!", Toast.LENGTH_SHORT).show() }
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text("+ Follow", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            // Right actions (Close)
-            IconButton(
-                onClick = onClose,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .testTag("live_close_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Exit Live",
-                    tint = Color.White
-                )
-            }
-        }
-
-        // TIKTOK PK BATTLE BAR
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 90.dp, start = 16.dp, end = 16.dp)
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "🔥 PK BATTLE • LIVE", color = TokCyan, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
-                Text(text = "02:45 left", color = AccentGold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(0.64f)
-                        .background(TokCyan)
-                )
-                Box(
-                    modifier = Modifier
-                        .weight(0.36f)
-                        .background(TokRed)
-                )
-            }
-        }
-
-        // CHAT STREAM OVERLAY (BOTTOM LEFT)
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 12.dp, bottom = 76.dp, end = 80.dp)
-                .fillMaxWidth(0.85f)
-        ) {
-            LazyColumn(
-                modifier = Modifier.height(180.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(chatMessages) { chat ->
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.Black.copy(alpha = 0.55f))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = chat.username,
-                                color = chat.badgeColor,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = chat.message,
-                                color = Color.White,
-                                fontSize = 11.5.sp
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // BOTTOM ACTION BAR
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Chat Input
-            OutlinedTextField(
-                value = commentInput,
-                onValueChange = { commentInput = it },
-                placeholder = { Text("Send a comment...", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp) },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedContainerColor = Color.Black.copy(alpha = 0.6f),
-                    unfocusedContainerColor = Color.Black.copy(alpha = 0.6f)
-                ),
-                shape = RoundedCornerShape(20.dp),
-                singleLine = true,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(46.dp),
-                trailingIcon = {
-                    if (commentInput.isNotBlank()) {
-                        IconButton(
-                            onClick = {
-                                chatMessages.add(LiveChatMessage("You", commentInput.trim(), TokCyan))
-                                commentInput = ""
-                            }
-                        ) {
-                            Icon(Icons.Default.Send, contentDescription = "Send", tint = TokCyan)
-                        }
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Gift Button (TikTok Iconic Gift Box)
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(TokRed, TokCyan)
-                        )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.RadioButtonChecked,
+                        contentDescription = null,
+                        tint = ZevoraRed,
+                        modifier = Modifier.size(20.dp)
                     )
-                    .clickable { showGiftSheet = true }
-                    .testTag("live_gift_button"),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CardGiftcard,
-                    contentDescription = "Gifts",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-
-        // FULL SCREEN DYNAMIC GIFT BURST ANIMATION OVERLAY
-        AnimatedVisibility(
-            visible = activeGiftBurst != null,
-            enter = scaleIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) + fadeIn(),
-            exit = scaleOut(animationSpec = tween(300)) + fadeOut(),
-            modifier = Modifier.align(Alignment.Center)
-        ) {
-            activeGiftBurst?.let { gift ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Color.Black.copy(alpha = 0.85f))
-                        .border(2.dp, TokCyan, RoundedCornerShape(24.dp))
-                        .padding(32.dp)
-                ) {
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = gift.emoji,
-                        fontSize = 80.sp
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "SENT ${gift.name.uppercase()}!",
-                        color = AccentGold,
-                        fontSize = 20.sp,
+                        text = "LIVE",
+                        color = TextPrimary,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.ExtraBold
                     )
+                }
+                IconButton(
+                    onClick = onClose,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .testTag("live_close_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Exit Live",
+                        tint = Color.White
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(36.dp))
+
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(ZevoraRed),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = initial,
+                    color = Color.White,
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = displayName,
+                color = TextPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "@${currentUser?.username ?: "creator"}",
+                color = TextMuted,
+                fontSize = 13.sp
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = ZevoraDarkElevated),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "${gift.coins} Coins Contribution ✨",
-                        color = Color.White,
+                        text = "Your LIVE studio",
+                        color = TextPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Real-time broadcasting activates with the ZEVORA streaming-server rollout. " +
+                            "Your account is ready — nothing here is simulated.",
+                        color = TextMuted,
                         fontSize = 13.sp
                     )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LiveLobbyRow("✔", "Signed in as your real account")
+                    LiveLobbyRow("✔", "Camera & mic stay off until you start")
+                    LiveLobbyRow("✔", "Viewers, chat and gifts arrive with the live server")
                 }
             }
-        }
 
-        // GIFTS BOTTOM SHEET
-        if (showGiftSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showGiftSheet = false },
-                containerColor = TokDarkSurface
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = {
+                    Toast.makeText(
+                        context,
+                        "LIVE starts with the streaming-server rollout",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = ZevoraRed),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .testTag("live_start_button")
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "TikTok LIVE Gifts",
-                            color = TextPrimary,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "🪙 $userCoins Coins", color = AccentGold, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    val gifts = listOf(
-                        LiveGift("g1", "Rose", "🌹", 1),
-                        LiveGift("g2", "TikTok Heart", "💖", 5),
-                        LiveGift("g3", "Confetti", "🎉", 25),
-                        LiveGift("g4", "Fireworks", "🎆", 99),
-                        LiveGift("g5", "Galaxy Lion", "🦁", 999)
-                    )
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        items(gifts) { gift ->
-                            Card(
-                                modifier = Modifier
-                                    .width(85.dp)
-                                    .clickable {
-                                        if (userCoins >= gift.coins) {
-                                            userCoins -= gift.coins
-                                            activeGiftBurst = gift
-                                            chatMessages.add(
-                                                LiveChatMessage("You", "sent a ${gift.name} ${gift.emoji}!", AccentGold)
-                                            )
-                                            showGiftSheet = false
-                                            scope.launch {
-                                                delay(2500)
-                                                activeGiftBurst = null
-                                            }
-                                        } else {
-                                            Toast.makeText(context, "Insufficient Coins!", Toast.LENGTH_SHORT).show()
-                                        }
-                                    },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = TokDarkElevated),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, TokBorder)
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(10.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(text = gift.emoji, fontSize = 28.sp)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(text = gift.name, color = TextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                    Text(text = "🪙 ${gift.coins}", color = AccentGold, fontSize = 10.5.sp)
-                                }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(20.dp))
-                }
+                Text(
+                    text = "Go LIVE",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "No fake viewers. No scripted chat. Only real broadcasts.",
+                color = ZevoraCyan,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center
+            )
         }
+    }
+}
+
+@Composable
+private fun LiveLobbyRow(bullet: String, text: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(vertical = 3.dp)
+    ) {
+        Text(text = bullet, color = ZevoraCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = text, color = TextMuted, fontSize = 13.sp)
     }
 }

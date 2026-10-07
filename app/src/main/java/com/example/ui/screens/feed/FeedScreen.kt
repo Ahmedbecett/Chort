@@ -79,7 +79,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.local.entities.CommentEntity
 import com.example.data.local.entities.VideoEntity
-import com.example.data.repository.TokPulseRepository
+import com.example.data.repository.ZevoraRepository
 import com.example.ui.components.BurstHeart
 import com.example.ui.components.CommentBottomSheet
 import com.example.ui.components.ReportDialog
@@ -89,14 +89,14 @@ import com.example.ui.theme.AccentGold
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TokCyan
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraCyan
+import com.example.ui.theme.ZevoraRed
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(
-    repository: TokPulseRepository,
+    repository: ZevoraRepository,
     onNavigateToSearch: () -> Unit,
     onNavigateToProfile: (String) -> Unit,
     onNavigateToCreate: () -> Unit = {},
@@ -171,7 +171,7 @@ fun FeedScreen(
                     Icon(
                         imageVector = Icons.Default.Videocam,
                         contentDescription = "No Videos",
-                        tint = TokCyan,
+                        tint = ZevoraCyan,
                         modifier = Modifier.size(54.dp)
                     )
                     Spacer(modifier = Modifier.height(14.dp))
@@ -183,7 +183,7 @@ fun FeedScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Be the first to create and publish a video on thileli dz!",
+                        text = "Be the first to create and publish a video on ZEVORA!",
                         color = TextSecondary,
                         fontSize = 13.sp,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -195,7 +195,7 @@ fun FeedScreen(
                     ) {
                         androidx.compose.material3.Button(
                             onClick = onNavigateToCreate,
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = TokRed),
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = ZevoraRed),
                             shape = RoundedCornerShape(20.dp)
                         ) {
                             Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
@@ -209,7 +209,7 @@ fun FeedScreen(
                             },
                             shape = RoundedCornerShape(20.dp)
                         ) {
-                            Icon(imageVector = Icons.Default.Refresh, contentDescription = null, tint = TokCyan, modifier = Modifier.size(16.dp))
+                            Icon(imageVector = Icons.Default.Refresh, contentDescription = null, tint = ZevoraCyan, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Refresh Feed", color = Color.White, fontWeight = FontWeight.Bold)
                         }
@@ -391,7 +391,7 @@ private fun TopFeedBar(
             Icon(
                 imageVector = Icons.Default.Videocam,
                 contentDescription = "LIVE",
-                tint = TokRed,
+                tint = ZevoraRed,
                 modifier = Modifier.size(17.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -428,7 +428,7 @@ private fun TopFeedBar(
                             .width(26.dp)
                             .height(3.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(TokRed)
+                            .background(ZevoraRed)
                     )
                 } else {
                     Spacer(modifier = Modifier.height(5.5.dp))
@@ -457,7 +457,7 @@ private fun TopFeedBar(
                             .width(26.dp)
                             .height(3.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(TokCyan)
+                            .background(ZevoraCyan)
                     )
                 } else {
                     Spacer(modifier = Modifier.height(5.5.dp))
@@ -476,7 +476,7 @@ private fun TopFeedBar(
                 Icon(
                     imageVector = Icons.Default.Security,
                     contentDescription = "Tracking Center",
-                    tint = TokCyan,
+                    tint = ZevoraCyan,
                     modifier = Modifier.size(19.dp)
                 )
             }
@@ -539,7 +539,7 @@ fun VideoFeedItem(
     val isLongCaption = remember(video.caption) { video.caption.length > 55 || video.caption.contains("\n") }
     val displayMusicTitle = remember(video.musicTitle, video.creatorUsername) {
         val raw = video.musicTitle.trim()
-        if (raw.isBlank() || raw.contains("thileli dz", ignoreCase = true) || raw.contains("Chort", ignoreCase = true) || raw.contains("Original", ignoreCase = true)) {
+        if (raw.isBlank() || raw.contains("zevora", ignoreCase = true) || raw.contains("chort", ignoreCase = true) || raw.contains("tokpulse", ignoreCase = true) || raw.contains("Original", ignoreCase = true)) {
             "Original sound - @${video.creatorUsername}"
         } else {
             raw
@@ -650,7 +650,7 @@ fun VideoFeedItem(
                     Icon(
                         imageVector = Icons.Default.Verified,
                         contentDescription = "Verified",
-                        tint = TokCyan,
+                        tint = ZevoraCyan,
                         modifier = Modifier.size(17.dp)
                     )
                 }
@@ -738,7 +738,7 @@ fun VideoFeedItem(
                     Icon(
                         imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                         contentDescription = if (isMuted) "Unmute Audio" else "Mute Audio",
-                        tint = if (isMuted) TokRed else Color.White,
+                        tint = if (isMuted) ZevoraRed else Color.White,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -775,7 +775,7 @@ fun VideoFeedItem(
                             .size(22.dp)
                             .align(Alignment.BottomCenter)
                             .clip(CircleShape)
-                            .background(TokRed)
+                            .background(ZevoraRed)
                             .clickable { onToggleFollow() },
                         contentAlignment = Alignment.Center
                     ) {
@@ -793,7 +793,7 @@ fun VideoFeedItem(
             ActionRailItem(
                 icon = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                 label = formatCount(video.likesCount + if (isLiked) 1 else 0),
-                tint = if (isLiked) TokRed else Color.White,
+                tint = if (isLiked) ZevoraRed else Color.White,
                 onClick = onToggleLike,
                 testTag = "like_button"
             )
