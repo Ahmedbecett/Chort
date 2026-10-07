@@ -140,3 +140,4 @@ export const StudioAnalyticsModal: React.FC<StudioAnalyticsModalProps> = ({ isOp
     </div>
   );
 };
+

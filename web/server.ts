@@ -34,7 +34,7 @@ async function startServer() {
       filtered = filtered.filter(v => 
         v.caption.toLowerCase().includes(q) || 
         v.author.name.toLowerCase().includes(q) ||
-        v.tags.some(t => t.toLowerCase().includes(q))
+        v.tags.some((t: string) => t.toLowerCase().includes(q))
       );
     }
     res.json(filtered);

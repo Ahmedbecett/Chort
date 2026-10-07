@@ -209,10 +209,10 @@ class ZevoraRepository(private val context: Context) {
                     dao.insertVideos(cloudVideos)
                 }
 
+                // Admin operations are authorized by the backend/Firebase security layer.
+                // A local email or locally cached role is never sufficient to grant admin access.
                 val user = _currentUser.value
-                val isUserAdmin = user?.role == "admin" ||
-                    user?.email?.equals("ahmedbecetti35@gmail.com", true) == true ||
-                    user?.email?.equals("ahmedbecetti41@gmail.com", true) == true
+                val isUserAdmin = user?.role == "admin"
 
                 if (isUserAdmin) {
                     val cloudUsers = firebaseService.fetchUsersAdminFirestore()

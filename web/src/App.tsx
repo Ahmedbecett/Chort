@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from './services/api';
 import { UserProfile, VideoItem } from './types';
-import { INITIAL_USER, INITIAL_VIDEOS } from './data/mockData';
 import { LoginScreen } from './components/LoginScreen';
 import { BottomNav } from './components/BottomNav';
 import { VideoFeed } from './components/VideoFeed';
@@ -19,13 +18,16 @@ import { OfflineVideosModal } from './components/modals/OfflineVideosModal';
 import { QrCodeModal } from './components/modals/QrCodeModal';
 import { StudioAnalyticsModal } from './components/modals/StudioAnalyticsModal';
 import { PromoteModal } from './components/modals/PromoteModal';
+import { LanguagesView } from './components/LanguagesView';
+import { OfficialProfileView } from './components/OfficialProfileView';
+import { AdminPanel } from './components/AdminPanel';
 
 import { Download, Users, Bell, Play, X, Heart, MessageCircle, Share2, Music } from 'lucide-react';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [user, setUser] = useState<UserProfile>(() => api.getUser());
-  const [videos, setVideos] = useState<VideoItem[]>(INITIAL_VIDEOS);
+  const [videos, setVideos] = useState<VideoItem[]>([]);
   const [currentTab, setCurrentTab] = useState<'home' | 'friends' | 'inbox' | 'profile'>('home');
 
   // Modals & Sheets
@@ -44,8 +46,15 @@ export default function App() {
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isStudioOpen, setIsStudioOpen] = useState(false);
   const [isPromoteOpen, setIsPromoteOpen] = useState(false);
+  const [specialView, setSpecialView] = useState<'languages'|'official'|'admin'|null>(null);
 
   // Load videos from API
+  useEffect(() => {
+    const open = () => setSpecialView('languages');
+    window.addEventListener('zevora:open-languages', open);
+    return () => window.removeEventListener('zevora:open-languages', open);
+  }, []);
+
   useEffect(() => {
     api.getVideos().then((vids) => {
       setVideos(vids);
@@ -94,6 +103,10 @@ export default function App() {
     );
   }
 
+  if (specialView === 'languages') return <LanguagesView onBack={() => setSpecialView(null)} />;
+  if (specialView === 'official') return <OfficialProfileView onBack={() => setSpecialView(null)} onSelectVideo={(video) => setSelectedVideoModal(video)} />;
+  if (specialView === 'admin') return <AdminPanel onBack={() => setSpecialView(null)} />;
+
   return (
     <div className="relative min-h-screen bg-black text-white font-sans select-none overflow-x-hidden">
       {/* Floating Global APK Download Badge (Always accessible) */}
@@ -105,6 +118,11 @@ export default function App() {
           <Download className="w-3.5 h-3.5 animate-bounce" />
           <span>تحميل APK الأحدث v3.0.0</span>
         </button>
+      </div>
+
+      <div className="fixed top-3 right-3 z-50 flex gap-2">
+        <button onClick={() => setSpecialView('official')} className="px-3 py-2 rounded-full bg-black/70 border border-white/10 text-xs font-bold backdrop-blur">ZEVORA الرسمي</button>
+        <button onClick={() => setSpecialView('admin')} className="px-3 py-2 rounded-full bg-black/70 border border-white/10 text-xs font-bold backdrop-blur">الإدارة</button>
       </div>
 
       {/* Main Tab Content */}
@@ -132,33 +150,10 @@ export default function App() {
               </button>
             </div>
 
-            <div className="py-6 space-y-4 max-w-md mx-auto">
-              <p className="text-xs text-zinc-400">تابع أصدقائك وتفاعل مع فيديوهاتهم الحصرية:</p>
-              
-              {[
-                { name: 'Amina Cooking 👩‍🍳', handle: '@amina.dz.chef', mutual: '12 صديق مشترك' },
-                { name: 'Turbo DZ 🏎️', handle: '@turbo_motors', mutual: '8 أصدقاء مشتركين' },
-                { name: 'VFX Masters Studio', handle: '@vfx.masters', mutual: '24 صديق مشترك' },
-              ].map((friend, i) => (
-                <div key={i} className="p-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-pink-500 to-cyan-500 flex items-center justify-center font-bold text-white">
-                      {friend.name.charAt(0)}
-                    </div>
-                    <div>
-                      <div className="font-bold text-xs text-white">{friend.name}</div>
-                      <div className="text-[11px] text-zinc-400 font-mono" dir="ltr">{friend.handle}</div>
-                      <div className="text-[10px] text-pink-400 mt-0.5">{friend.mutual}</div>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => alert(`تمت متابعة ${friend.name}`)}
-                    className="py-1.5 px-4 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold transition-colors"
-                  >
-                    متابعة
-                  </button>
-                </div>
-              ))}
+            <div className="py-20 text-center max-w-md mx-auto">
+              <Users className="w-10 h-10 mx-auto text-zinc-700" />
+              <p className="mt-4 text-sm font-bold text-zinc-300">لا توجد اقتراحات أصدقاء بعد</p>
+              <p className="text-xs text-zinc-500 mt-2">ستظهر هنا الحسابات الحقيقية من الخادم عند توفرها.</p>
             </div>
           </div>
         )}
@@ -166,32 +161,8 @@ export default function App() {
         {/* 3. Inbox Tab */}
         {currentTab === 'inbox' && (
           <div className="min-h-screen bg-black p-4 pb-24 text-right" dir="rtl">
-            <div className="sticky top-0 bg-black/95 backdrop-blur-md py-4 border-b border-zinc-800 flex items-center justify-between z-10">
-              <h2 className="text-lg font-black text-white">صندوق الوارد (99+)</h2>
-              <Bell className="w-5 h-5 text-zinc-400" />
-            </div>
-
-            <div className="py-4 space-y-3 max-w-md mx-auto">
-              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-pink-950/40 to-zinc-900 border border-pink-800/40 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-pink-600 flex items-center justify-center text-white shrink-0">
-                  <Heart className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white">إشعارات التفاعل الجديدة</div>
-                  <div className="text-[11px] text-zinc-400">أعجب 142 مستخدماً بفيديو جبال جرجرة الأخير</div>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-cyan-600 flex items-center justify-center text-white shrink-0">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-white">متابعون جدد اليوم</div>
-                  <div className="text-[11px] text-zinc-400">بدأ @mehdi_oran31 و 28 آخرين بمتابعتك</div>
-                </div>
-              </div>
-            </div>
+            <div className="sticky top-0 bg-black/95 backdrop-blur-md py-4 border-b border-zinc-800 flex items-center justify-between z-10"><h2 className="text-lg font-black text-white">صندوق الوارد</h2><Bell className="w-5 h-5 text-zinc-400"/></div>
+            <div className="py-20 text-center max-w-md mx-auto"><Bell className="w-10 h-10 mx-auto text-zinc-700"/><p className="mt-4 text-sm font-bold text-zinc-300">لا توجد إشعارات معروضة</p><p className="text-xs text-zinc-500 mt-2">سيتم عرض الإشعارات الحقيقية بعد اتصال الحساب بواجهة الإشعارات الخلفية.</p></div>
           </div>
         )}
 
@@ -339,3 +310,4 @@ export default function App() {
     </div>
   );
 }
+

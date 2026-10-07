@@ -13,7 +13,7 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ isOpen, onClose, user 
 
   if (!isOpen) return null;
 
-  const profileUrl = `https://chort.app/@${user.username}`;
+  const profileUrl = `${window.location.origin}/@${user.username}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(profileUrl);
@@ -53,52 +53,14 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ isOpen, onClose, user 
             <p className="text-xs text-zinc-400 font-mono" dir="ltr">@{user.username}</p>
           </div>
 
-          {/* SVG QR Code Simulation */}
+          {/* Real QR code for the current profile URL. */}
           <div className="p-4 bg-white rounded-2xl shadow-xl flex items-center justify-center">
-            <svg className="w-48 h-48" viewBox="0 0 100 100" fill="none">
-              {/* Corner markers */}
-              <rect x="5" y="5" width="26" height="26" rx="4" fill="#000" />
-              <rect x="9" y="9" width="18" height="18" rx="2" fill="#fff" />
-              <rect x="13" y="13" width="10" height="10" rx="1" fill="#e11d48" />
-
-              <rect x="69" y="5" width="26" height="26" rx="4" fill="#000" />
-              <rect x="73" y="9" width="18" height="18" rx="2" fill="#fff" />
-              <rect x="77" y="13" width="10" height="10" rx="1" fill="#06b6d4" />
-
-              <rect x="5" y="69" width="26" height="26" rx="4" fill="#000" />
-              <rect x="9" y="73" width="18" height="18" rx="2" fill="#fff" />
-              <rect x="13" y="77" width="10" height="10" rx="1" fill="#000" />
-
-              {/* Data blocks */}
-              <rect x="36" y="8" width="6" height="6" rx="1" fill="#000" />
-              <rect x="46" y="8" width="6" height="6" rx="1" fill="#000" />
-              <rect x="56" y="8" width="6" height="6" rx="1" fill="#000" />
-
-              <rect x="36" y="18" width="6" height="6" rx="1" fill="#000" />
-              <rect x="46" y="24" width="6" height="6" rx="1" fill="#000" />
-              <rect x="56" y="18" width="6" height="6" rx="1" fill="#000" />
-
-              <rect x="8" y="38" width="6" height="6" rx="1" fill="#000" />
-              <rect x="18" y="44" width="6" height="6" rx="1" fill="#000" />
-              <rect x="28" y="38" width="6" height="6" rx="1" fill="#000" />
-
-              {/* Center ZEVORA badge */}
-              <rect x="37" y="37" width="26" height="26" rx="8" fill="#18181b" />
-              <text x="50" y="55" fontSize="16" fontWeight="bold" fill="#ec4899" textAnchor="middle">C</text>
-
-              <rect x="68" y="38" width="6" height="6" rx="1" fill="#000" />
-              <rect x="78" y="44" width="6" height="6" rx="1" fill="#000" />
-              <rect x="86" y="38" width="6" height="6" rx="1" fill="#000" />
-
-              <rect x="36" y="68" width="6" height="6" rx="1" fill="#000" />
-              <rect x="46" y="74" width="6" height="6" rx="1" fill="#000" />
-              <rect x="56" y="68" width="6" height="6" rx="1" fill="#000" />
-
-              <rect x="68" y="68" width="6" height="6" rx="1" fill="#000" />
-              <rect x="78" y="76" width="6" height="6" rx="1" fill="#000" />
-              <rect x="86" y="86" width="6" height="6" rx="1" fill="#000" />
-              <rect x="68" y="86" width="6" height="6" rx="1" fill="#000" />
-            </svg>
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(profileUrl)}`}
+              alt="QR Code"
+              className="w-48 h-48"
+              loading="eager"
+            />
           </div>
 
           <p className="text-xs text-zinc-400">
@@ -129,3 +91,4 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ isOpen, onClose, user 
     </div>
   );
 };
+

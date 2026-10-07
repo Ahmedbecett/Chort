@@ -142,3 +142,6 @@ private fun DrawScope.drawNoteMark(color: Color, ox: Float, oy: Float, s: Float,
         color = color
     )
 }
+
+
+

@@ -11,7 +11,7 @@ interface WalletModalProps {
 
 export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, user, onUpdateUser }) => {
   const [tab, setTab] = useState<'balance' | 'recharge' | 'withdraw'>('balance');
-  const [ripNumber, setRipNumber] = useState('00799999001234567890');
+  const [ripNumber, setRipNumber] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('5000');
   const [isSuccess, setIsSuccess] = useState('');
 

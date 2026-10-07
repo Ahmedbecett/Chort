@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Chort"
+rootProject.name = "ZEVORA"
 
 include(":app")
