@@ -2,13 +2,13 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// TokPulse Vibrant Neon Brand Colors
-val TokRed = Color(0xFFFE2C55)
-val TokCyan = Color(0xFF25F4EE)
-val TokDarkBg = Color(0xFF000000)
-val TokDarkSurface = Color(0xFF12141A)
-val TokDarkElevated = Color(0xFF1E212B)
-val TokBorder = Color(0xFF2A2E3D)
+// ZEVORA Vibrant Neon Brand Colors
+val ZevoraRed = Color(0xFFFE2C55)
+val ZevoraCyan = Color(0xFF25F4EE)
+val ZevoraDarkBg = Color(0xFF000000)
+val ZevoraDarkSurface = Color(0xFF12141A)
+val ZevoraDarkElevated = Color(0xFF1E212B)
+val ZevoraBorder = Color(0xFF2A2E3D)
 
 val TextPrimary = Color(0xFFFFFFFF)
 val TextSecondary = Color(0xFFB0B3C1)
