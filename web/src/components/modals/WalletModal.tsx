@@ -11,7 +11,7 @@ interface WalletModalProps {
 
 export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, user, onUpdateUser }) => {
   const [tab, setTab] = useState<'balance' | 'recharge' | 'withdraw'>('balance');
-  const [ripNumber, setRipNumber] = useState('00799999001234567890');
+  const [ripNumber, setRipNumber] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('5000');
   const [isSuccess, setIsSuccess] = useState('');
 
@@ -56,7 +56,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, user,
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
               <Coins className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-white text-base">المحفظة والرصيد (Chort Balance)</h3>
+            <h3 className="font-bold text-white text-base">المحفظة والرصيد (ZEVORA Balance)</h3>
           </div>
           <button onClick={onClose} className="p-1 rounded-full text-zinc-400 hover:text-white bg-zinc-800">
             <X className="w-5 h-5" />
