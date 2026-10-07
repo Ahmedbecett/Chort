@@ -248,7 +248,8 @@ fun TokPulseApp() {
                             onCodeSent = { phone, cooldown, expires ->
                                 otpPhone = phone
                                 otpCooldown = cooldown
-                                otpExpiresIn = expires                                currentScreen = "otp"
+                                otpExpiresIn = expires
+                                currentScreen = "otp"
                             },
                             onBack = { goWelcome() }
                         )
