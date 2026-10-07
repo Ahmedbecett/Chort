@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: app/src/main/java/com/example/ui/components/CommentBottomSheet.kt =====
 package com.example.ui.components
 
 import androidx.compose.foundation.background
@@ -300,4 +299,3 @@ private fun CommentItem(
     }
 }
 
-===== END ZEVORA_BUNDLE_FILE =====
