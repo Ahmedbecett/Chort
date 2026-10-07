@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: web/src/components/SettingsView.tsx =====
 import React, { useState } from 'react';
 import { 
   ArrowRight, Shield, User, Lock, Eye, Bell, HardDrive, HelpCircle, 
@@ -243,4 +242,3 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   );
 };
 
-===== END ZEVORA_BUNDLE_FILE =====
