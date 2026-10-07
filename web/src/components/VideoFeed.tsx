@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: web/src/components/VideoFeed.tsx =====
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Heart, MessageCircle, Bookmark, Share2, Music, Play, Pause, 
@@ -405,4 +404,3 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
   );
 };
 
-===== END ZEVORA_BUNDLE_FILE =====
