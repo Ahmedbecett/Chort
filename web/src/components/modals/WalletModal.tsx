@@ -17,15 +17,14 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, user,
 
   if (!isOpen) return null;
 
-  const handleRecharge = (coinsToAdd: number, priceDzd: number) => {
-    onUpdateUser({
-      coins: user.coins + coinsToAdd,
-    });
-    setIsSuccess(`تم شحن ${coinsToAdd} عملة بنجاح عبر البطاقة الذهبية!`);
+  // Honest: the web client has no payment gateway, so it must never credit
+  // coins or claim a card charge happened. Real top-ups go through the
+  // Android app (CIB / EDAHABIA via SATIM).
+  const handleRecharge = (_coinsToAdd: number, priceDzd: number) => {
+    setIsSuccess(`الشحن غير متاح في نسخة الويب — أكمل الدفع (${priceDzd.toLocaleString()} دج) من تطبيق الأندرويد.`);
     setTimeout(() => {
       setIsSuccess('');
-      setTab('balance');
-    }, 1800);
+    }, 2600);
   };
 
   const handleWithdraw = () => {
@@ -34,14 +33,12 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, user,
       alert('المبلغ غير صالح أو يتجاوز رصيدك الحالي');
       return;
     }
-    onUpdateUser({
-      balanceDzd: user.balanceDzd - amt,
-    });
-    setIsSuccess(`تم تحويل ${amt.toLocaleString()} دج بنجاح إلى حساب بريدي موب: ${ripNumber.slice(0, 10)}...`);
+    // Honest: no money moves in the web client. Withdrawals are processed
+    // from the Android app after identity verification. Balance untouched.
+    setIsSuccess(`طلبات السحب تتم من تطبيق الأندرويد بعد التحقق — لم يتم خصم أي مبلغ (${amt.toLocaleString()} دج).`);
     setTimeout(() => {
       setIsSuccess('');
-      setTab('balance');
-    }, 2200);
+    }, 2600);
   };
 
   return (
@@ -138,21 +135,9 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, user,
 
             <div className="pt-2">
               <h4 className="text-xs font-bold text-zinc-400 mb-2">آخر المعاملات:</h4>
-              <div className="space-y-2 text-xs">
-                <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold text-white">أرباح هدايا البث المباشر (LIVE)</div>
-                    <div className="text-[10px] text-zinc-500">أمس، 22:45</div>
-                  </div>
-                  <span className="text-emerald-400 font-bold">+ 3,500 دج</span>
-                </div>
-                <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold text-white">سحب رصيد إلى بريدي موب</div>
-                    <div className="text-[10px] text-zinc-500">03 أكتوبر 2026</div>
-                  </div>
-                  <span className="text-red-400 font-bold">- 10,000 دج</span>
-                </div>
+              <div className="p-6 rounded-xl bg-zinc-950 border border-zinc-800 text-center">
+                <p className="text-xs font-bold text-zinc-300">لا توجد معاملات بعد</p>
+                <p className="text-[11px] text-zinc-500 mt-1">ستظهر هنا عملياتك الحقيقية فقط.</p>
               </div>
             </div>
           </div>
@@ -181,7 +166,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, user,
             </div>
             <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center gap-2 text-xs text-zinc-400">
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>دفع إلكتروني آمن ومباشر مدعوم من بريد الجزائر و SATIM.</span>
+              <span>الدفع الحقيقي (CIB / EDAHABIA) يتم داخل تطبيق الأندرويد فقط.</span>
             </div>
           </div>
         )}
@@ -217,7 +202,7 @@ export const WalletModal: React.FC<WalletModalProps> = ({ isOpen, onClose, user,
               onClick={handleWithdraw}
               className="w-full py-3.5 px-4 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 active:scale-[0.98] transition-all text-sm"
             >
-              تأكيد السحب الفوري إلى بريدي موب
+              متابعة طلب السحب عبر تطبيق الأندرويد
             </button>
           </div>
         )}

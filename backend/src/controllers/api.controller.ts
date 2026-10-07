@@ -1334,6 +1334,76 @@ export class ApiController {
     }
   }
 
+  // --- ADMIN: registered users (powers AdminPanel users table + ban/unban) ---
+  static async listUsers(req: Request, res: Response) {
+    try {
+      if (!ApiController.requireAdmin(req, res)) return;
+      const q = (req.query || {}) as Record<string, unknown>;
+      await ensureDatabaseSchema();
+      const page = clampPage(q.page);
+      const limit = clampLimit(q.limit, 20, 50);
+      const skip = (page - 1) * limit;
+      const [total, rows] = await Promise.all([
+        prisma.user.count(),
+        prisma.user.findMany({
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            phone: true,
+            primaryProvider: true,
+            role: true,
+            status: true,
+            createdAt: true,
+            profile: { select: { displayName: true, isVerified: true } },
+          },
+        }),
+      ]);
+      return res.status(200).json({
+        items: rows,
+        page,
+        limit,
+        total,
+        hasMore: skip + rows.length < total,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  static async setUserStatus(req: Request, res: Response) {
+    try {
+      if (!ApiController.requireAdmin(req, res)) return;
+      const self = (req as any).user;
+      const userId = String((req.params as any)?.userId || '').trim();
+      const status = (req.body as any)?.status;
+      if (!userId) return res.status(400).json({ error: 'userId is required' });
+      if (self?.userId === userId) {
+        return res.status(400).json({ error: 'You cannot change your own status' });
+      }
+      await ensureDatabaseSchema();
+      const target = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, role: true, status: true },
+      });
+      if (!target) return res.status(404).json({ error: 'User not found' });
+      if (target.role === 'ADMIN') {
+        return res.status(403).json({ error: 'Admin accounts cannot be moderated here' });
+      }
+      const updated = await prisma.user.update({
+        where: { id: userId },
+        data: { status },
+        select: { id: true, username: true, status: true },
+      });
+      return res.status(200).json({ user: updated });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   // --- AUTH: my linked providers ---
   static async myProviders(req: Request, res: Response) {
     try {

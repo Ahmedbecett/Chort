@@ -53,8 +53,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </button>
 
           {/* Add Friends */}
-          <button 
-            onClick={() => alert('تم فتح قائمة اقتراحات الأصدقاء')}
+          <button
+            onClick={() => alert('قائمة الأصدقاء متاحة من تبويب الأصدقاء في الأسفل')}
             className="w-9 h-9 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white transition-colors"
           >
             <UserPlus className="w-4 h-4" />

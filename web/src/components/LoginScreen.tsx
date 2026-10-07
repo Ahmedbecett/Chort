@@ -47,7 +47,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onOpen
         setTargetDestination(dest);
         setMethod('otp');
         setCountdown(45);
-        setSuccessNotice(`تم إرسال رمز التحقق بنجاح! الرمز التجريبي هو: ${res.code}`);
+        setSuccessNotice(`رمز التحقق (وضع التطوير): ${res.code}`);
         // Focus first OTP field
         setTimeout(() => {
           otpInputsRef.current[0]?.focus();
@@ -122,22 +122,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onOpen
     }
   };
 
-  const fillAutoOtp = () => {
-    const code = '180782';
-    setOtpDigits(['1', '8', '0', '7', '8', '2']);
-    setErrorMsg('');
-    verifyOtpCode(code);
+  // Web client has no OAuth client configured: social login is only real
+  // inside the Android app (Google/Facebook SDK) and the backend API.
+  // Never fake a login here.
+  const handleSocialLogin = (provider: string) => {
+    setErrorMsg(`تسجيل الدخول عبر ${provider} متاح في تطبيق الأندرويد فقط حالياً. استخدم رمز التحقق للدخول من الويب.`);
   };
 
-  const handleSocialLogin = (provider: string) => {
-    setIsLoading(true);
-    setSuccessNotice(`جاري المصادقة عبر ${provider}...`);
-    setTimeout(() => {
-      setIsLoading(false);
-      api.setAuthStatus(true);
-      onLoginSuccess();
-    }, 1200);
-  };
 
   return (
     <div className="relative min-h-screen bg-black text-white flex flex-col justify-between overflow-x-hidden" dir="rtl">
@@ -379,18 +370,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onOpen
                   className="w-11 h-14 bg-zinc-900 border-2 border-zinc-700 focus:border-pink-500 focus:bg-zinc-800 rounded-xl text-center text-xl font-bold text-white transition-all outline-none shadow-inner"
                 />
               ))}
-            </div>
-
-            {/* Demo Auto-fill Helper */}
-            <div className="flex flex-col items-center gap-2">
-              <button
-                onClick={fillAutoOtp}
-                type="button"
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-zinc-800/90 hover:bg-zinc-700 text-cyan-300 border border-zinc-700 active:scale-95 transition-all"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
-                <span>ملء الرمز تلقائياً (180782) للاختبار الفوري</span>
-              </button>
             </div>
 
             {/* Countdown / Resend */}

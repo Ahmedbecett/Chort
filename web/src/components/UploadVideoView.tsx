@@ -16,9 +16,9 @@ export const UploadVideoView: React.FC<UploadVideoViewProps> = ({
   onVideoPublished,
   initialVideoUrl 
 }) => {
-  const [videoUrl, setVideoUrl] = useState<string>(
-    initialVideoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
-  );
+  // No default sample video: publishing requires a real video from the
+  // device (file picker) or a real recording from the camera studio.
+  const [videoUrl, setVideoUrl] = useState<string>(initialVideoUrl || '');
   const [caption, setCaption] = useState('فيديو جديد على ZEVORA 🇩🇿 شاركونا رأيكم! #الجزائر #dz #trending');
   const [isUploading, setIsUploading] = useState(false);
   const [privacy, setPrivacy] = useState<'public' | 'friends' | 'private'>('public');
@@ -42,7 +42,52 @@ export const UploadVideoView: React.FC<UploadVideoViewProps> = ({
     }
   };
 
+  // Captures a real thumbnail frame from the actual video (no stock images).
+  const captureThumbnail = (src: string): Promise<string> => {
+    return new Promise((resolve) => {
+      try {
+        const video = document.createElement('video');
+        video.muted = true;
+        (video as any).playsInline = true;
+        video.preload = 'auto';
+        video.src = src;
+        // NOTE: never revoke src here — the blob URL belongs to the caller
+        // and is still needed for playback after publishing.
+        const done = (thumb: string) => {
+          video.src = '';
+          resolve(thumb);
+        };
+        video.onloadeddata = () => {
+          try {
+            video.currentTime = Math.min(0.5, (video.duration || 1) / 2);
+          } catch {
+            done('');
+          }
+        };
+        video.onseeked = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 360;
+            canvas.height = video.videoHeight || 640;
+            canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
+            done(canvas.toDataURL('image/jpeg', 0.6));
+          } catch {
+            done('');
+          }
+        };
+        video.onerror = () => done('');
+        setTimeout(() => done(''), 4000);
+      } catch {
+        resolve('');
+      }
+    });
+  };
+
   const handlePublish = async () => {
+    if (!videoUrl) {
+      alert('اختر فيديو حقيقياً من جهازك أولاً');
+      return;
+    }
     if (!caption.trim()) {
       alert('يرجى كتابة وصف للفيديو');
       return;
@@ -50,18 +95,19 @@ export const UploadVideoView: React.FC<UploadVideoViewProps> = ({
     setIsUploading(true);
 
     try {
+      const thumbnail = await captureThumbnail(videoUrl);
       const newVid = await api.addVideo({
         url: videoUrl,
-        thumbnail: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
+        thumbnail,
         caption,
         tags: ['algeria', 'dz', 'zevora', 'video'],
       });
       setIsUploading(false);
       onVideoPublished(newVid);
       onClose();
-    } catch {
+    } catch (e: any) {
       setIsUploading(false);
-      alert('حدث خطأ أثناء النشر');
+      alert(e?.message || 'حدث خطأ أثناء النشر');
     }
   };
 
@@ -83,22 +129,39 @@ export const UploadVideoView: React.FC<UploadVideoViewProps> = ({
         <div className="p-4 space-y-4 flex-1 overflow-y-auto">
           {/* Video Preview & File input */}
           <div className="relative rounded-2xl overflow-hidden bg-black border border-zinc-800 h-64 flex items-center justify-center">
-            <video
-              src={videoUrl}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="w-full h-full object-contain"
-            />
+            {videoUrl ? (
+              <video
+                src={videoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center gap-3 p-6 text-center"
+              >
+                <div className="w-16 h-16 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center">
+                  <Film className="w-8 h-8 text-zinc-400" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-white">اختر فيديو من جهازك</div>
+                  <div className="text-xs text-zinc-500 mt-1">لن يُنشر أي فيديو تجريبي — فقط ما تختاره أنت</div>
+                </div>
+              </button>
+            )}
             {/* Change video button */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute bottom-3 left-3 flex items-center gap-1.5 py-1.5 px-3 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white text-xs font-medium hover:bg-black/90 transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>اختيار فيديو آخر من الجهاز</span>
-            </button>
+            {videoUrl ? (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-3 left-3 flex items-center gap-1.5 py-1.5 px-3 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white text-xs font-medium hover:bg-black/90 transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>اختيار فيديو آخر من الجهاز</span>
+              </button>
+            ) : null}
             <input
               type="file"
               ref={fileInputRef}

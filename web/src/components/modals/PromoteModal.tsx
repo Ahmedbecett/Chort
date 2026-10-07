@@ -15,7 +15,7 @@ export const PromoteModal: React.FC<PromoteModalProps> = ({ isOpen, onClose, vid
   const [goal, setGoal] = useState<'views' | 'followers' | 'profile'>('views');
   const [budgetDzd, setBudgetDzd] = useState(2500);
   const [selectedWilayas, setSelectedWilayas] = useState<string[]>(['16 - الجزائر العاصمة (Alger)', '31 - وهران (Oran)']);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   if (!isOpen) return null;
 
@@ -29,12 +29,32 @@ export const PromoteModal: React.FC<PromoteModalProps> = ({ isOpen, onClose, vid
     }
   };
 
-  const handleLaunchCampaign = () => {
-    setIsSuccess(true);
-    setTimeout(() => {
-      setIsSuccess(false);
-      onClose();
-    }, 2200);
+  // Honest behavior: the web client has no payment/ad-delivery backend, so
+  // it must never claim a campaign "launched". It saves a real local draft
+  // the user can activate later through the Android app / billing.
+  const handleSaveDraft = () => {
+    try {
+      const key = 'chort_promo_drafts';
+      const raw = localStorage.getItem(key);
+      const drafts = raw ? JSON.parse(raw) : [];
+      drafts.unshift({
+        id: `draft-${Date.now()}`,
+        videoId: selectedVideoId,
+        goal,
+        budgetDzd,
+        wilayas: selectedWilayas,
+        estimatedReach,
+        createdAt: new Date().toISOString(),
+      });
+      localStorage.setItem(key, JSON.stringify(drafts.slice(0, 20)));
+      setIsSaved(true);
+      setTimeout(() => {
+        setIsSaved(false);
+        onClose();
+      }, 2600);
+    } catch {
+      alert('تعذر حفظ المسودة على هذا الجهاز');
+    }
   };
 
   return (
@@ -51,7 +71,7 @@ export const PromoteModal: React.FC<PromoteModalProps> = ({ isOpen, onClose, vid
             </div>
             <div>
               <h3 className="font-bold text-white text-base">ترويج الفيديوهات (ZEVORA Promote)</h3>
-              <p className="text-[11px] text-zinc-400">ضخ زيارات ومشاهدات حقيقية لمقاطعك عبر الولايات</p>
+              <p className="text-[11px] text-zinc-400">خطط حملتك هنا — التفعيل والدفع عبر تطبيق الأندرويد</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1 rounded-full text-zinc-400 hover:text-white bg-zinc-800">
@@ -59,13 +79,13 @@ export const PromoteModal: React.FC<PromoteModalProps> = ({ isOpen, onClose, vid
           </button>
         </div>
 
-        {/* Success Alert */}
-        {isSuccess && (
+        {/* Saved-draft notice (honest: nothing was launched) */}
+        {isSaved && (
           <div className="m-4 p-4 bg-emerald-950 border border-emerald-700 rounded-2xl flex items-center gap-3 text-xs text-emerald-300">
             <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
             <div>
-              <div className="font-bold text-sm text-white">تم إطلاق حملة الترويج بنجاح! 🚀</div>
-              <p className="text-zinc-300 mt-0.5">ستبدأ المشاهدات والتفاعلات بالظهور خلال الدقائق القادمة.</p>
+              <div className="font-bold text-sm text-white">تم حفظ مسودة الحملة على جهازك 📝</div>
+              <p className="text-zinc-300 mt-0.5">لم يتم إطلاق أي حملة أو خصم أي مبلغ. التفعيل الحقيقي يتم من تطبيق الأندرويد بعد الدفع.</p>
             </div>
           </div>
         )}
@@ -165,20 +185,21 @@ export const PromoteModal: React.FC<PromoteModalProps> = ({ isOpen, onClose, vid
             />
 
             <div className="pt-2 border-t border-zinc-800 flex items-center justify-between text-xs">
-              <span className="text-zinc-400">الوصول المتوقع التقريبي:</span>
+              <span className="text-zinc-400">تقدير تقريبي للتخطيط فقط:</span>
               <span className="text-emerald-400 font-bold font-mono text-sm">
                 ~ {estimatedReach.toLocaleString()} مستخدم 🇩🇿
               </span>
             </div>
+            <p className="text-[10px] text-zinc-500">رقم استرشادي غير ملزم — ليس وعداً بنتائج.</p>
           </div>
 
           {/* CTA */}
           <button
-            onClick={handleLaunchCampaign}
+            onClick={handleSaveDraft}
             className="w-full py-3.5 px-4 rounded-xl font-bold bg-gradient-to-r from-pink-600 via-rose-600 to-cyan-600 hover:from-pink-500 hover:to-cyan-500 text-white shadow-xl shadow-pink-600/25 active:scale-[0.98] transition-all text-sm flex items-center justify-center gap-2"
           >
             <Rocket className="w-4 h-4" />
-            <span>إطلاق حملة الترويج الآن ({budgetDzd.toLocaleString()} دج)</span>
+            <span>حفظ مسودة الحملة ({budgetDzd.toLocaleString()} دج)</span>
           </button>
         </div>
       </div>

@@ -14,18 +14,18 @@ async function startServer() {
 
   app.use(express.json());
 
-  // In-memory data store with initial seed
-  let mockVideos: any[] = [];
+  // In-memory dev store. Starts empty: only videos really published
+  // through POST /api/videos (user uploads) ever appear here.
+  let devVideos: any[] = [];
 
   // Store for generated OTP codes
-  const otpCodes: Record<string, string> = {
-    'demo': '180782'
-  };
+  // Random per-request OTP codes with 5-minute expiry. Never fixed/demo codes.
+  const otpCodes: Record<string, { code: string; expiresAt: number }> = {};
 
   // REST API Routes
   app.get('/api/videos', (req, res) => {
     const { category, search } = req.query;
-    let filtered = [...mockVideos];
+    let filtered = [...devVideos];
     if (category && category !== 'all') {
       filtered = filtered.filter(v => v.category === category);
     }
@@ -45,14 +45,14 @@ async function startServer() {
     if (!newVideo || !newVideo.url) {
       return res.status(400).json({ error: 'Video URL is required' });
     }
-    mockVideos.unshift(newVideo);
+    devVideos.unshift(newVideo);
     res.status(201).json(newVideo);
   });
 
   app.post('/api/videos/:id/like', (req, res) => {
     const { id } = req.params;
     const { liked } = req.body;
-    const video = mockVideos.find(v => v.id === id);
+    const video = devVideos.find(v => v.id === id);
     if (!video) return res.status(404).json({ error: 'Video not found' });
     
     video.likes = liked ? video.likes + 1 : Math.max(0, video.likes - 1);
@@ -63,42 +63,50 @@ async function startServer() {
   app.post('/api/auth/send-otp', (req, res) => {
     const { target, type } = req.body;
     if (!target) return res.status(400).json({ error: 'Target email/phone is required' });
-    
-    // Generate deterministic or random 6 digit code
-    const code = '180782';
-    otpCodes[target] = code;
+
+    // Dev server: random 6-digit code per request (no SMS/email gateway here).
+    // The code is returned so the dev UI can display it; production uses the
+    // real backend OTP flow. Never a fixed/demo code.
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    otpCodes[target] = { code, expiresAt: Date.now() + 5 * 60 * 1000 };
 
     res.json({
       success: true,
       code,
-      message: type === 'email' 
-        ? `تم إرسال رمز التحقق OTP إلى البريد ${target}`
-        : `تم إرسال رمز التحقق OTP إلى الرقم ${target}`,
-      expiresIn: 45
+      message: type === 'email'
+        ? `رمز التحقق (وضع التطوير) للبريد ${target}`
+        : `رمز التحقق (وضع التطوير) للرقم ${target}`,
+      expiresIn: 300
     });
   });
 
   app.post('/api/auth/verify-otp', (req, res) => {
     const { target, code } = req.body;
-    const expected = otpCodes[target] || '180782';
-    if (code === expected || code === '180782') {
+    const record = target ? otpCodes[target] : undefined;
+    if (!record) {
+      return res.status(400).json({ success: false, message: 'لم يتم طلب رمز لهذا الحساب' });
+    }
+    if (Date.now() > record.expiresAt) {
+      delete otpCodes[target];
+      return res.status(400).json({ success: false, message: 'انتهت صلاحية الرمز، اطلب رمزاً جديداً' });
+    }
+    if (code === record.code) {
+      delete otpCodes[target];
       return res.json({ success: true, message: 'تم التحقق بنجاح!' });
     }
     res.status(400).json({ success: false, message: 'رمز التحقق غير صحيح' });
   });
 
+  // Honest analytics: the dev server tracks nothing, so it reports zeros.
+  // Real analytics come from the production backend only.
   app.get('/api/analytics', (req, res) => {
     res.json({
-      viewsLast7Days: [1200, 1900, 2400, 3100, 4800, 6200, 7850],
-      profileViews: 3420,
-      engagementRate: '14.8%',
-      topAudience: [
-        { region: 'الجزائر العاصمة', percentage: 42 },
-        { region: 'وهران', percentage: 28 },
-        { region: 'قسنطينة', percentage: 14 },
-        { region: 'فرنسا / المغتربين', percentage: 11 },
-        { region: 'أخرى', percentage: 5 },
-      ]
+      hasData: false,
+      viewsLast7Days: [0, 0, 0, 0, 0, 0, 0],
+      profileViews: 0,
+      newFollowers: 0,
+      engagementRate: '0%',
+      topAudience: []
     });
   });
 

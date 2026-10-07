@@ -14,11 +14,29 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ isOpen, onClose, user 
   if (!isOpen) return null;
 
   const profileUrl = `${window.location.origin}/@${user.username}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(profileUrl)}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(profileUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownload = async () => {
+    try {
+      const res = await fetch(qrUrl);
+      if (!res.ok) throw new Error('qr fetch failed');
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `zevora-qr-${user.username || 'profile'}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    } catch {
+      window.open(qrUrl, '_blank');
+    }
   };
 
   return (
@@ -56,7 +74,7 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ isOpen, onClose, user 
           {/* Real QR code for the current profile URL. */}
           <div className="p-4 bg-white rounded-2xl shadow-xl flex items-center justify-center">
             <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(profileUrl)}`}
+              src={qrUrl}
               alt="QR Code"
               className="w-48 h-48"
               loading="eager"
@@ -77,9 +95,7 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ isOpen, onClose, user 
               <span>{copied ? 'تم النسخ' : 'نسخ الرابط'}</span>
             </button>
             <button
-              onClick={() => {
-                alert('تم حفظ صورة كود QR في استوديو جهازك بنجاح');
-              }}
+              onClick={handleDownload}
               className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-pink-600 to-cyan-600 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-all shadow-md"
             >
               <Download className="w-4 h-4" />

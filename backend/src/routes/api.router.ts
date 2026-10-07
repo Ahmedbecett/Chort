@@ -99,3 +99,5 @@ apiRouter.get('/admin/reports', ApiController.listReports);
 apiRouter.post('/admin/reports/:reportId/resolve', validateBody('resolveReport'), ApiController.resolveReport);
 apiRouter.get('/admin/logins', ApiController.listLogins);
 apiRouter.get('/admin/overview', ApiController.adminOverview);
+apiRouter.get('/admin/users', ApiController.listUsers);
+apiRouter.post('/admin/users/:userId/status', validateBody('setUserStatus'), ApiController.setUserStatus);

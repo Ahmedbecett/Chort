@@ -25,7 +25,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [cacheClearedNotice, setCacheClearedNotice] = useState(false);
   const [supportMode, setSupportMode] = useState<'help' | 'report' | null>(null);
 
-  const handleClearCache = () => {
+  const handleClearCache = async () => {
+    // Really clear: watch history + any CacheStorage buckets. Saved videos
+    // and the profile are user data and are never touched.
+    try {
+      api.clearWatchHistory();
+    } catch {
+      /* ignore */
+    }
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch {
+      /* ignore */
+    }
     setCacheClearedNotice(true);
     setTimeout(() => setCacheClearedNotice(false), 2500);
   };

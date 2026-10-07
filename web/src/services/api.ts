@@ -33,21 +33,20 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ target, type }),
       });
-      if (res.ok) {
-        return await res.json();
-      }
+      const data = await res.json().catch(() => null);
+      if (res.ok && data) return data;
+      return {
+        success: false,
+        code: '',
+        message: data?.error || data?.message || 'تعذر إرسال رمز التحقق من الخادم.',
+      };
     } catch {
-      // server fallback
+      return {
+        success: false,
+        code: '',
+        message: 'تعذر الاتصال بخادم التحقق. تحقق من الاتصال ثم أعد المحاولة.',
+      };
     }
-    // Reliable deterministic demo OTP code for seamless testing
-    const code = '180782';
-    return {
-      success: true,
-      code,
-      message: type === 'email' 
-        ? `تم إرسال رمز التحقق إلى بريدك ${target} بنجاح.` 
-        : `تم إرسال رمز التحقق في رسالة SMS إلى ${target} بنجاح.`,
-    };
   },
 
   async verifyOtp(target: string, code: string): Promise<{ success: boolean; message: string }> {
@@ -57,22 +56,21 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ target, code }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          api.setAuthStatus(true);
-          return data;
-        }
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success) {
+        api.setAuthStatus(true);
+        return data;
       }
+      return {
+        success: false,
+        message: data?.message || 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى.',
+      };
     } catch {
-      // server fallback
+      return {
+        success: false,
+        message: 'تعذر الاتصال بخادم التحقق. تحقق من الاتصال ثم أعد المحاولة.',
+      };
     }
-    // Check if code matches standard 6-digit OTP
-    if (code === '180782' || code.length === 6) {
-      api.setAuthStatus(true);
-      return { success: true, message: 'تم التحقق بنجاح! جاري الدخول...' };
-    }
-    return { success: false, message: 'رمز التحقق غير صحيح، يرجى المحاولة مرة أخرى.' };
   },
 
   // User Profile
@@ -97,14 +95,25 @@ export const api = {
   },
 
   // Videos
+  // Purges previously stored sample/demo videos (Google sample bucket,
+  // unsplash placeholders) so no fake media is ever served to the user.
+  purgeStoredSampleVideos(videos: VideoItem[]): { cleaned: VideoItem[]; removed: number } {
+    const FAKE_MARKERS = ['gtv-videos-bucket', 'commondatastorage.googleapis.com', 'images.unsplash.com', 'sample.mp4'];
+    const cleaned = videos.filter(
+      (v) => !FAKE_MARKERS.some((m) => (v.url || '').includes(m) || (v.thumbnail || '').includes(m))
+    );
+    return { cleaned, removed: videos.length - cleaned.length };
+  },
+
   async getVideos(): Promise<VideoItem[]> {
     try {
       const res = await fetch('/api/videos');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(data));
-          return data;
+          const { cleaned } = api.purgeStoredSampleVideos(data);
+          localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(cleaned));
+          return cleaned;
         }
       }
     } catch {
@@ -114,7 +123,14 @@ export const api = {
     const cached = localStorage.getItem(STORAGE_KEYS.VIDEOS);
     if (cached) {
       try {
-        return JSON.parse(cached);
+        const parsed: VideoItem[] = JSON.parse(cached);
+        const { cleaned, removed } = api.purgeStoredSampleVideos(
+          Array.isArray(parsed) ? parsed : []
+        );
+        if (removed > 0) {
+          localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(cleaned));
+        }
+        return cleaned;
       } catch {
         // ignore
       }
@@ -170,10 +186,13 @@ export const api = {
 
   async addVideo(videoData: Partial<VideoItem>): Promise<VideoItem> {
     const user = api.getUser();
+    if (!videoData.url || !videoData.url.trim()) {
+      throw new Error('لا يمكن النشر بدون فيديو حقيقي من جهازك');
+    }
     const newVideo: VideoItem = {
       id: `vid-${Date.now()}`,
-      url: videoData.url || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-      thumbnail: videoData.thumbnail || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
+      url: videoData.url as string,
+      thumbnail: videoData.thumbnail || '',
       caption: videoData.caption || '',
       author: {
         id: user.id,
@@ -289,16 +308,27 @@ export const api = {
     return cached ? JSON.parse(cached) : [];
   },
 
-  saveOfflineVideo(video: VideoItem) {
-    let offline = api.getOfflineVideos();
-    if (!offline.some((v: any) => v.id === video.id)) {
-      offline.unshift({
-        ...video,
-        downloadedAt: new Date().toISOString(),
-        fileSizeMb: (Math.random() * 12 + 6).toFixed(1),
-      });
-      localStorage.setItem(STORAGE_KEYS.OFFLINE_VIDEOS, JSON.stringify(offline));
+  async saveOfflineVideo(video: VideoItem): Promise<void> {
+    const offline = api.getOfflineVideos();
+    if (offline.some((v: any) => v.id === video.id)) return;
+    // Real size when the bytes are reachable (blob/local URLs); otherwise
+    // honestly unknown — never a random number.
+    let fileSizeMb = '';
+    try {
+      const res = await fetch(video.url);
+      if (res.ok) {
+        const blob = await res.blob();
+        if (blob.size > 0) fileSizeMb = (blob.size / (1024 * 1024)).toFixed(1);
+      }
+    } catch {
+      fileSizeMb = '';
     }
+    offline.unshift({
+      ...video,
+      downloadedAt: new Date().toISOString(),
+      fileSizeMb,
+    });
+    localStorage.setItem(STORAGE_KEYS.OFFLINE_VIDEOS, JSON.stringify(offline));
   },
 
   removeOfflineVideo(videoId: string) {

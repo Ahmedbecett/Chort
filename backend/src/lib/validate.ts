@@ -63,6 +63,9 @@ export const schemas = {
   resolveReport: z.object({
     action: z.enum(['dismiss', 'hide_video', 'show_video']),
   }),
+  setUserStatus: z.object({
+    status: z.enum(['ACTIVE', 'SUSPENDED', 'BANNED']),
+  }),
   oauthGoogle: z.object({
     idToken: z.string().trim().min(10).max(4000),
   }),

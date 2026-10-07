@@ -81,7 +81,7 @@ export const VideoFeed: React.FC<VideoFeedProps> = ({
     const res = await api.toggleSaveVideo(currentVideo.id);
     currentVideo.isSaved = res.saved;
     if (res.saved) {
-      api.saveOfflineVideo(currentVideo);
+      await api.saveOfflineVideo(currentVideo);
       alert('تم حفظ الفيديو في المفضلة ومساحة المشاهدة بدون إنترنت!');
     }
   };

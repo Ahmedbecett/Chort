@@ -15,25 +15,19 @@ export const OfflineVideosModal: React.FC<OfflineVideosModalProps> = ({ isOpen, 
 
   useEffect(() => {
     if (isOpen) {
-      const items = api.getOfflineVideos();
-      if (items.length === 0) {
-        // seed 2 offline videos for instant demonstration
-        api.getVideos().then((vids) => {
-          if (vids.length >= 2) {
-            api.saveOfflineVideo(vids[0]);
-            api.saveOfflineVideo(vids[1]);
-            setOfflineList(api.getOfflineVideos());
-          }
-        });
-      } else {
-        setOfflineList(items);
-      }
+      // Only ever show videos the user really saved. No demo seeding.
+      setOfflineList(api.getOfflineVideos());
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const totalStorage = offlineList.reduce((acc, v) => acc + (parseFloat(v.fileSizeMb) || 8.5), 0).toFixed(1);
+  const knownSizes = offlineList
+    .map((v) => parseFloat(v.fileSizeMb))
+    .filter((n) => Number.isFinite(n));
+  const totalStorage = knownSizes.length > 0
+    ? knownSizes.reduce((a, b) => a + b, 0).toFixed(1)
+    : null;
 
   const handleDelete = (id: string) => {
     api.removeOfflineVideo(id);
@@ -78,7 +72,7 @@ export const OfflineVideosModal: React.FC<OfflineVideosModalProps> = ({ isOpen, 
             <HardDrive className="w-4 h-4 text-cyan-400" />
             <span>المساحة المستخدمة للفيديوهات:</span>
           </div>
-          <span className="font-mono text-cyan-400 font-bold">{totalStorage} MB</span>
+          <span className="font-mono text-cyan-400 font-bold">{totalStorage !== null ? `${totalStorage} MB` : 'غير معروف'}</span>
         </div>
 
         {/* Video list */}
@@ -111,7 +105,7 @@ export const OfflineVideosModal: React.FC<OfflineVideosModalProps> = ({ isOpen, 
                     <div className="text-xs font-bold text-white truncate">{video.caption}</div>
                     <div className="text-[11px] text-zinc-400 mt-1">{video.author.name}</div>
                     <div className="text-[10px] text-cyan-400 mt-0.5 font-mono">
-                      💾 {video.fileSizeMb || '8.2'} MB · جاهز بدون نت
+                      💾 {video.fileSizeMb ? `${video.fileSizeMb} MB` : 'الحجم غير معروف'} · جاهز بدون نت
                     </div>
                   </div>
                 </div>
