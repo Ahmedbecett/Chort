@@ -73,7 +73,7 @@ fun RecoveryScreen(
     var phone by remember { mutableStateOf("") }
     var cooldown by remember { mutableStateOf(60) }
     var expiresIn by remember { mutableStateOf(600) }
-        var newPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
 
     when (step) {
         0 -> PhoneAuthScreen(
@@ -85,7 +85,7 @@ fun RecoveryScreen(
                 phone = sentPhone
                 cooldown = sentCooldown
                 expiresIn = sentExpires
-                                step = 1
+                step = 1
             },
             onBack = onBack
         )
