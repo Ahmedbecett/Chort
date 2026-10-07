@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { v4 as uuidv4 } from 'uuid';
 import { isExternalId, recordWatchHistory, userKeyFor } from './feed-history';
 import { AIModerationService } from './ai-moderation.service';
+import { CloudflareStreamService } from './cloudflare-stream.service';
 
 export interface CreateUploadUrlInput {
   userId: string;
@@ -58,6 +59,7 @@ export class VideoService {
   static async resolvePlayableStreamUrl(videoId: string, originalKey?: string | null, fallbackUrl?: string | null): Promise<string> {
     // Externally-hosted bytes (Android Firebase fallback): the stored https URL
     // IS the playable file; never presign a non-existent S3 key for it.
+    if (fallbackUrl && /^https:\/\//i.test(fallbackUrl) && /\.m3u8(?:\?|$)/i.test(fallbackUrl)) return fallbackUrl;
     if (originalKey && originalKey.startsWith('external/')) {
       if (fallbackUrl && /^https:\/\//i.test(fallbackUrl)) return fallbackUrl;
     }
@@ -231,6 +233,32 @@ export class VideoService {
       }
     }
 
+    let cloudflareStreamUid: string | undefined;
+    let cloudflareStreamHls: string | undefined;
+
+    if (!isExternalBytes && CloudflareStreamService.isConfigured() && isStorageConfigured()) {
+      try {
+        const sourceUrl = await getSignedUrl(
+          s3Client,
+          new GetObjectCommand({
+            Bucket: config.s3.bucket,
+            Key: storedKey,
+            ResponseContentType: 'video/mp4',
+          }),
+          { expiresIn: 3600 }
+        );
+        const imported = await CloudflareStreamService.importFromUrl({
+          url: sourceUrl,
+          name: caption || videoId,
+          creator: userId,
+        });
+        cloudflareStreamUid = imported.uid;
+        cloudflareStreamHls = imported.hlsUrl;
+      } catch (err: any) {
+        console.warn('Cloudflare Stream import notice:', err?.message || err);
+      }
+    }
+
     // Production publish gate: content must pass moderation before it can become READY/PUBLIC.
     // If moderation is unavailable and fail-closed is enabled, no production post is created.
     const moderation = await AIModerationService.moderateVideo({
@@ -251,7 +279,8 @@ export class VideoService {
         userId,
         caption: caption || 'New Rivo Video',
         originalKey: storedKey,
-        streamUrl: isExternalBytes ? clientVideoUrl : canonicalStreamUrl,
+        streamUrl: isExternalBytes ? clientVideoUrl : (cloudflareStreamHls || canonicalStreamUrl),
+        streamUid: cloudflareStreamUid,
         thumbnailUrl: realThumbnail,
         status: 'READY',
         visibility: params.visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC',
@@ -699,6 +728,14 @@ export class VideoService {
         })).catch(() => {});
       } catch (err: any) {
         console.warn('S3 video deletion notice:', err.message);
+      }
+    }
+
+    if (video.streamUid && CloudflareStreamService.isConfigured()) {
+      try {
+        await CloudflareStreamService.deleteVideo(video.streamUid);
+      } catch (err: any) {
+        console.warn('Cloudflare Stream deletion notice:', err?.message || err);
       }
     }
 
