@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: PRE_RELEASE_SECURITY_AUDIT.md =====
 # ZEVORA Pre-release security/feed audit
 
 ## Completed in this release candidate
@@ -9,8 +8,8 @@
 - **Firestore privacy:** ordinary authenticated users can no longer read the entire `users` collection. Only the document owner or an Admin can read a user document. Public profile reads should use the backend profile endpoint.
 - **Feed policy:** normal Feed requests default to database-owned user videos. Licensed external videos are opt-in with `includeExternal=true`; they are never a silent fallback when the DB is empty/disconnected.
 - **Synthetic avatars removed:** Unsplash/DiceBear avatar fallbacks were removed from the account/profile paths. Provider videos only use a provider-supplied real avatar when one exists; otherwise the avatar is empty.
-- **Stale deployment URL removed:** Android production API base is `https://zevora-nine.vercel.app/`, not the previous `zevora-nmk4` deployment.
-- **Test leftovers:** the previous `zevora-nine` test URL remains only as the intended production test endpoint; no `zevora-nmk4` reference remains in source/tests.
+- **Stale deployment URL removed:** Android production API base is `https://chort-nine.vercel.app/`, not the previous `chort-nmk4` deployment.
+- **Test leftovers:** the previous `zevora-nine` test URL remains only as the intended production test endpoint; no `chort-nmk4` reference remains in source/tests.
 
 ## Required production configuration
 
@@ -25,4 +24,3 @@
 
 The candidate could not run a complete Gradle Android build because the environment cannot download the configured Gradle distribution. Backend dependency installation was also unavailable because required npm packages were not locally cached. Source-level checks were completed, but a successful CI build and production smoke test are still required before calling the release 100% verified.
 
-===== END ZEVORA_BUNDLE_FILE =====
