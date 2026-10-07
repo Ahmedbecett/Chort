@@ -54,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.repository.TokPulseRepository
 import com.example.ui.components.ChortMark
-import com.example.ui.theme.AccentGold
 import com.example.ui.theme.StatusBanned
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
@@ -95,7 +94,6 @@ fun OtpScreen(
     var successMessage by remember { mutableStateOf<String?>(null) }
     var secondsLeft by remember { mutableIntStateOf(expiresInSeconds) }
     var cooldownLeft by remember { mutableIntStateOf(cooldownSeconds) }
-    var  by remember(devOtp) { mutableStateOf(devOtp) }
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -154,8 +152,7 @@ fun OtpScreen(
                 val otp = result.getOrThrow()
                 cooldownLeft = otp.resendCooldownSeconds
                 secondsLeft = otp.expiresInSeconds
-                 = otp.devOtp
-                code = ""
+                 code = ""
                 successMessage = "A fresh code is on its way."
             } else {
                 errorMessage = result.exceptionOrNull()?.message
@@ -217,18 +214,6 @@ fun OtpScreen(
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold
         )
-        // Setup mode (no SMS provider yet): the server returns the code itself.
-        if (!.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = "Setup mode — your code is ${!!.trim()}",
-                color = AccentGold,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-        }
-
         Spacer(modifier = Modifier.height(24.dp))
 
         // Digit boxes over a hidden input for reliable keyboards + paste.
