@@ -1,3 +1,4 @@
+===== ZEVORA_BUNDLE_PATH: app/src/main/java/com/example/ui/components/HeartAnimation.kt =====
 package com.example.ui.components
 
 import androidx.compose.animation.core.Animatable
@@ -18,7 +19,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
-import com.example.ui.theme.TokRed
+import com.example.ui.theme.ZevoraRed
 
 @Composable
 fun BurstHeart(
@@ -55,7 +56,7 @@ fun BurstHeart(
         Icon(
             imageVector = Icons.Default.Favorite,
             contentDescription = "Liked",
-            tint = TokRed,
+            tint = ZevoraRed,
             modifier = Modifier
                 .size(100.dp)
                 .scale(scale.value)
@@ -64,3 +65,5 @@ fun BurstHeart(
         )
     }
 }
+
+===== END ZEVORA_BUNDLE_FILE =====
