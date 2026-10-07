@@ -8,14 +8,14 @@
 
 
 
-> **الإصدار الحالي:** `v2.4.6` | **رقم البناء (versionCode):** `20406` | **تاريخ التحديث:** أكتوبر 2026
+> **الإصدار الحالي:** `v2.5.1` | **رقم البناء (versionCode):** `20501` | **تاريخ التحديث:** أكتوبر 2026
 
-- 📥 **[تحميل مباشر للإصدار v2.4.6 (ZEVORA-v2.4.6-release.apk)](https://github.com/Ahmedbecett/Chort/releases/download/v2.4.6/ZEVORA-v2.4.6-release.apk)**
-- ⚡ **[رابط دائم لأحدث إصدار (Always Latest APK): ZEVORA-latest.apk](https://github.com/Ahmedbecett/Chort/releases/latest/download/ZEVORA-latest.apk)**
+- 📥 **تحميل APK:** استخدم صفحة الإصدارات الرسمية بعد نشر الـRelease.
+- ⚡ **آخر APK:** لا يتم عرض رابط وهمي قبل توفر Release فعلي.
 - 📦 **[جميع الإصدارات وسجلات البناء (Releases Page)](https://github.com/Ahmedbecett/Chort/releases)**
 - ⚙️ **[متابعة بناء الـ APK عبر GitHub Actions](https://github.com/Ahmedbecett/Chort/actions)**
 
-### 🛠️ التحديثات المطبقة في الإصدار v2.4.6:
+### 🛠️ التحديثات المطبقة في الإصدار v2.5.1:
 1. **تشغيل ورفع الفيديو:** دعم كامل لتشغيل الفيديوهات المختارة من الهاتف محلياً (`content://` و `file://`) وإصلاح خطأ `تعذر تشغيل الفيديو - Invalid or empty video URL`.
 2. **رسائل التحقق للهاتف (SMS):** إرسال رمز التحقق كرسالة SMS حقيقية إلى رقم الهاتف عبر Firebase Phone Auth بدلاً من إظهاره على الشاشة.
 3. **تسجيل الدخول بجيميل (Google):** تحديث معرّف العميل ومطابقة مشروع Firebase (`shortvideoapp-6b870`) لمنع الرجوع للشاشة السابقة.
