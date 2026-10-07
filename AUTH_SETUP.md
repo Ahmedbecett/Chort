@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: AUTH_SETUP.md =====
 # ZEVORA Auth Setup (Google / Facebook / Phone SMS)
 
 Two commits implement auth end to end (`6769650` backend, `5b226c9` app 2.4.0).
@@ -34,7 +33,7 @@ The Android app signs in with the web client ID in
 
 Set `GOOGLE_CLIENT_ID` in Vercel to exactly this value (it is a public
 identifier, safe to copy). Google Cloud Console → Credentials must also list
-your Android app (package `com.aistudio.zevora.social`, SHA-1 of your
+your Android app (package `com.aistudio.tokpulse.social`, SHA-1 of your
 release key) or Google will refuse the request.
 
 ## 2. Android app placeholders (no secrets)
@@ -46,7 +45,7 @@ In `app/src/main/res/values/strings.xml`, replace:
 - `fb_login_protocol_scheme` → `fb` + your App ID (e.g. `fb123456789`)
 
 Facebook app setup: Developers → your app → **Facebook Login → Settings** →
-add Android platform, package `com.aistudio.zevora.social`, and your key
+add Android platform, package `com.aistudio.tokpulse.social`, and your key
 hash (`keytool -exportcert -alias zevora -keystore zevora-release.jks | openssl
 sha1 -binary | openssl base64` for the committed dev key; use your Play key
 for production).
@@ -70,4 +69,3 @@ instead of crashing.
 - Admin app → **Logins** tab shows real sign-in records; **Live Reports**
   tab drives the real moderation queue.
 
-===== END ZEVORA_BUNDLE_FILE =====
