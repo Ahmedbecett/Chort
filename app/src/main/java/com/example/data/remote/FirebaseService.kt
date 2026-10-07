@@ -130,7 +130,7 @@ class FirebaseService(private val context: Context) {
             val uid = firebaseUser.uid
             val username = rawUsername.trim().ifEmpty { email.substringBefore("@").lowercase().replace(".", "_") }
             val displayName = rawDisplayName.trim().ifEmpty { username }
-            val photoUrl = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300"
+            val photoUrl = ""
             val isAdmin = isAdminEmail(email)
 
             val newUser = UserEntity(
@@ -140,7 +140,7 @@ class FirebaseService(private val context: Context) {
                 email = email.trim(),
                 passwordHash = "AUTH_SECURE",
                 avatarUrl = photoUrl,
-                bio = "Welcome to my thileli dz profile! 🎬",
+                bio = "",
                 followersCount = 0,
                 followingCount = 0,
                 totalLikes = 0,
@@ -422,7 +422,7 @@ class FirebaseService(private val context: Context) {
                 displayName = name,
                 email = "",
                 passwordHash = "PHONE_AUTH",
-                avatarUrl = null,
+                avatarUrl = "",
                 bio = "Content Creator on thileli dz",
                 followersCount = 0,
                 followingCount = 0,
@@ -472,7 +472,7 @@ class FirebaseService(private val context: Context) {
                 displayName = effectiveDisplayName,
                 email = effectiveEmail,
                 passwordHash = "AUTHENTICATED",
-                avatarUrl = effectiveAvatar,
+                avatarUrl = effectiveAvatar ?: "",
                 bio = "Welcome to my thileli dz profile! 🎬",
                 followersCount = 0,
                 followingCount = 0,
@@ -504,7 +504,7 @@ class FirebaseService(private val context: Context) {
                     displayName = doc.getString("displayName")?.takeIf { it.isNotBlank() } ?: effectiveDisplayName,
                     email = doc.getString("email")?.takeIf { it.isNotBlank() } ?: effectiveEmail,
                     passwordHash = "AUTHENTICATED",
-                    avatarUrl = doc.getString("avatarUrl")?.takeIf { it.isNotBlank() } ?: effectiveAvatar,
+                    avatarUrl = doc.getString("avatarUrl")?.takeIf { it.isNotBlank() } ?: (effectiveAvatar ?: ""),
                     bio = doc.getString("bio")?.takeIf { it.isNotBlank() } ?: "Welcome to my thileli dz profile! 🎬",
                     followersCount = (doc.getLong("followersCount") ?: 0L).toInt().coerceAtLeast(0),
                     followingCount = (doc.getLong("followingCount") ?: 0L).toInt().coerceAtLeast(0),
