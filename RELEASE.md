@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: RELEASE.md =====
 # ZEVORA Release & Build Policy
 
 This repository contains the ZEVORA Android client, web client, and backend.
@@ -15,4 +14,3 @@ The Android client uses the existing production API deployment at `https://chort
 ## Build
 Use the repository Gradle wrapper and run `./gradlew :app:assembleDebug` for a debug APK. A release build requires signing secrets as described above.
 
-===== END ZEVORA_BUNDLE_FILE =====
