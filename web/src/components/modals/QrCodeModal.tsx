@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: web/src/components/modals/QrCodeModal.tsx =====
 import React, { useState } from 'react';
 import { X, QrCode, Share2, Copy, CheckCircle2, Download } from 'lucide-react';
 import { UserProfile } from '../../types';
@@ -93,4 +92,3 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({ isOpen, onClose, user 
   );
 };
 
-===== END ZEVORA_BUNDLE_FILE =====
