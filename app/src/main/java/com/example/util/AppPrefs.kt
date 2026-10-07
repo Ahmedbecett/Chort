@@ -2,7 +2,10 @@ package com.example.util
 
 import android.content.Context
 import android.content.SharedPreferences
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
@@ -404,7 +407,7 @@ object AppPrefs {
         }
         // Keep the Room/request table consistent with the enforced local list.
         try {
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            CoroutineScope(Dispatchers.IO).launch {
                 try {
                     repo?.toggleBlockUser(userId)
                 } catch (_: Exception) {
