@@ -4,6 +4,7 @@ import { s3Client, config, redis, isStorageConfigured } from '../config';
 import { prisma } from '../lib/prisma';
 import { v4 as uuidv4 } from 'uuid';
 import { isExternalId, recordWatchHistory, userKeyFor } from './feed-history';
+import { AIModerationService } from './ai-moderation.service';
 
 export interface CreateUploadUrlInput {
   userId: string;
@@ -237,6 +238,20 @@ export class VideoService {
         (error as any).statusCode = 422;
         throw error;
       }
+    }
+
+    // Production publish gate: content must pass moderation before it can become READY/PUBLIC.
+    // If moderation is unavailable and fail-closed is enabled, no production post is created.
+    const moderation = await AIModerationService.moderateVideo({
+      videoId,
+      videoUrl: isExternalBytes ? clientVideoUrl : canonicalStreamUrl,
+      caption: caption || '',
+      objectKey: storedKey,
+    });
+    if (!moderation.allowed) {
+      const error = new Error(moderation.reason || 'Video rejected by moderation.');
+      (error as any).statusCode = 422;
+      throw error;
     }
 
     const video = await prisma.video.create({
