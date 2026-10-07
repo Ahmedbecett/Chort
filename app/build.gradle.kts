@@ -48,59 +48,21 @@ android {
   }
 
   signingConfigs {
-    // ------------------------------------------------------------------
-    // DETERMINISTIC RELEASE SIGNING
-    // Previously this silently fell back to a debug keystore, so "release"
-    // APKs were debug-signed (CN=Android Debug) while the README advertised a
-    // production certificate. Resolution order is now explicit and logged:
-    //   1. KEYSTORE_PATH env var                  -> explicit keystore file
-    //   2. STORE_PASSWORD + my-upload-key.jks     -> official production key
-    //   3. chort-release.jks (committed, documented) -> reproducible builds
-    // ------------------------------------------------------------------
-    create("release") {
-      val explicitKeystore = System.getenv("KEYSTORE_PATH")
-        ?.takeIf { it.isNotBlank() }
-        ?.let { file(it) }
-      val officialKeystore = file("${rootDir}/my-upload-key.jks")
-      val envStorePass = System.getenv("STORE_PASSWORD")
-
-      val chosen = when {
-        explicitKeystore != null && explicitKeystore.exists() ->
-          explicitKeystore to (envStorePass ?: fallbackKeystorePassword)
-        envStorePass != null && officialKeystore.exists() ->
-          officialKeystore to envStorePass
-        fallbackKeystoreFile.exists() ->
-          fallbackKeystoreFile to fallbackKeystorePassword
-        else -> error(
-          "No release keystore available. Set KEYSTORE_PATH or STORE_PASSWORD, " +
-            "or restore ${fallbackKeystoreFile.name}."
-        )
+    if (releaseKeystorePath != null && releaseStorePassword != null) {
+      create("release") {
+        val keystore = file(releaseKeystorePath)
+        if (!keystore.exists()) throw GradleException("Release keystore does not exist: $releaseKeystorePath")
+        storeFile = keystore
+        storePassword = releaseStorePassword
+        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+        keyPassword = System.getenv("KEY_PASSWORD") ?: releaseStorePassword
+        enableV1Signing = true
+        enableV2Signing = true
+        enableV3Signing = true
+        logger.lifecycle("[ZEVORA] Release signing keystore configured from environment")
       }
-
-      storeFile = chosen.first
-      storePassword = chosen.second
-      keyAlias = System.getenv("KEY_ALIAS")
-        ?: if (chosen.first == fallbackKeystoreFile) fallbackKeyAlias else "upload"
-      keyPassword = System.getenv("KEY_PASSWORD") ?: chosen.second
-      enableV1Signing = true
-      enableV2Signing = true
-      enableV3Signing = true
-
-      logger.lifecycle("[ZEVORA] Release signing keystore: ${chosen.first.name}")
-    }
-    create("debugConfig") {
-      // debug.keystore is git-ignored and absent on fresh clones, which used to
-      // break `assembleDebug`. Re-use the committed keystore when it's missing.
-      val useFallback = fallbackKeystoreFile.exists()
-      storeFile = if (useFallback) fallbackKeystoreFile else file("${rootDir}/debug.keystore")
-      storePassword = if (useFallback) fallbackKeystorePassword else "android"
-      keyAlias = if (useFallback) fallbackKeyAlias else "androiddebugkey"
-      keyPassword = if (useFallback) fallbackKeystorePassword else "android"
-      enableV1Signing = true
-      enableV2Signing = true
     }
   }
-
   buildTypes {
     release {
       isCrunchPngs = false
