@@ -257,7 +257,7 @@ fun PhoneAuthScreen(
                         phone = fullPhone,
                         onCodeSent = { _ ->
                             isLoading = false
-                            onCodeSent(fullPhone, 60, 600, null)
+                            onCodeSent(fullPhone, 60, 600)
                         },
                         onAutoVerified = { _ ->
                             isLoading = false
@@ -286,7 +286,7 @@ fun PhoneAuthScreen(
                         isLoading = false
                         if (result.isSuccess) {
                             val otp = result.getOrThrow()
-                            onCodeSent(fullPhone, otp.resendCooldownSeconds, otp.expiresInSeconds, otp.devOtp)
+                            onCodeSent(fullPhone, otp.resendCooldownSeconds, otp.expiresInSeconds)
                         } else {
                             errorMessage = result.exceptionOrNull()?.message
                         }
