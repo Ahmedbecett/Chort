@@ -1,4 +1,3 @@
-===== ZEVORA_BUNDLE_PATH: web/src/components/modals/StudioAnalyticsModal.tsx =====
 import React, { useState } from 'react';
 import { X, BarChart3, TrendingUp, Users, Eye, Sparkles, MapPin } from 'lucide-react';
 
@@ -142,4 +141,3 @@ export const StudioAnalyticsModal: React.FC<StudioAnalyticsModalProps> = ({ isOp
   );
 };
 
-===== END ZEVORA_BUNDLE_FILE =====
