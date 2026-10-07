@@ -455,6 +455,24 @@ export async function ensureDatabaseSchema(force = false): Promise<{
 
     const allTablesExist = requiredTables.every((t) => existingTables.has(t));
 
+    // --- Column self-heal (idempotent, runs on every ensure) ---
+    // Vercel build-time `prisma db push` can fail silently (`|| true` in the build
+    // command), leaving NEW COLUMNS missing on EXISTING tables while CREATE TABLE
+    // IF NOT EXISTS never backfills them. Any Prisma read/write touching such a
+    // column then throws (empty feed, broken register). These statements close that gap.
+    const ALTER_STATEMENTS = [
+      `DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'Visibility') THEN CREATE TYPE "Visibility" AS ENUM ('PUBLIC', 'FOLLOWERS', 'PRIVATE'); END IF; END $$;`,
+      `ALTER TABLE "Profile" ADD COLUMN IF NOT EXISTS "isPrivate" BOOLEAN NOT NULL DEFAULT false;`,
+      `ALTER TABLE "Video" ADD COLUMN IF NOT EXISTS "visibility" "Visibility" NOT NULL DEFAULT 'PUBLIC';`,
+    ];
+    for (const statement of ALTER_STATEMENTS) {
+      try {
+        await client.$executeRawUnsafe(statement);
+      } catch {
+        // Best-effort only; table DDL below covers fresh databases.
+      }
+    }
+
     if (allTablesExist && !force) {
       isSchemaEnsured = true;
       verifiedTablesCache = Array.from(existingTables);
@@ -505,35 +523,6 @@ export async function checkDatabaseConnection(): Promise<{
 }> {
   if (!isDbConfigured()) {
     return {
-      connected: false,
-      error: 'DATABASE_URL environment variable is not configured on Vercel',
-    };
-  }
-  const start = Date.now();
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    const latency = Date.now() - start;
-
-    // Self-healing: automatically ensure schema exists
-    const schemaStatus = await ensureDatabaseSchema();
-    const verifiedList = schemaStatus.tablesVerified || verifiedTablesCache;
-
-    return {
-      connected: true,
-      latencyMs: latency,
-      schemaReady: schemaStatus.success,
-      tablesCount: verifiedList.length,
-      tablesVerified: verifiedList,
-      error: schemaStatus.success ? undefined : schemaStatus.error,
-    };
-  } catch (err: any) {
-    return {
-      connected: false,
-      error: err?.message || 'Database connection error',
-    };
-  }
-}
-turn {
       connected: false,
       error: 'DATABASE_URL environment variable is not configured on Vercel',
     };
