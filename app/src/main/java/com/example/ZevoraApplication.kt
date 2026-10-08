@@ -10,6 +10,7 @@ import coil.memory.MemoryCache
 import com.example.data.repository.ZevoraRepository
 import com.example.util.AppPrefs
 import com.example.util.CrashHandler
+import com.google.firebase.FirebaseApp
 
 class ZevoraApplication : Application(), ImageLoaderFactory {
 
@@ -25,6 +26,14 @@ class ZevoraApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        CrashHandler.install(this)
+        try {
+            if (FirebaseApp.getApps(this).isEmpty()) {
+                FirebaseApp.initializeApp(this)
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("ZevoraApplication", "Firebase init deferred: ${e.message}")
+        }
         AppPrefs.init(this)
         repository = ZevoraRepository(this)
     }

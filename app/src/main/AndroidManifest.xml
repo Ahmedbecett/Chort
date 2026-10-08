@@ -67,6 +67,19 @@
                 <data android:scheme="@string/fb_login_protocol_scheme" />
             </intent-filter>
         </activity>
+        <!-- Startup-crash hardening: no third-party code runs before the
+             Application. androidx.startup initializers (emoji2 / lifecycle /
+             profileinstaller — none used by the app) and Firebase auto-init
+             are removed; Firebase is initialized manually, guarded, in
+             ZevoraApplication.onCreate AFTER the crash reporter is armed. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            tools:node="remove" />
+        <provider
+            android:name="com.google.firebase.provider.FirebaseInitProvider"
+            android:authorities="${applicationId}.firebaseinitprovider"
+            tools:node="remove" />
         <activity
             android:name=".ui.screens.debug.CrashReportActivity"
             android:process=":crash"
