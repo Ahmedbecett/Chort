@@ -1,17 +1,17 @@
-# 📱 ZEVORA Play — Scalable Short-Video Social Platform
+# 📱 Rivo Chort — Scalable Short-Video Social Platform
 
 [![Android Build](https://img.shields.io/badge/Platform-Android%2014%2B%20%7C%20Compose-3DDC84.svg?style=for-the-badge&logo=android)](https://android.com)
-[![Release](https://img.shields.io/badge/Release-v3.1.0-FE2C55.svg?style=for-the-badge)](https://github.com/Ahmedbecett/Chort/releases/tag/v3.1.0)
+[![Release](https://img.shields.io/badge/Release-v3.2.0-FE2C55.svg?style=for-the-badge)](https://github.com/Ahmedbecett/Chort/releases/tag/v3.2.0)
 
-> **Current release:** `v3.1.0` · **versionCode:** `31000` · TikTok-style create flow + new launcher identity.
+> **Current release:** `v3.2.0` · **versionCode:** `32000` · Rivo rebrand + real licensed HD feed + Firebase phone sessions.
 
 ## 📥 Download the app
 
 | | |
 |---|---|
-| **⬇️ Direct APK download** | **[ZEVORA-v3.1.0-release.apk (25.6 MB)](https://github.com/Ahmedbecett/Chort/releases/download/v3.1.0/ZEVORA-v3.1.0-release.apk)** |
-| **Release page** | [v3.1.0 — notes + verification report](https://github.com/Ahmedbecett/Chort/releases/tag/v3.1.0) |
-| **SHA-256** | `36a2eea1e5885e27da5a02f0d4d6e7115229c2e323878df898004f19b5bd10d2` |
+| **⬇️ Direct APK download** | **[Rivo-v3.2.0-release.apk (26.1 MB)](https://github.com/Ahmedbecett/Chort/releases/download/v3.2.0/Rivo-v3.2.0-release.apk)** |
+| **Release page** | [v3.2.0 — notes + verification report](https://github.com/Ahmedbecett/Chort/releases/tag/v3.2.0) |
+| **SHA-256** | `0a97d2e93d1c11902713a76225a90c157543945b3a2d2c189bca191c954038fb` |
 
 - 📦 **[All releases](https://github.com/Ahmedbecett/Chort/releases)**
 - ⚙️ **[Release builds (GitHub Actions)](https://github.com/Ahmedbecett/Chort/actions)**
@@ -22,6 +22,19 @@ verified against the source tree by `scripts/verify_apk.py` before publishing.
 Installs over previous versions with no uninstall.
 
 ---
+
+## 🆕 What changed in v3.2.0
+
+1. **Rivo Chort rebrand** — new name + R-mark launcher icon (legacy, adaptive,
+   monochrome), all user-visible strings rebranded; same package + same
+   production key, so it installs directly over 3.1.0.
+2. **Real licensed feed in HD** — the server now serves fresh portrait videos
+   from Coverr/Pixabay/Pexels (highest-resolution files: 1080p), with zero
+   fake seed videos or profiles left in the database.
+3. **Firebase phone sessions** — phone login mints a real backend JWT via
+   `POST /auth/phone/firebase` (ID-token verified against Google certs).
+4. **Cloudflare Stream ready** — uploads can be imported to Cloudflare Stream
+   for HLS delivery when `CLOUDFLARE_STREAM_*` is configured (optional).
 
 ## 🆕 What changed in v3.1.0
 
