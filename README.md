@@ -1,17 +1,17 @@
 # 📱 Rivo Chort — Scalable Short-Video Social Platform
 
 [![Android Build](https://img.shields.io/badge/Platform-Android%2014%2B%20%7C%20Compose-3DDC84.svg?style=for-the-badge&logo=android)](https://android.com)
-[![Release](https://img.shields.io/badge/Release-v3.2.0-FE2C55.svg?style=for-the-badge)](https://github.com/Ahmedbecett/Chort/releases/tag/v3.2.0)
+[![Release](https://img.shields.io/badge/Release-v3.2.1-FE2C55.svg?style=for-the-badge)](https://github.com/Ahmedbecett/Chort/releases/tag/v3.2.1)
 
-> **Current release:** `v3.2.0` · **versionCode:** `32000` · Rivo rebrand + real licensed HD feed + Firebase phone sessions.
+> **Current release:** `v3.2.1` · **versionCode:** `32001` · Rivo rebrand + real licensed HD feed + Firebase phone sessions.
 
 ## 📥 Download the app
 
 | | |
 |---|---|
-| **⬇️ Direct APK download** | **[Rivo-v3.2.0-release.apk (26.1 MB)](https://github.com/Ahmedbecett/Chort/releases/download/v3.2.0/Rivo-v3.2.0-release.apk)** |
-| **Release page** | [v3.2.0 — notes + verification report](https://github.com/Ahmedbecett/Chort/releases/tag/v3.2.0) |
-| **SHA-256** | `0a97d2e93d1c11902713a76225a90c157543945b3a2d2c189bca191c954038fb` |
+| **⬇️ Direct APK download** | **[Rivo-v3.2.1-release.apk (26.1 MB)](https://github.com/Ahmedbecett/Chort/releases/download/v3.2.1/Rivo-v3.2.1-release.apk)** |
+| **Release page** | [v3.2.1 — notes + verification report](https://github.com/Ahmedbecett/Chort/releases/tag/v3.2.1) |
+| **SHA-256** | `c3f35db6b65959aa5103c28ff9580df30024c76acddebbba4701cb3df694321f` |
 
 - 📦 **[All releases](https://github.com/Ahmedbecett/Chort/releases)**
 - ⚙️ **[Release builds (GitHub Actions)](https://github.com/Ahmedbecett/Chort/actions)**
@@ -22,6 +22,13 @@ verified against the source tree by `scripts/verify_apk.py` before publishing.
 Installs over previous versions with no uninstall.
 
 ---
+
+## 🆕 What changed in v3.2.1
+
+1. **Launch-crash fix** — Facebook SDK auto-init disabled (its App ID was an
+   unconfigured placeholder and its provider runs before any app code).
+2. **Crash reporter** — any remaining crash now opens a readable/copyable
+   report screen (isolated process) with a user-triggered clear-data restart.
 
 ## 🆕 What changed in v3.2.0
 
