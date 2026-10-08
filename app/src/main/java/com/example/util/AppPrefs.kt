@@ -23,23 +23,62 @@ import java.util.Locale
  */
 object AppPrefs {
 
-    private const val FILE = "zevora_prefs"
+    private const val FILE = "rivo_prefs"
+    private const val LEGACY_FILE = "zevora_prefs"
     private lateinit var prefs: SharedPreferences
 
     fun init(context: Context) {
         if (::prefs.isInitialized) return
+        try {
+            LegacyStore.migratePrefs(context, LEGACY_FILE, FILE)
+        } catch (_: Exception) {
+        }
         prefs = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-        _themeMode.value = prefs.getString("theme_mode", "dark") ?: "dark"
-        _language.value = prefs.getString("app_language", "system") ?: "system"
-        _autoplay.value = prefs.getBoolean("autoplay_feed", true)
-        _feedMuted.value = prefs.getBoolean("feed_muted_default", false)
-        _dataSaver.value = prefs.getBoolean("data_saver", false)
-        _restrictedMode.value = prefs.getBoolean("restricted_mode", false)
-        _privateAccount.value = prefs.getBoolean("private_account", false)
-        _allowComments.value = prefs.getString("allow_comments", "everyone") ?: "everyone"
-        _allowDownloads.value = prefs.getBoolean("allow_downloads", true)
-        _allowReuse.value = prefs.getBoolean("allow_reuse", false)
-        _coins.value = prefs.getInt("coins_balance", 0)
+        // Every read is stale-data-proof: a value saved by an older build
+        // with a different type is dropped and replaced by its default
+        // instead of crashing startup with ClassCastException.
+        _themeMode.value = safeString("theme_mode", "dark")
+        _language.value = safeString("app_language", "system")
+        _autoplay.value = safeBool("autoplay_feed", true)
+        _feedMuted.value = safeBool("feed_muted_default", false)
+        _dataSaver.value = safeBool("data_saver", false)
+        _restrictedMode.value = safeBool("restricted_mode", false)
+        _privateAccount.value = safeBool("private_account", false)
+        _allowComments.value = safeString("allow_comments", "everyone")
+        _allowDownloads.value = safeBool("allow_downloads", true)
+        _allowReuse.value = safeBool("allow_reuse", false)
+        _coins.value = safeInt("coins_balance", 0)
+    }
+
+    private fun safeString(key: String, default: String): String {
+        return try {
+            prefs.getString(key, default) ?: default
+        } catch (_: Exception) {
+            dropKey(key); default
+        }
+    }
+
+    private fun safeBool(key: String, default: Boolean): Boolean {
+        return try {
+            prefs.getBoolean(key, default)
+        } catch (_: Exception) {
+            dropKey(key); default
+        }
+    }
+
+    private fun safeInt(key: String, default: Int): Int {
+        return try {
+            prefs.getInt(key, default)
+        } catch (_: Exception) {
+            dropKey(key); default
+        }
+    }
+
+    private fun dropKey(key: String) {
+        try {
+            prefs.edit().remove(key).apply()
+        } catch (_: Exception) {
+        }
     }
 
     // ------------------------------------------------------------------ live state

@@ -140,6 +140,42 @@ fun ZevoraApp() {
     val connectivityMonitor = remember { NetworkConnectivityMonitor(context) }
     val isOnline by connectivityMonitor.isOnline.collectAsState(initial = true)
 
+    // Pending crash report from a previous run: surface it in-app (works even
+    // on devices that block the isolated `:crash` reporter process).
+    var pendingCrash by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        pendingCrash = com.example.util.CrashHandler.readLastCrash(context)
+    }
+    pendingCrash?.let { report ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Rivo stopped last time") },
+            text = {
+                Text(
+                    text = report.take(4000),
+                    modifier = Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                    fontSize = 11.sp
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    try {
+                        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        cm.setPrimaryClip(android.content.ClipData.newPlainText("Rivo crash", report))
+                        android.widget.Toast.makeText(context, "Copied", android.widget.Toast.LENGTH_SHORT).show()
+                    } catch (_: Exception) {
+                    }
+                }) { Text("Copy") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    com.example.util.CrashHandler.clearLastCrash(context)
+                    pendingCrash = null
+                }) { Text("Dismiss") }
+            }
+        )
+    }
+
     // Screens: "splash" | auth: "welcome","email","phone","otp","recover" |
     // main: "feed","friends","inbox","profile" | create: "create","camera","upload" |
     // sub: "discover","viewer","settings","admin","legal","live","sound","tracking",

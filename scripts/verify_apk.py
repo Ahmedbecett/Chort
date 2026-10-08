@@ -69,7 +69,7 @@ REQUIRED_DEX_STRINGS = [
     # --- ZEVORA 3.0.0 rebuild identity markers (absent from every 2.x build) ---
     ("ZevoraRepository", "ZEVORA 3.0.0 class rename (was TokPulseRepository)"),
     ("ZevoraApiClient", "ZEVORA 3.0.0 class rename (was TokPulseApiClient)"),
-    ("Rivo • v3.2.2", "SplashScreen.kt - 3.2.2 splash stamp"),
+    ("Rivo • v3.2.3", "SplashScreen.kt - 3.2.3 splash stamp"),
     ("live_start_button", "LiveStreamScreen.kt - honest LIVE lobby (replaces simulation)"),
     ("No fake viewers. No scripted chat. Only real broadcasts.", "LiveStreamScreen.kt - LIVE lobby honesty note"),
     # --- Rivo 3.2.0 (ex-ZEVORA) create/publish/wallet markers ---

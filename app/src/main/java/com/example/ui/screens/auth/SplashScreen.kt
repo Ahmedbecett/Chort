@@ -78,7 +78,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             )
         }
         Text(
-            text = "Rivo • v3.2.2",
+            text = "Rivo • v3.2.3",
             color = Color.White.copy(alpha = 0.25f),
             fontSize = 11.sp,
             modifier = Modifier.align(Alignment.BottomCenter)

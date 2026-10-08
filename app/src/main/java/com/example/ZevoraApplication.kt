@@ -18,24 +18,58 @@ class ZevoraApplication : Application(), ImageLoaderFactory {
         private set
 
     override fun attachBaseContext(base: android.content.Context) {
-        CrashHandler.install(base)
-        AppPrefs.init(base)
-        super.attachBaseContext(AppPrefs.wrapLocale(base))
+        // Non-main processes (e.g. the isolated `:crash` reporter) run ZERO
+        // app init: they must never die from startup code.
+        val main = try {
+            CrashHandler.isMainProcess(base)
+        } catch (_: Exception) {
+            true
+        }
+        if (!main) {
+            super.attachBaseContext(base)
+            return
+        }
+        try {
+            CrashHandler.install(base)
+        } catch (_: Exception) {
+        }
+        try {
+            AppPrefs.init(base)
+        } catch (t: Throwable) {
+            CrashHandler.failFast(base, t)
+            return
+        }
+        val wrapped = try {
+            AppPrefs.wrapLocale(base)
+        } catch (_: Exception) {
+            base
+        }
+        super.attachBaseContext(wrapped)
     }
 
     override fun onCreate() {
         super.onCreate()
-        instance = this
-        CrashHandler.install(this)
-        try {
-            if (FirebaseApp.getApps(this).isEmpty()) {
-                FirebaseApp.initializeApp(this)
-            }
-        } catch (e: Exception) {
-            android.util.Log.w("ZevoraApplication", "Firebase init deferred: ${e.message}")
+        val main = try {
+            CrashHandler.isMainProcess(this)
+        } catch (_: Exception) {
+            true
         }
-        AppPrefs.init(this)
-        repository = ZevoraRepository(this)
+        if (!main) return
+        try {
+            instance = this
+            CrashHandler.install(this)
+            try {
+                if (FirebaseApp.getApps(this).isEmpty()) {
+                    FirebaseApp.initializeApp(this)
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("ZevoraApplication", "Firebase init deferred: ${e.message}")
+            }
+            AppPrefs.init(this)
+            repository = ZevoraRepository(this)
+        } catch (t: Throwable) {
+            CrashHandler.failFast(this, t)
+        }
     }
 
     override fun newImageLoader(): ImageLoader {

@@ -15,10 +15,14 @@ import kotlin.system.exitProcess
 /**
  * Last-resort crash reporter. Installed as the first statement of
  * [com.example.ZevoraApplication.attachBaseContext] so any crash after the
- * content providers (Firebase/Facebook/lifecycle) is captured: the full
- * stack trace is written to internal storage and a dedicated reporter
- * Activity is launched in an isolated `:crash` process, where the user can
- * read, copy, or report it — or wipe stale app data and restart.
+ * content providers is captured.
+ *
+ * Because some devices/ROMs block starting the isolated `:crash` reporter
+ * Activity from a dying process, the report is ALSO written to a copy in
+ * the device's Downloads folder (no permission needed on API 29+) plus a
+ * Toast pointing at it — the stack trace is therefore retrievable even
+ * when the app can never launch. Any crash during Application startup is
+ * routed here via [failFast], which catches [Throwable] (including [Error]).
  */
 object CrashHandler {
 
@@ -32,37 +36,129 @@ object CrashHandler {
         if (installed) return
         installed = true
         if (!isMainProcess(context)) return
-        val appContext = context.applicationContext
+        val appContext = try {
+            context.applicationContext ?: context
+        } catch (_: Exception) {
+            context
+        }
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            var reporterStarted = false
+            handleCrash(appContext, thread, throwable, defaultHandler)
+        }
+    }
+
+    /**
+     * Handle a fatal startup failure synchronously (called from guarded
+     * Application code). Never returns.
+     */
+    fun failFast(context: Context, throwable: Throwable) {
+        try {
+            val appContext = try {
+                context.applicationContext ?: context
+            } catch (_: Exception) {
+                context
+            }
+            handleCrash(appContext, Thread.currentThread(), throwable, Thread.getDefaultUncaughtExceptionHandler())
+        } catch (_: Exception) {
+        }
+        try {
+            Process.killProcess(Process.myPid())
+        } catch (_: Exception) {
+        }
+        exitProcess(1)
+    }
+
+    private fun handleCrash(
+        appContext: Context,
+        thread: Thread,
+        throwable: Throwable,
+        defaultHandler: Thread.UncaughtExceptionHandler?,
+    ) {
+        var reporterStarted = false
+        try {
+            val report = buildReport(appContext, thread, throwable)
             try {
-                val report = buildReport(appContext, thread, throwable)
+                File(appContext.filesDir, CRASH_FILE).writeText(report)
+            } catch (_: Exception) {
+            }
+            saveCopyToDownloads(appContext, report)
+            showSavedToast(appContext)
+            val intent = Intent(appContext, CrashReportActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            appContext.startActivity(intent)
+            reporterStarted = true
+        } catch (_: Exception) {
+        } finally {
+            // If our reporter could not start, fall back to the system dialog
+            // so the crash is never completely silent.
+            if (!reporterStarted) {
                 try {
-                    File(appContext.filesDir, CRASH_FILE).writeText(report)
+                    defaultHandler?.uncaughtException(thread, throwable)
                 } catch (_: Exception) {
                 }
-                val intent = Intent(appContext, CrashReportActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                appContext.startActivity(intent)
-                reporterStarted = true
+            }
+            try {
+                Thread.sleep(400)
             } catch (_: Exception) {
-            } finally {
-                // If our reporter could not start, fall back to the system dialog
-                // so the crash is never completely silent.
-                if (!reporterStarted) {
+            }
+            try {
+                Process.killProcess(Process.myPid())
+            } catch (_: Exception) {
+            }
+            exitProcess(1)
+        }
+    }
+
+    /**
+     * Best-effort copy of the report into the shared Downloads folder so
+     * the user can open/send it from any file manager even when the app
+     * itself can never launch. No permission needed on API 29+.
+     */
+    private fun saveCopyToDownloads(context: Context, report: String) {
+        try {
+            if (Build.VERSION.SDK_INT < 29) return
+            val stamp = try {
+                SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            } catch (_: Exception) {
+                "report"
+            }
+            val values = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.Downloads.DISPLAY_NAME, "rivo_crash_$stamp.txt")
+                put(android.provider.MediaStore.Downloads.MIME_TYPE, "text/plain")
+            }
+            val uri = context.contentResolver.insert(
+                android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                values,
+            ) ?: return
+            context.contentResolver.openOutputStream(uri)?.use { out ->
+                out.write(report.toByteArray())
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun showSavedToast(context: Context) {
+        try {
+            val looper = try {
+                android.os.Looper.getMainLooper()
+            } catch (_: Exception) {
+                null
+            } ?: return
+            try {
+                @Suppress("DEPRECATION")
+                android.os.Handler(looper).post {
                     try {
-                        defaultHandler?.uncaughtException(thread, throwable)
+                        android.widget.Toast.makeText(
+                            context,
+                            "Rivo stopped \u2014 crash report saved to Downloads",
+                            android.widget.Toast.LENGTH_LONG,
+                        ).show()
                     } catch (_: Exception) {
                     }
                 }
-                try {
-                    Thread.sleep(400)
-                } catch (_: Exception) {
-                }
-                Process.killProcess(Process.myPid())
-                exitProcess(1)
+            } catch (_: Exception) {
             }
+        } catch (_: Exception) {
         }
     }
 
@@ -72,6 +168,13 @@ object CrashHandler {
             if (f.exists()) f.readText() else null
         } catch (_: Exception) {
             null
+        }
+    }
+
+    fun clearLastCrash(context: Context) {
+        try {
+            File(context.filesDir, CRASH_FILE).delete()
+        } catch (_: Exception) {
         }
     }
 
@@ -110,7 +213,7 @@ object CrashHandler {
         return sb.toString()
     }
 
-    private fun processName(context: Context): String {
+    fun processName(context: Context): String {
         return try {
             if (Build.VERSION.SDK_INT >= 28) {
                 android.app.Application.getProcessName()
@@ -125,7 +228,7 @@ object CrashHandler {
         }
     }
 
-    private fun isMainProcess(context: Context): Boolean {
+    fun isMainProcess(context: Context): Boolean {
         return try {
             processName(context) == context.packageName
         } catch (_: Exception) {

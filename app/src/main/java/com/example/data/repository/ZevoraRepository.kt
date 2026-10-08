@@ -53,6 +53,7 @@ import com.example.data.remote.ResolveReportRequest
 import com.example.data.remote.ResolveReportResponse
 import com.example.data.remote.ShareRequest
 import com.example.data.remote.ZevoraApiClient
+import com.example.util.LegacyStore
 import com.example.data.remote.UploadTicketRequest
 import com.example.data.remote.AdminUsersResponse
 import com.example.data.remote.ApiUserSummary
@@ -85,7 +86,10 @@ import java.util.concurrent.TimeUnit
 class ZevoraRepository(private val context: Context) {
 
     private val TAG = "ZevoraRepository"
-    private val sharedPrefs = context.getSharedPreferences("tokpulse_session", Context.MODE_PRIVATE)
+    private val sharedPrefs = run {
+        LegacyStore.migratePrefs(context, "tokpulse_session", "rivo_session")
+        context.getSharedPreferences("rivo_session", Context.MODE_PRIVATE)
+    }
     private val db = AppDatabase.getInstance(context)
     private val dao = db.appDao()
     val firebaseService = FirebaseService(context)

@@ -1716,7 +1716,7 @@ fun AboutPage(repository: ZevoraRepository, onBack: () -> Unit) {
         PrefSectionTitle("Credits")
         PrefCard {
             PrefRow(null, "Developer", "Ahmed Becetti", showChevron = false) { }
-            PrefRow(null, "Package", "com.aistudio.tokpulse.social", showChevron = false) { }
+            PrefRow(null, "Package", com.example.BuildConfig.APPLICATION_ID, showChevron = false) { }
             PrefRow(null, "Backend", "chort-nine.vercel.app", showChevron = false) { }
         }
         PrefNote("Rivo is a global short-video platform. Every screen in this app is wired to production services — no demo content.")
