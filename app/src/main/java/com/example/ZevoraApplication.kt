@@ -9,6 +9,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.example.data.repository.ZevoraRepository
 import com.example.util.AppPrefs
+import com.example.util.CrashHandler
 
 class ZevoraApplication : Application(), ImageLoaderFactory {
 
@@ -16,6 +17,7 @@ class ZevoraApplication : Application(), ImageLoaderFactory {
         private set
 
     override fun attachBaseContext(base: android.content.Context) {
+        CrashHandler.install(base)
         AppPrefs.init(base)
         super.attachBaseContext(AppPrefs.wrapLocale(base))
     }

@@ -38,6 +38,18 @@
         <meta-data
             android:name="com.facebook.sdk.ClientToken"
             android:value="@string/facebook_client_token" />
+        <!-- Facebook Login is not configured (placeholder App ID): never let the
+             SDK auto-initialize at startup. Manual use stays guarded by
+             FacebookAuth.isConfigured(). -->
+        <meta-data
+            android:name="com.facebook.sdk.AutoInitEnabled"
+            android:value="false" />
+        <meta-data
+            android:name="com.facebook.sdk.AutoLogAppEventsEnabled"
+            android:value="false" />
+        <meta-data
+            android:name="com.facebook.sdk.AdvertiserIDCollectionEnabled"
+            android:value="false" />
         <activity
             android:name="com.facebook.FacebookActivity"
             android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
@@ -55,6 +67,12 @@
                 <data android:scheme="@string/fb_login_protocol_scheme" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.screens.debug.CrashReportActivity"
+            android:process=":crash"
+            android:exported="false"
+            android:theme="@android:style/Theme.Material.NoActionBar"
+            android:finishOnTaskLaunch="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -111,6 +111,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.example.util.CrashHandler.install(this)
         enableEdgeToEdge()
         setContent {
             ZevoraTheme {
